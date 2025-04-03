@@ -19,6 +19,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Create directories for static and media files
+RUN mkdir -p /app/staticfiles /app/media
+
 # Install dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip && \

@@ -3,6 +3,9 @@ from accounts.models import User, UserOnboarding
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class UserOnboardingSerializer(serializers.ModelSerializer):
@@ -28,6 +31,16 @@ class SignupWithOnboardingSerializer(serializers.Serializer):
     math_level = serializers.CharField(required=False, default="Bilowga")
     minutes_per_day = serializers.IntegerField(required=False, default=30)
 
+    def validate_name(self, value):
+        """
+        Validate that name is not empty and doesn't contain invalid characters
+        """
+        if not value or not value.strip():
+            raise serializers.ValidationError("Name cannot be empty")
+        if len(value) > 150:  # Django's default max_length for username
+            raise serializers.ValidationError("Name is too long")
+        return value.strip()
+
     def validate_email(self, value):
         """
         Check if the email already exists
@@ -35,6 +48,15 @@ class SignupWithOnboardingSerializer(serializers.Serializer):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError(
                 "User with this email already exists.")
+        return value.lower()  # Normalize email to lowercase
+
+    def validate_password(self, value):
+        """
+        Validate password strength
+        """
+        if len(value) < 8:
+            raise serializers.ValidationError(
+                "Password must be at least 8 characters long")
         return value
 
     def validate_minutes_per_day(self, value):
@@ -51,31 +73,57 @@ class SignupWithOnboardingSerializer(serializers.Serializer):
         """
         Create user and onboarding profile in a transaction
         """
-        # Extract user data
-        name = validated_data.pop('name')
-        email = validated_data.pop('email')
-        password = validated_data.pop('password')
+        try:
+            # Extract user data
+            name = validated_data.pop('name')
+            email = validated_data.pop('email')
+            password = validated_data.pop('password')
 
-        # Create user (using username as name since name isn't a field in the User model)
-        user = User.objects.create_user(
-            username=name,
-            email=email,
-            password=password,
-            first_name=name.split()[0] if ' ' in name else name,
-            last_name=' '.join(name.split()[1:]) if ' ' in name else '',
-        )
+            # Create a sanitized username (required by Django)
+            # Use email as username to ensure uniqueness if name is not suitable
+            username = name
 
-        # Create onboarding profile
-        onboarding = UserOnboarding.objects.create(
-            user=user,
-            **validated_data,
-            has_completed_onboarding=True
-        )
+            # If name contains spaces, use the email prefix as username
+            if ' ' in name or len(name) > 150:
+                username = email.split('@')[0]
 
-        return {
-            'user': user,
-            'onboarding': onboarding,
-        }
+            # Check for username conflicts and append number if needed
+            base_username = username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+
+            # Get first and last name safely
+            name_parts = name.split(' ', 1)
+            first_name = name_parts[0] if name_parts else name
+            last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+            # Create user
+            user = User.objects.create_user(
+                username=username[:150],  # Ensure within field limit
+                email=email,
+                password=password,
+                first_name=first_name[:30],  # Respect Django field limits
+                last_name=last_name[:150]
+            )
+
+            # Create onboarding profile
+            onboarding = UserOnboarding.objects.create(
+                user=user,
+                **validated_data,
+                has_completed_onboarding=True
+            )
+
+            return {
+                'user': user,
+                'onboarding': onboarding,
+            }
+        except Exception as e:
+            # Log any errors during user creation
+            logger.error(f"Error creating user: {str(e)}")
+            raise serializers.ValidationError(
+                f"Failed to create user: {str(e)}")
 
 
 class SigninSerializer(serializers.Serializer):

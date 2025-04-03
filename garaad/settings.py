@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Updated BASE_DIR to account for the garaad package
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -33,6 +34,8 @@ INSTALLED_APPS = [
     'whitenoise.runserver_nostatic',  # Add whitenoise for static files
 
     # Your apps
+    'core',  # Core functionality
+    'api',   # API endpoints
     'accounts',
 ]
 
@@ -91,7 +94,8 @@ else:
         }
     }
 
-ROOT_URLCONF = 'urls'
+# Update the URL configuration path
+ROOT_URLCONF = 'garaad.urls'
 
 TEMPLATES = [
     {
@@ -109,8 +113,9 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'wsgi.application'
-ASGI_APPLICATION = 'asgi.application'
+# Update application paths
+WSGI_APPLICATION = 'garaad.wsgi.application'
+ASGI_APPLICATION = 'garaad.asgi.application'
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

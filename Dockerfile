@@ -34,4 +34,4 @@ COPY . .
 RUN python manage.py collectstatic --noinput
 
 # Run gunicorn
-CMD gunicorn --bind 0.0.0.0:$PORT wsgi:application 
+CMD gunicorn --bind 0.0.0.0:$PORT garaad.wsgi:application 

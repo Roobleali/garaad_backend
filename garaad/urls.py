@@ -14,6 +14,7 @@ urlpatterns = [
     # Comment out or remove conflicting lines
     # path('accounts/', include('allauth.urls')),
     # Updated path to match frontend API calls
+    path('api/', include('api.urls')),
     path('api/auth/', include('accounts.urls')),
 
     # Add hello-world endpoint

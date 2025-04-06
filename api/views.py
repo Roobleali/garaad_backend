@@ -25,10 +25,14 @@ def api_root(request):
         'status': 'online',
         'version': '1.0.0',
         'endpoints': {
-            'auth': '/api/auth/',
+            'auth': {
+                'signup': '/api/auth/signup/',
+                'signin': '/api/auth/signin/',
+                'refresh': '/api/auth/refresh/',
+                'profile': '/api/auth/profile/',
+                'student/register': '/api/auth/student/register/'
+            },
             'hello': '/hello-world/',
-            'signup': '/api/signup/',
-            'signin': '/api/signin/',
             'lms': '/api/lms/',
         }
     }, status=status.HTTP_200_OK)
@@ -50,12 +54,17 @@ class SignupView(APIView):
 
                 # Generate JWT tokens for the new user
                 user = result['user']
+                onboarding = result['onboarding']
                 refresh = RefreshToken.for_user(user)
 
-                # Return user data and tokens
+                # Import UserOnboardingSerializer here to avoid circular imports
+                from accounts.serializers import UserOnboardingSerializer
+
+                # Return user data, onboarding data, and tokens
                 return Response({
                     'message': 'User registered successfully',
                     'user': UserSerializer(user).data,
+                    'onboarding': UserOnboardingSerializer(onboarding).data,
                     'tokens': {
                         'refresh': str(refresh),
                         'access': str(refresh.access_token),
@@ -89,8 +98,20 @@ class SigninView(APIView):
             user = serializer.validated_data['user']
             refresh = RefreshToken.for_user(user)
 
+            # Import UserOnboardingSerializer here to avoid circular imports
+            from accounts.serializers import UserOnboardingSerializer
+
+            # Get user's onboarding data if it exists
+            try:
+                from accounts.models import UserOnboarding
+                onboarding = UserOnboarding.objects.get(user=user)
+                onboarding_data = UserOnboardingSerializer(onboarding).data
+            except:
+                onboarding_data = None
+
             return Response({
                 'user': UserSerializer(user).data,
+                'onboarding': onboarding_data,
                 'tokens': {
                     'refresh': str(refresh),
                     'access': str(refresh.access_token),

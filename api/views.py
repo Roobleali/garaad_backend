@@ -29,6 +29,7 @@ def api_root(request):
             'hello': '/hello-world/',
             'signup': '/api/signup/',
             'signin': '/api/signin/',
+            'lms': '/api/lms/',
         }
     }, status=status.HTTP_200_OK)
 

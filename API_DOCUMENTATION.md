@@ -271,7 +271,8 @@ Authorization: Bearer <access_token>
     "auth": "/api/auth/",
     "hello": "/hello-world/",
     "signup": "/api/signup/",
-    "signin": "/api/signin/"
+    "signin": "/api/signin/",
+    "lms": "/api/lms/"
   }
 }
 ```
@@ -288,6 +289,514 @@ Authorization: Bearer <access_token>
 ```
 Hello, World!
 ```
+
+### Learning Management System (LMS) API
+
+The LMS API provides endpoints for managing and accessing courses, modules, lessons, and exercises.
+
+#### Courses
+
+##### 1. List All Courses
+
+**Endpoint:** `GET /api/lms/courses/`
+
+**Description:** Returns a list of all published courses with basic information.
+
+**Authentication Required:** No (for listing public courses)
+
+**Query Parameters:**
+- `search`: Search courses by title, description, or category
+- `ordering`: Order courses by created_at, title (use `-created_at` for descending order)
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "title": "Introduction to Python Programming",
+    "slug": "introduction-to-python-programming",
+    "description": "Learn the basics of Python programming language.",
+    "thumbnail": "https://example.com/python-thumbnail.jpg",
+    "level": "beginner",
+    "category": "Programming",
+    "author_id": "instructor1",
+    "is_published": true,
+    "module_count": 2,
+    "created_at": "2023-04-01T10:00:00Z",
+    "updated_at": "2023-04-01T10:00:00Z"
+  },
+  {
+    "id": 2,
+    "title": "Arabic for Beginners",
+    "slug": "arabic-for-beginners",
+    "description": "Learn the basics of Arabic language.",
+    "thumbnail": "https://example.com/arabic-thumbnail.jpg",
+    "level": "beginner",
+    "category": "Languages",
+    "author_id": "instructor2",
+    "is_published": true,
+    "module_count": 1,
+    "created_at": "2023-04-02T10:00:00Z",
+    "updated_at": "2023-04-02T10:00:00Z"
+  }
+]
+```
+
+##### 2. Get Course Details
+
+**Endpoint:** `GET /api/lms/courses/{id}/`
+
+**Description:** Returns detailed information about a specific course, including its modules, lessons, and exercises.
+
+**Authentication Required:** No (for public courses)
+
+**Response (200 OK):**
+```json
+{
+  "id": 1,
+  "title": "Introduction to Python Programming",
+  "slug": "introduction-to-python-programming",
+  "description": "Learn the basics of Python programming language.",
+  "thumbnail": "https://example.com/python-thumbnail.jpg",
+  "level": "beginner",
+  "category": "Programming",
+  "author_id": "instructor1",
+  "is_published": true,
+  "created_at": "2023-04-01T10:00:00Z",
+  "updated_at": "2023-04-01T10:00:00Z",
+  "modules": [
+    {
+      "id": 1,
+      "title": "Getting Started with Python",
+      "description": "Learn how to set up your Python environment.",
+      "order": 1,
+      "lessons": [
+        {
+          "id": 1,
+          "title": "Installing Python",
+          "content": "In this lesson, you will learn how to install Python...",
+          "type": "lesson",
+          "order": 1,
+          "exercises": []
+        },
+        {
+          "id": 2,
+          "title": "Your First Python Program",
+          "content": "In this lesson, you will write your first Python program...",
+          "type": "lesson",
+          "order": 2,
+          "exercises": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Errors:**
+- 404 Not Found: If the course does not exist
+
+##### 3. Create a Course
+
+**Endpoint:** `POST /api/lms/courses/`
+
+**Description:** Creates a new course.
+
+**Authentication Required:** Yes (admin or instructor)
+
+**Request Body:**
+```json
+{
+  "title": "JavaScript Fundamentals",
+  "description": "Learn the core concepts of JavaScript programming.",
+  "thumbnail": "https://example.com/js-thumbnail.jpg",
+  "level": "beginner",
+  "category": "Programming",
+  "author_id": "instructor1",
+  "is_published": false
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 3,
+  "title": "JavaScript Fundamentals",
+  "slug": "javascript-fundamentals",
+  "description": "Learn the core concepts of JavaScript programming.",
+  "thumbnail": "https://example.com/js-thumbnail.jpg",
+  "level": "beginner",
+  "category": "Programming",
+  "author_id": "instructor1",
+  "is_published": false,
+  "created_at": "2023-06-15T14:30:00Z",
+  "updated_at": "2023-06-15T14:30:00Z",
+  "modules": []
+}
+```
+
+**Errors:**
+- 400 Bad Request: If validation fails
+- 401 Unauthorized: If not authenticated
+- 403 Forbidden: If user doesn't have permission to create courses
+
+#### Modules
+
+##### 1. List All Modules
+
+**Endpoint:** `GET /api/lms/modules/`
+
+**Description:** Returns a list of all modules.
+
+**Authentication Required:** No
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "course": 1,
+    "title": "Getting Started with Python",
+    "description": "Learn how to set up your Python environment.",
+    "order": 1,
+    "created_at": "2023-04-01T10:01:00Z",
+    "updated_at": "2023-04-01T10:01:00Z"
+  }
+]
+```
+
+##### 2. Get Course Modules
+
+**Endpoint:** `GET /api/lms/modules/course/{course_id}/`
+
+**Description:** Returns all modules for a specific course.
+
+**Authentication Required:** No (for public courses)
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "course": 1,
+    "title": "Getting Started with Python",
+    "description": "Learn how to set up your Python environment.",
+    "order": 1,
+    "created_at": "2023-04-01T10:01:00Z",
+    "updated_at": "2023-04-01T10:01:00Z",
+    "lessons": [
+      {
+        "id": 1,
+        "title": "Installing Python",
+        "content": "In this lesson, you will learn how to install Python...",
+        "type": "lesson",
+        "order": 1
+      },
+      {
+        "id": 2,
+        "title": "Your First Python Program",
+        "content": "In this lesson, you will write your first Python program...",
+        "type": "lesson",
+        "order": 2
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "course": 1,
+    "title": "Python Basics",
+    "description": "Learn about variables, data types, and basic operations.",
+    "order": 2,
+    "created_at": "2023-04-01T10:02:00Z",
+    "updated_at": "2023-04-01T10:02:00Z",
+    "lessons": []
+  }
+]
+```
+
+##### 3. Create a Module
+
+**Endpoint:** `POST /api/lms/modules/`
+
+**Description:** Creates a new module for a course.
+
+**Authentication Required:** Yes (admin or instructor)
+
+**Request Body:**
+```json
+{
+  "course": 1,
+  "title": "Advanced Python Concepts",
+  "description": "Learn about decorators, generators, and more.",
+  "order": 3
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 4,
+  "course": 1,
+  "title": "Advanced Python Concepts",
+  "description": "Learn about decorators, generators, and more.",
+  "order": 3,
+  "created_at": "2023-06-15T15:00:00Z",
+  "updated_at": "2023-06-15T15:00:00Z",
+  "lessons": []
+}
+```
+
+**Errors:**
+- 400 Bad Request: If validation fails
+- 401 Unauthorized: If not authenticated
+- 403 Forbidden: If user doesn't have permission
+
+#### Lessons
+
+##### 1. List All Lessons
+
+**Endpoint:** `GET /api/lms/lessons/`
+
+**Description:** Returns a list of all lessons.
+
+**Authentication Required:** No
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "module": 1,
+    "title": "Installing Python",
+    "content": "In this lesson, you will learn how to install Python...",
+    "type": "lesson",
+    "order": 1,
+    "created_at": "2023-04-01T10:03:00Z",
+    "updated_at": "2023-04-01T10:03:00Z"
+  }
+]
+```
+
+##### 2. Get Module Lessons
+
+**Endpoint:** `GET /api/lms/lessons/module/{module_id}/`
+
+**Description:** Returns all lessons for a specific module.
+
+**Authentication Required:** No (for public courses)
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "module": 1,
+    "title": "Installing Python",
+    "content": "In this lesson, you will learn how to install Python...",
+    "type": "lesson",
+    "order": 1,
+    "created_at": "2023-04-01T10:03:00Z",
+    "updated_at": "2023-04-01T10:03:00Z",
+    "exercises": []
+  },
+  {
+    "id": 2,
+    "module": 1,
+    "title": "Your First Python Program",
+    "content": "In this lesson, you will write your first Python program...",
+    "type": "lesson",
+    "order": 2,
+    "created_at": "2023-04-01T10:04:00Z",
+    "updated_at": "2023-04-01T10:04:00Z",
+    "exercises": []
+  }
+]
+```
+
+##### 3. Create a Lesson
+
+**Endpoint:** `POST /api/lms/lessons/`
+
+**Description:** Creates a new lesson for a module.
+
+**Authentication Required:** Yes (admin or instructor)
+
+**Request Body:**
+```json
+{
+  "module": 1,
+  "title": "Python Virtual Environments",
+  "content": "In this lesson, you will learn about virtual environments...",
+  "type": "lesson",
+  "order": 4
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 6,
+  "module": 1,
+  "title": "Python Virtual Environments",
+  "content": "In this lesson, you will learn about virtual environments...",
+  "type": "lesson",
+  "order": 4,
+  "created_at": "2023-06-15T15:30:00Z",
+  "updated_at": "2023-06-15T15:30:00Z",
+  "exercises": []
+}
+```
+
+**Errors:**
+- 400 Bad Request: If validation fails
+- 401 Unauthorized: If not authenticated
+- 403 Forbidden: If user doesn't have permission
+
+#### Exercises
+
+##### 1. List All Exercises
+
+**Endpoint:** `GET /api/lms/exercises/`
+
+**Description:** Returns a list of all exercises.
+
+**Authentication Required:** No
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "lesson": 3,
+    "question": "What command do you use to run a Python script named 'hello.py'?",
+    "type": "input",
+    "choices": null,
+    "correct_answer": "python hello.py",
+    "explanation": "To run a Python script, you use the 'python' command followed by the filename.",
+    "created_at": "2023-04-01T10:07:00Z",
+    "updated_at": "2023-04-01T10:07:00Z"
+  }
+]
+```
+
+##### 2. Get Lesson Exercises
+
+**Endpoint:** `GET /api/lms/exercises/lesson/{lesson_id}/`
+
+**Description:** Returns all exercises for a specific lesson.
+
+**Authentication Required:** No (for public courses)
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "lesson": 3,
+    "question": "What command do you use to run a Python script named 'hello.py'?",
+    "type": "input",
+    "choices": null,
+    "correct_answer": "python hello.py",
+    "explanation": "To run a Python script, you use the 'python' command followed by the filename.",
+    "created_at": "2023-04-01T10:07:00Z",
+    "updated_at": "2023-04-01T10:07:00Z"
+  },
+  {
+    "id": 2,
+    "lesson": 3,
+    "question": "Which of the following is NOT a valid way to install Python?",
+    "type": "multiple_choice",
+    "choices": [
+      "Download from python.org",
+      "Use package manager like apt or brew",
+      "Install from App Store",
+      "Use Anaconda"
+    ],
+    "correct_answer": "Install from App Store",
+    "explanation": "Python is not typically available in the App Store. The recommended ways to install Python are through python.org, package managers, or distributions like Anaconda.",
+    "created_at": "2023-04-01T10:08:00Z",
+    "updated_at": "2023-04-01T10:08:00Z"
+  }
+]
+```
+
+##### 3. Create an Exercise
+
+**Endpoint:** `POST /api/lms/exercises/`
+
+**Description:** Creates a new exercise for a lesson.
+
+**Authentication Required:** Yes (admin or instructor)
+
+**Request Body:**
+```json
+{
+  "lesson": 3,
+  "question": "What Python function would you use to get the length of a list?",
+  "type": "input",
+  "choices": null,
+  "correct_answer": "len()",
+  "explanation": "The len() function returns the number of items in a container like a list."
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 5,
+  "lesson": 3,
+  "question": "What Python function would you use to get the length of a list?",
+  "type": "input",
+  "choices": null,
+  "correct_answer": "len()",
+  "explanation": "The len() function returns the number of items in a container like a list.",
+  "created_at": "2023-06-15T16:00:00Z",
+  "updated_at": "2023-06-15T16:00:00Z"
+}
+```
+
+**Errors:**
+- 400 Bad Request: If validation fails
+- 401 Unauthorized: If not authenticated
+- 403 Forbidden: If user doesn't have permission
+
+##### 4. Submit Exercise Answer
+
+**Endpoint:** `POST /api/lms/exercises/{id}/submit/`
+
+**Description:** Submit an answer to an exercise and check if it's correct.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "answer": "python hello.py"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "is_correct": true,
+  "correct_answer": "python hello.py",
+  "explanation": "To run a Python script, you use the 'python' command followed by the filename."
+}
+```
+
+**Response (Wrong Answer):**
+```json
+{
+  "is_correct": false,
+  "correct_answer": null,
+  "explanation": "To run a Python script, you use the 'python' command followed by the filename."
+}
+```
+
+**Errors:**
+- 400 Bad Request: If validation fails
+- 401 Unauthorized: If not authenticated
+- 404 Not Found: If the exercise does not exist
 
 ## Common Error Responses
 
@@ -333,6 +842,8 @@ Hello, World!
 4. **Token Refresh:**
    - When the access token expires, use the refresh token to get a new one
    - Implement token refresh before access token expiration (e.g., after 14 minutes for a 15-minute token)
+
+5. Log out users when refresh token expires or is invalid 
 
 ### Error Handling
 
@@ -426,6 +937,157 @@ async function refreshToken() {
   return data.access;
 }
 ```
+
+### Example: Working with the Learning Management System API
+
+#### Fetching and Displaying Courses
+
+```javascript
+// Example function to fetch and display courses
+async function fetchCourses() {
+  try {
+    const response = await fetch('http://localhost:8000/api/lms/courses/', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch courses');
+    }
+    
+    const courses = await response.json();
+    
+    // Display courses in your UI
+    const coursesList = document.getElementById('courses-list');
+    coursesList.innerHTML = '';
+    
+    courses.forEach(course => {
+      const courseElement = document.createElement('div');
+      courseElement.className = 'course-card';
+      courseElement.innerHTML = `
+        <img src="${course.thumbnail || 'default-course.jpg'}" alt="${course.title}">
+        <h3>${course.title}</h3>
+        <p>${course.description.substring(0, 100)}...</p>
+        <span class="level-badge">${course.level}</span>
+        <a href="/course/${course.slug}" class="btn">View Course</a>
+      `;
+      coursesList.appendChild(courseElement);
+    });
+    
+    return courses;
+  } catch (error) {
+    console.error('Error fetching courses:', error);
+    // Show error message to user
+    document.getElementById('error-message').textContent = 'Unable to load courses. Please try again later.';
+    throw error;
+  }
+}
+
+// Function to fetch a specific course with all its content
+async function fetchCourseDetails(courseId) {
+  try {
+    const accessToken = localStorage.getItem('accessToken');
+    const headers = accessToken ? 
+      { 'Authorization': `Bearer ${accessToken}` } : 
+      { 'Content-Type': 'application/json' };
+    
+    const response = await fetch(`http://localhost:8000/api/lms/courses/${courseId}/`, {
+      method: 'GET',
+      headers: headers,
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Course not found');
+      }
+      throw new Error('Failed to fetch course details');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching course details:', error);
+    throw error;
+  }
+}
+
+// Function to submit an exercise answer
+async function submitExerciseAnswer(exerciseId, answer) {
+  try {
+    const accessToken = localStorage.getItem('accessToken');
+    
+    if (!accessToken) {
+      // Redirect to login if user is not authenticated
+      window.location.href = '/login?redirect=' + window.location.pathname;
+      return;
+    }
+    
+    const response = await fetch(`http://localhost:8000/api/lms/exercises/${exerciseId}/submit/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ answer }),
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        // Token expired, try to refresh
+        await refreshToken();
+        return submitExerciseAnswer(exerciseId, answer);
+      }
+      
+      throw new Error('Failed to submit answer');
+    }
+    
+    const result = await response.json();
+    
+    // Display the result to the user
+    const resultElement = document.getElementById('exercise-result');
+    if (result.is_correct) {
+      resultElement.innerHTML = `
+        <div class="correct-answer">
+          <h4>Correct!</h4>
+          <p>${result.explanation}</p>
+        </div>
+      `;
+    } else {
+      resultElement.innerHTML = `
+        <div class="wrong-answer">
+          <h4>Incorrect</h4>
+          <p>${result.explanation}</p>
+        </div>
+      `;
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error submitting exercise answer:', error);
+    throw error;
+  }
+}
+```
+
+#### Best Practices for LMS Integration
+
+1. **Progressive Loading**: First load the course list, then load course details only when a user selects a specific course.
+
+2. **Caching**: Consider caching course structure (but not exercises) in localStorage to improve performance.
+
+3. **Course Navigation**: Create a side navigation that displays the module and lesson structure for easy navigation within a course.
+
+4. **Exercise Handling**: 
+   - For multiple choice exercises, validate selection before submission
+   - For input exercises, provide clear instructions on expected answer format
+   - Always display meaningful feedback after submission
+
+5. **Progress Tracking**: Implement client-side progress tracking to help users know which lessons they've completed.
+
+6. **Responsive Design**: Ensure your course UI is responsive for both desktop and mobile learning experiences.
+
+7. **Error Handling**: Provide user-friendly messages when content fails to load or submissions fail.
 
 ## Development Guidelines
 

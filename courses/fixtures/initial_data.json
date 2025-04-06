@@ -1,0 +1,191 @@
+[
+  {
+    "model": "courses.course",
+    "pk": 1,
+    "fields": {
+      "title": "Introduction to Python Programming",
+      "slug": "introduction-to-python-programming",
+      "description": "Learn the basics of Python programming language. This course covers variables, data types, control structures, functions, and more.",
+      "thumbnail": "https://example.com/python-thumbnail.jpg",
+      "level": "beginner",
+      "category": "Programming",
+      "author_id": "sharafdin123",
+      "is_published": true,
+      "created_at": "2023-04-01T10:00:00Z",
+      "updated_at": "2023-04-01T10:00:00Z"
+    }
+  },
+  {
+    "model": "courses.module",
+    "pk": 1,
+    "fields": {
+      "course": 1,
+      "title": "Getting Started with Python",
+      "description": "Learn how to set up your Python environment and write your first Python program.",
+      "order": 1,
+      "created_at": "2023-04-01T10:01:00Z",
+      "updated_at": "2023-04-01T10:01:00Z"
+    }
+  },
+  {
+    "model": "courses.module",
+    "pk": 2,
+    "fields": {
+      "course": 1,
+      "title": "Python Basics",
+      "description": "Learn about variables, data types, and basic operations in Python.",
+      "order": 2,
+      "created_at": "2023-04-01T10:02:00Z",
+      "updated_at": "2023-04-01T10:02:00Z"
+    }
+  },
+  {
+    "model": "courses.lesson",
+    "pk": 1,
+    "fields": {
+      "module": 1,
+      "title": "Installing Python",
+      "content": "In this lesson, you will learn how to install Python on your computer. Python is a versatile language...",
+      "type": "lesson",
+      "order": 1,
+      "created_at": "2023-04-01T10:03:00Z",
+      "updated_at": "2023-04-01T10:03:00Z"
+    }
+  },
+  {
+    "model": "courses.lesson",
+    "pk": 2,
+    "fields": {
+      "module": 1,
+      "title": "Your First Python Program",
+      "content": "In this lesson, you will write your first Python program. We'll start with the traditional 'Hello, World!' program...",
+      "type": "lesson",
+      "order": 2,
+      "created_at": "2023-04-01T10:04:00Z",
+      "updated_at": "2023-04-01T10:04:00Z"
+    }
+  },
+  {
+    "model": "courses.lesson",
+    "pk": 3,
+    "fields": {
+      "module": 1,
+      "title": "Python Quiz",
+      "content": "Test your knowledge of Python installation and basics.",
+      "type": "exercise",
+      "order": 3,
+      "created_at": "2023-04-01T10:05:00Z",
+      "updated_at": "2023-04-01T10:05:00Z"
+    }
+  },
+  {
+    "model": "courses.lesson",
+    "pk": 4,
+    "fields": {
+      "module": 2,
+      "title": "Variables and Data Types",
+      "content": "In this lesson, you will learn about variables and data types in Python...",
+      "type": "lesson",
+      "order": 1,
+      "created_at": "2023-04-01T10:06:00Z",
+      "updated_at": "2023-04-01T10:06:00Z"
+    }
+  },
+  {
+    "model": "courses.exercise",
+    "pk": 1,
+    "fields": {
+      "lesson": 3,
+      "question": "What command do you use to run a Python script named 'hello.py'?",
+      "type": "input",
+      "choices": null,
+      "correct_answer": "python hello.py",
+      "explanation": "To run a Python script, you use the 'python' command followed by the filename.",
+      "created_at": "2023-04-01T10:07:00Z",
+      "updated_at": "2023-04-01T10:07:00Z"
+    }
+  },
+  {
+    "model": "courses.exercise",
+    "pk": 2,
+    "fields": {
+      "lesson": 3,
+      "question": "Which of the following is NOT a valid way to install Python?",
+      "type": "multiple_choice",
+      "choices": ["Download from python.org", "Use package manager like apt or brew", "Install from App Store", "Use Anaconda"],
+      "correct_answer": "Install from App Store",
+      "explanation": "Python is not typically available in the App Store. The recommended ways to install Python are through python.org, package managers, or distributions like Anaconda.",
+      "created_at": "2023-04-01T10:08:00Z",
+      "updated_at": "2023-04-01T10:08:00Z"
+    }
+  },
+  {
+    "model": "courses.exercise",
+    "pk": 3,
+    "fields": {
+      "lesson": 4,
+      "question": "What is the output of the following code?\n\nx = 5\ny = 2\nprint(x + y)",
+      "type": "input",
+      "choices": null,
+      "correct_answer": "7",
+      "explanation": "The code adds the values of x (5) and y (2), resulting in 7.",
+      "created_at": "2023-04-01T10:09:00Z",
+      "updated_at": "2023-04-01T10:09:00Z"
+    }
+  },
+  {
+    "model": "courses.course",
+    "pk": 2,
+    "fields": {
+      "title": "Arabic for Beginners",
+      "slug": "arabic-for-beginners",
+      "description": "Learn the basics of Arabic language, including the alphabet, greetings, and essential vocabulary.",
+      "thumbnail": "https://example.com/arabic-thumbnail.jpg",
+      "level": "beginner",
+      "category": "Languages",
+      "author_id": "sharafdin123",
+      "is_published": true,
+      "created_at": "2023-04-02T10:00:00Z",
+      "updated_at": "2023-04-02T10:00:00Z"
+    }
+  },
+  {
+    "model": "courses.module",
+    "pk": 3,
+    "fields": {
+      "course": 2,
+      "title": "Arabic Alphabet",
+      "description": "Learn the Arabic alphabet and how to pronounce each letter.",
+      "order": 1,
+      "created_at": "2023-04-02T10:01:00Z",
+      "updated_at": "2023-04-02T10:01:00Z"
+    }
+  },
+  {
+    "model": "courses.lesson",
+    "pk": 5,
+    "fields": {
+      "module": 3,
+      "title": "Introduction to Arabic Script",
+      "content": "In this lesson, you will learn about the Arabic script and its characteristics...",
+      "type": "lesson",
+      "order": 1,
+      "created_at": "2023-04-02T10:02:00Z",
+      "updated_at": "2023-04-02T10:02:00Z"
+    }
+  },
+  {
+    "model": "courses.exercise",
+    "pk": 4,
+    "fields": {
+      "lesson": 5,
+      "question": "Is Arabic written from left to right?",
+      "type": "true_false",
+      "choices": null,
+      "correct_answer": "false",
+      "explanation": "Arabic is written from right to left, unlike English and many other languages.",
+      "created_at": "2023-04-02T10:03:00Z",
+      "updated_at": "2023-04-02T10:03:00Z"
+    }
+  }
+] 

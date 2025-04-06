@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'core',  # Core functionality
     'api',   # API endpoints
     'accounts',
+    'courses',  # Learning management system
 ]
 
 MIDDLEWARE = [

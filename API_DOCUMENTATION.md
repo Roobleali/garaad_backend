@@ -1096,3 +1096,5 @@ async function submitExerciseAnswer(exerciseId, answer) {
 3. Use the token refresh mechanism to maintain session
 4. Securely store tokens (HttpOnly cookies are preferred in production)
 5. Log out users when refresh token expires or is invalid 
+
+

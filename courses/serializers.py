@@ -3,37 +3,41 @@ from .models import Category, Course, Module, Lesson
 
 
 class LessonSerializer(serializers.ModelSerializer):
+    module = serializers.PrimaryKeyRelatedField(queryset=Module.objects.all())
+
     class Meta:
         model = Lesson
         fields = [
             'id', 'title', 'slug', 'description', 'progress', 
             'type', 'problem', 'language_options', 'narration',
-            'created_at', 'updated_at'
+            'module', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
 
 
 class ModuleSerializer(serializers.ModelSerializer):
     lessons = LessonSerializer(many=True, read_only=True)
+    course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all())
 
     class Meta:
         model = Module
         fields = [
             'id', 'title', 'description', 'lesson_ids',
-            'lessons', 'created_at', 'updated_at'
+            'lessons', 'course', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
 
 
 class CourseSerializer(serializers.ModelSerializer):
     modules = ModuleSerializer(many=True, read_only=True)
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
 
     class Meta:
         model = Course
         fields = [
             'id', 'title', 'slug', 'description', 'thumbnail',
             'is_new', 'progress', 'module_ids', 'modules',
-            'author_id', 'is_published', 'created_at', 'updated_at'
+            'author_id', 'is_published', 'category', 'created_at', 'updated_at'
         ]
         read_only_fields = ['slug', 'created_at', 'updated_at']
 

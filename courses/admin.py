@@ -10,8 +10,8 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ['title', 'category', 'is_new', 'progress', 'is_published']
-    list_filter = ['category', 'is_new', 'is_published']
+    list_display = ['title', 'category', 'level', 'price', 'created_at']
+    list_filter = ['category', 'level']
     search_fields = ['title', 'description']
     prepopulated_fields = {'slug': ('title',)}
 
@@ -25,7 +25,6 @@ class ModuleAdmin(admin.ModelAdmin):
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ['title', 'module', 'type', 'progress']
-    list_filter = ['module', 'type']
-    search_fields = ['title', 'description']
-    prepopulated_fields = {'slug': ('title',)}
+    list_display = ['title', 'module', 'order', 'created_at']
+    list_filter = ['module']
+    search_fields = ['title', 'content']

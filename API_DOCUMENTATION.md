@@ -292,7 +292,7 @@ Hello, World!
 
 ### Learning Management System (LMS) API
 
-The LMS API provides endpoints for managing and accessing courses, modules, lessons, and exercises.
+The LMS API provides endpoints for managing and accessing courses, modules, lessons, lesson content blocks, problems, and practice sets.
 
 #### Courses
 
@@ -561,6 +561,9 @@ The LMS API provides endpoints for managing and accessing courses, modules, less
 
 **Authentication Required:** No
 
+**Query Parameters:**
+- `module`: Filter lessons by module ID
+
 **Response (200 OK):**
 ```json
 [
@@ -568,9 +571,10 @@ The LMS API provides endpoints for managing and accessing courses, modules, less
     "id": 1,
     "module": 1,
     "title": "Installing Python",
-    "content": "In this lesson, you will learn how to install Python...",
-    "type": "lesson",
-    "order": 1,
+    "slug": "installing-python",
+    "lesson_number": 1,
+    "estimated_time": 15,
+    "is_published": true,
     "created_at": "2023-04-01T10:03:00Z",
     "updated_at": "2023-04-01T10:03:00Z"
   }
@@ -581,7 +585,7 @@ The LMS API provides endpoints for managing and accessing courses, modules, less
 
 **Endpoint:** `GET /api/lms/lessons/module/{module_id}/`
 
-**Description:** Returns all lessons for a specific module.
+**Description:** Returns all lessons for a specific module, including their content blocks.
 
 **Authentication Required:** No (for public courses)
 
@@ -592,23 +596,47 @@ The LMS API provides endpoints for managing and accessing courses, modules, less
     "id": 1,
     "module": 1,
     "title": "Installing Python",
-    "content": "In this lesson, you will learn how to install Python...",
-    "type": "lesson",
-    "order": 1,
+    "slug": "installing-python",
+    "lesson_number": 1,
+    "estimated_time": 15,
+    "is_published": true,
     "created_at": "2023-04-01T10:03:00Z",
     "updated_at": "2023-04-01T10:03:00Z",
-    "exercises": []
+    "content_blocks": [
+      {
+        "id": 1,
+        "lesson": 1,
+        "block_type": "text",
+        "content": {
+          "text": "In this lesson, you will learn how to install Python..."
+        },
+        "order": 1,
+        "created_at": "2023-04-01T10:04:00Z"
+      },
+      {
+        "id": 2,
+        "lesson": 1,
+        "block_type": "example",
+        "content": {
+          "title": "Installation Example",
+          "text": "Here's an example of installing Python on different operating systems..."
+        },
+        "order": 2,
+        "created_at": "2023-04-01T10:05:00Z"
+      }
+    ]
   },
   {
     "id": 2,
     "module": 1,
     "title": "Your First Python Program",
-    "content": "In this lesson, you will write your first Python program...",
-    "type": "lesson",
-    "order": 2,
+    "slug": "your-first-python-program",
+    "lesson_number": 2,
+    "estimated_time": 20,
+    "is_published": true,
     "created_at": "2023-04-01T10:04:00Z",
     "updated_at": "2023-04-01T10:04:00Z",
-    "exercises": []
+    "content_blocks": []
   }
 ]
 ```
@@ -626,24 +654,25 @@ The LMS API provides endpoints for managing and accessing courses, modules, less
 {
   "module": 1,
   "title": "Python Virtual Environments",
-  "content": "In this lesson, you will learn about virtual environments...",
-  "type": "lesson",
-  "order": 4
+  "lesson_number": 3,
+  "estimated_time": 25,
+  "is_published": false
 }
 ```
 
 **Response (201 Created):**
 ```json
 {
-  "id": 6,
+  "id": 3,
   "module": 1,
   "title": "Python Virtual Environments",
-  "content": "In this lesson, you will learn about virtual environments...",
-  "type": "lesson",
-  "order": 4,
+  "slug": "python-virtual-environments",
+  "lesson_number": 3,
+  "estimated_time": 25,
+  "is_published": false,
   "created_at": "2023-06-15T15:30:00Z",
   "updated_at": "2023-06-15T15:30:00Z",
-  "exercises": []
+  "content_blocks": []
 }
 ```
 
@@ -652,106 +681,79 @@ The LMS API provides endpoints for managing and accessing courses, modules, less
 - 401 Unauthorized: If not authenticated
 - 403 Forbidden: If user doesn't have permission
 
-#### Exercises
+#### Lesson Content Blocks
 
-##### 1. List All Exercises
+##### 1. List Content Blocks
 
-**Endpoint:** `GET /api/lms/exercises/`
+**Endpoint:** `GET /api/lms/content-blocks/`
 
-**Description:** Returns a list of all exercises.
+**Description:** Returns a list of all content blocks.
 
 **Authentication Required:** No
 
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "lesson": 3,
-    "question": "What command do you use to run a Python script named 'hello.py'?",
-    "type": "input",
-    "choices": null,
-    "correct_answer": "python hello.py",
-    "explanation": "To run a Python script, you use the 'python' command followed by the filename.",
-    "created_at": "2023-04-01T10:07:00Z",
-    "updated_at": "2023-04-01T10:07:00Z"
-  }
-]
-```
-
-##### 2. Get Lesson Exercises
-
-**Endpoint:** `GET /api/lms/exercises/lesson/{lesson_id}/`
-
-**Description:** Returns all exercises for a specific lesson.
-
-**Authentication Required:** No (for public courses)
+**Query Parameters:**
+- `lesson`: Filter content blocks by lesson ID
 
 **Response (200 OK):**
 ```json
 [
   {
     "id": 1,
-    "lesson": 3,
-    "question": "What command do you use to run a Python script named 'hello.py'?",
-    "type": "input",
-    "choices": null,
-    "correct_answer": "python hello.py",
-    "explanation": "To run a Python script, you use the 'python' command followed by the filename.",
-    "created_at": "2023-04-01T10:07:00Z",
-    "updated_at": "2023-04-01T10:07:00Z"
+    "lesson": 1,
+    "block_type": "text",
+    "content": {
+      "text": "In this lesson, you will learn how to install Python..."
+    },
+    "order": 1,
+    "created_at": "2023-04-01T10:04:00Z"
   },
   {
     "id": 2,
-    "lesson": 3,
-    "question": "Which of the following is NOT a valid way to install Python?",
-    "type": "multiple_choice",
-    "choices": [
-      "Download from python.org",
-      "Use package manager like apt or brew",
-      "Install from App Store",
-      "Use Anaconda"
-    ],
-    "correct_answer": "Install from App Store",
-    "explanation": "Python is not typically available in the App Store. The recommended ways to install Python are through python.org, package managers, or distributions like Anaconda.",
-    "created_at": "2023-04-01T10:08:00Z",
-    "updated_at": "2023-04-01T10:08:00Z"
+    "lesson": 1,
+    "block_type": "example",
+    "content": {
+      "title": "Installation Example",
+      "text": "Here's an example of installing Python on different operating systems..."
+    },
+    "order": 2,
+    "created_at": "2023-04-01T10:05:00Z"
   }
 ]
 ```
 
-##### 3. Create an Exercise
+##### 2. Create a Content Block
 
-**Endpoint:** `POST /api/lms/exercises/`
+**Endpoint:** `POST /api/lms/content-blocks/`
 
-**Description:** Creates a new exercise for a lesson.
+**Description:** Creates a new content block for a lesson.
 
 **Authentication Required:** Yes (admin or instructor)
 
 **Request Body:**
 ```json
 {
-  "lesson": 3,
-  "question": "What Python function would you use to get the length of a list?",
-  "type": "input",
-  "choices": null,
-  "correct_answer": "len()",
-  "explanation": "The len() function returns the number of items in a container like a list."
+  "lesson": 1,
+  "block_type": "problem",
+  "content": {
+    "problem_id": 3,
+    "introduction": "Let's test your understanding with a practice problem."
+  },
+  "order": 3
 }
 ```
 
 **Response (201 Created):**
 ```json
 {
-  "id": 5,
-  "lesson": 3,
-  "question": "What Python function would you use to get the length of a list?",
-  "type": "input",
-  "choices": null,
-  "correct_answer": "len()",
-  "explanation": "The len() function returns the number of items in a container like a list.",
-  "created_at": "2023-06-15T16:00:00Z",
-  "updated_at": "2023-06-15T16:00:00Z"
+  "id": 3,
+  "lesson": 1,
+  "block_type": "problem",
+  "content": {
+    "problem_id": 3,
+    "introduction": "Let's test your understanding with a practice problem."
+  },
+  "order": 3,
+  "created_at": "2023-06-15T16:00:00Z"
 }
 ```
 
@@ -760,43 +762,421 @@ The LMS API provides endpoints for managing and accessing courses, modules, less
 - 401 Unauthorized: If not authenticated
 - 403 Forbidden: If user doesn't have permission
 
-##### 4. Submit Exercise Answer
+##### 3. Reorder Content Blocks
 
-**Endpoint:** `POST /api/lms/exercises/{id}/submit/`
+**Endpoint:** `POST /api/lms/content-blocks/reorder/`
 
-**Description:** Submit an answer to an exercise and check if it's correct.
+**Description:** Reorders content blocks within a lesson.
 
-**Authentication Required:** Yes
+**Authentication Required:** Yes (admin or instructor)
 
 **Request Body:**
 ```json
 {
-  "answer": "python hello.py"
+  "lesson_id": 1,
+  "block_order": [2, 1, 3]
 }
 ```
 
 **Response (200 OK):**
 ```json
+[
+  {
+    "id": 2,
+    "lesson": 1,
+    "block_type": "example",
+    "content": {
+      "title": "Installation Example",
+      "text": "Here's an example of installing Python on different operating systems..."
+    },
+    "order": 0,
+    "created_at": "2023-04-01T10:05:00Z"
+  },
+  {
+    "id": 1,
+    "lesson": 1,
+    "block_type": "text",
+    "content": {
+      "text": "In this lesson, you will learn how to install Python..."
+    },
+    "order": 1,
+    "created_at": "2023-04-01T10:04:00Z"
+  },
+  {
+    "id": 3,
+    "lesson": 1,
+    "block_type": "problem",
+    "content": {
+      "problem_id": 3,
+      "introduction": "Let's test your understanding with a practice problem."
+    },
+    "order": 2,
+    "created_at": "2023-06-15T16:00:00Z"
+  }
+]
+```
+
+**Errors:**
+- 400 Bad Request: If validation fails
+- 401 Unauthorized: If not authenticated
+- 403 Forbidden: If user doesn't have permission
+- 404 Not Found: If the lesson does not exist
+
+#### Problems
+
+##### 1. List All Problems
+
+**Endpoint:** `GET /api/lms/problems/`
+
+**Description:** Returns a list of all problems with their hints and solution steps.
+
+**Authentication Required:** No
+
+**Query Parameters:**
+- `search`: Search problems by question text
+- `difficulty`: Filter problems by difficulty level
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "question_text": "What command do you use to run a Python script named 'hello.py'?",
+    "question_type": "input",
+    "options": null,
+    "correct_answer": "python hello.py",
+    "explanation": "To run a Python script, you use the 'python' command followed by the filename.",
+    "difficulty": "beginner",
+    "hints": [
+      {
+        "id": 1,
+        "content": "The command starts with 'python'",
+        "order": 0
+      },
+      {
+        "id": 2,
+        "content": "After the command, you need to specify the file name",
+        "order": 1
+      }
+    ],
+    "solution_steps": [
+      {
+        "id": 1,
+        "explanation": "First, open your terminal or command prompt",
+        "order": 0
+      },
+      {
+        "id": 2,
+        "explanation": "Navigate to the directory containing your script using 'cd' commands",
+        "order": 1
+      },
+      {
+        "id": 3,
+        "explanation": "Type 'python hello.py' and press Enter to execute the script",
+        "order": 2
+      }
+    ],
+    "created_at": "2023-04-01T10:07:00Z",
+    "updated_at": "2023-04-01T10:07:00Z"
+  }
+]
+```
+
+##### 2. Create a Problem
+
+**Endpoint:** `POST /api/lms/problems/`
+
+**Description:** Creates a new problem with optional hints and solution steps.
+
+**Authentication Required:** Yes (admin or instructor)
+
+**Request Body:**
+```json
 {
-  "is_correct": true,
-  "correct_answer": "python hello.py",
-  "explanation": "To run a Python script, you use the 'python' command followed by the filename."
+  "question_text": "What Python function would you use to get the length of a list?",
+  "question_type": "input",
+  "options": null,
+  "correct_answer": "len()",
+  "explanation": "The len() function returns the number of items in a container like a list.",
+  "difficulty": "beginner"
 }
 ```
 
-**Response (Wrong Answer):**
+**Response (201 Created):**
 ```json
 {
-  "is_correct": false,
-  "correct_answer": null,
-  "explanation": "To run a Python script, you use the 'python' command followed by the filename."
+  "id": 2,
+  "question_text": "What Python function would you use to get the length of a list?",
+  "question_type": "input",
+  "options": null,
+  "correct_answer": "len()",
+  "explanation": "The len() function returns the number of items in a container like a list.",
+  "difficulty": "beginner",
+  "hints": [],
+  "solution_steps": [],
+  "created_at": "2023-06-15T16:30:00Z",
+  "updated_at": "2023-06-15T16:30:00Z"
 }
 ```
 
 **Errors:**
 - 400 Bad Request: If validation fails
 - 401 Unauthorized: If not authenticated
-- 404 Not Found: If the exercise does not exist
+- 403 Forbidden: If user doesn't have permission
+
+##### 3. Add a Hint to a Problem
+
+**Endpoint:** `POST /api/lms/problems/{problem_id}/hints/`
+
+**Description:** Adds a hint to an existing problem.
+
+**Authentication Required:** Yes (admin or instructor)
+
+**Request Body:**
+```json
+{
+  "content": "Think about functions that can count items",
+  "order": 0
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 3,
+  "content": "Think about functions that can count items",
+  "order": 0
+}
+```
+
+**Errors:**
+- 400 Bad Request: If validation fails
+- 401 Unauthorized: If not authenticated
+- 403 Forbidden: If user doesn't have permission
+- 404 Not Found: If the problem does not exist
+
+##### 4. Add a Solution Step to a Problem
+
+**Endpoint:** `POST /api/lms/problems/{problem_id}/solution-steps/`
+
+**Description:** Adds a solution step to an existing problem.
+
+**Authentication Required:** Yes (admin or instructor)
+
+**Request Body:**
+```json
+{
+  "explanation": "Use the len() function with the list as its argument: len(my_list)",
+  "order": 0
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 4,
+  "explanation": "Use the len() function with the list as its argument: len(my_list)",
+  "order": 0
+}
+```
+
+**Errors:**
+- 400 Bad Request: If validation fails
+- 401 Unauthorized: If not authenticated
+- 403 Forbidden: If user doesn't have permission
+- 404 Not Found: If the problem does not exist
+
+#### Practice Sets
+
+##### 1. List All Practice Sets
+
+**Endpoint:** `GET /api/lms/practice-sets/`
+
+**Description:** Returns a list of all practice sets.
+
+**Authentication Required:** No
+
+**Query Parameters:**
+- `lesson`: Filter practice sets by lesson ID
+- `module`: Filter practice sets by module ID
+- `practice_type`: Filter by practice type (lesson, module, mixed, challenge)
+- `difficulty`: Filter by difficulty level
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "title": "Python Basics Practice",
+    "lesson": 2,
+    "module": null,
+    "practice_type": "lesson",
+    "difficulty_level": "beginner",
+    "is_randomized": false,
+    "is_published": true,
+    "practice_set_problems": [
+      {
+        "id": 1,
+        "practice_set": 1,
+        "problem": 1,
+        "problem_details": {
+          "id": 1,
+          "question_text": "What command do you use to run a Python script named 'hello.py'?",
+          "question_type": "input",
+          "options": null,
+          "correct_answer": "python hello.py",
+          "explanation": "To run a Python script, you use the 'python' command followed by the filename.",
+          "difficulty": "beginner",
+          "hints": [...],
+          "solution_steps": [...],
+          "created_at": "2023-04-01T10:07:00Z",
+          "updated_at": "2023-04-01T10:07:00Z"
+        },
+        "order": 0
+      }
+    ],
+    "created_at": "2023-04-01T11:00:00Z",
+    "updated_at": "2023-04-01T11:00:00Z"
+  }
+]
+```
+
+##### 2. Create a Practice Set
+
+**Endpoint:** `POST /api/lms/practice-sets/`
+
+**Description:** Creates a new practice set linked to either a lesson or a module.
+
+**Authentication Required:** Yes (admin or instructor)
+
+**Request Body:**
+```json
+{
+  "title": "Python Functions Review",
+  "lesson": null,
+  "module": 1,
+  "practice_type": "module",
+  "difficulty_level": "intermediate",
+  "is_randomized": true,
+  "is_published": false
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 2,
+  "title": "Python Functions Review",
+  "lesson": null,
+  "module": 1,
+  "practice_type": "module",
+  "difficulty_level": "intermediate",
+  "is_randomized": true,
+  "is_published": false,
+  "practice_set_problems": [],
+  "created_at": "2023-06-15T17:00:00Z",
+  "updated_at": "2023-06-15T17:00:00Z"
+}
+```
+
+**Errors:**
+- 400 Bad Request: If validation fails
+- 401 Unauthorized: If not authenticated
+- 403 Forbidden: If user doesn't have permission
+
+##### 3. Add a Problem to a Practice Set
+
+**Endpoint:** `POST /api/lms/practice-set-problems/`
+
+**Description:** Adds a problem to a practice set with a specified order.
+
+**Authentication Required:** Yes (admin or instructor)
+
+**Request Body:**
+```json
+{
+  "practice_set": 2,
+  "problem": 2,
+  "order": 0
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 2,
+  "practice_set": 2,
+  "problem": 2,
+  "problem_details": {
+    "id": 2,
+    "question_text": "What Python function would you use to get the length of a list?",
+    "question_type": "input",
+    "options": null,
+    "correct_answer": "len()",
+    "explanation": "The len() function returns the number of items in a container like a list.",
+    "difficulty": "beginner",
+    "hints": [],
+    "solution_steps": [],
+    "created_at": "2023-06-15T16:30:00Z",
+    "updated_at": "2023-06-15T16:30:00Z"
+  },
+  "order": 0
+}
+```
+
+**Errors:**
+- 400 Bad Request: If validation fails
+- 401 Unauthorized: If not authenticated
+- 403 Forbidden: If user doesn't have permission
+
+##### 4. Reorder Problems in a Practice Set
+
+**Endpoint:** `POST /api/lms/practice-set-problems/reorder/`
+
+**Description:** Reorders problems within a practice set.
+
+**Authentication Required:** Yes (admin or instructor)
+
+**Request Body:**
+```json
+{
+  "practice_set_id": 2,
+  "problem_order": [3, 2, 1]
+}
+```
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 3,
+    "practice_set": 2,
+    "problem": 3,
+    "problem_details": {...},
+    "order": 0
+  },
+  {
+    "id": 2,
+    "practice_set": 2,
+    "problem": 2,
+    "problem_details": {...},
+    "order": 1
+  },
+  {
+    "id": 1,
+    "practice_set": 2,
+    "problem": 1,
+    "problem_details": {...},
+    "order": 2
+  }
+]
+```
+
+**Errors:**
+- 400 Bad Request: If validation fails
+- 401 Unauthorized: If not authenticated
+- 403 Forbidden: If user doesn't have permission
+- 404 Not Found: If the practice set does not exist
 
 ## Common Error Responses
 

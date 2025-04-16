@@ -1,0 +1,1071 @@
+{
+    "info": {
+        "_postman_id": "f43fca68-35db-4853-9a16-c2f1ea44d60a",
+        "name": "Garaad Backend API",
+        "description": "A comprehensive collection of all Garaad Backend API endpoints",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "User Registration with Onboarding",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"User Full Name\",\n  \"email\": \"user@example.com\",\n  \"password\": \"securepassword123\",\n  \"goal\": \"Horumarinta xirfadaha\",\n  \"learning_approach\": \"Waxbarasho shaqsiyeed\",\n  \"topic\": \"Xisaab\",\n  \"math_level\": \"Bilowga\",\n  \"minutes_per_day\": 30\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/signup/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "signup",
+                                ""
+                            ]
+                        },
+                        "description": "Registers a new user and creates onboarding information in a single request."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "User Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"securepassword123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/signin/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "signin",
+                                ""
+                            ]
+                        },
+                        "description": "Authenticates a user and returns tokens."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Token Refresh",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5...\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/refresh/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "refresh",
+                                ""
+                            ]
+                        },
+                        "description": "Get a new access token using a refresh token."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for user authentication, registration, and token management."
+        },
+        {
+            "name": "User Profile",
+            "item": [
+                {
+                    "name": "Get User Profile",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/profile/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "profile",
+                                ""
+                            ]
+                        },
+                        "description": "Retrieves the authenticated user's profile information."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for managing user profiles."
+        },
+        {
+            "name": "Onboarding",
+            "item": [
+                {
+                    "name": "Get Onboarding Status",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/onboarding/status/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "onboarding",
+                                "status",
+                                ""
+                            ]
+                        },
+                        "description": "Checks if a user has completed onboarding."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Complete Onboarding",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"goal\": \"Horumarinta xirfadaha\",\n  \"learning_approach\": \"Waxbarasho shaqsiyeed\",\n  \"topic\": \"Xisaab\",\n  \"math_level\": \"Bilowga\",\n  \"minutes_per_day\": 30\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/onboarding/complete/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "onboarding",
+                                "complete",
+                                ""
+                            ]
+                        },
+                        "description": "Submit onboarding information for an existing user."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for user onboarding process."
+        },
+        {
+            "name": "Student Profile",
+            "item": [
+                {
+                    "name": "Register Student Profile",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"preferred_study_time\": [\"morning\", \"evening\"],\n  \"subjects\": [\"math\", \"science\"],\n  \"proficiency_level\": \"Intermediate\",\n  \"study_frequency\": 3\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/student/register/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "student",
+                                "register",
+                                ""
+                            ]
+                        },
+                        "description": "Create a student profile for an authenticated user."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for managing student profiles."
+        },
+        {
+            "name": "API Info",
+            "item": [
+                {
+                    "name": "API Root",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                ""
+                            ]
+                        },
+                        "description": "Returns information about available API endpoints."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Hello World",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/hello-world/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "hello-world",
+                                ""
+                            ]
+                        },
+                        "description": "A simple endpoint that returns 'Hello, World!'"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "General API information endpoints."
+        },
+        {
+            "name": "LMS - Courses",
+            "item": [
+                {
+                    "name": "List All Courses",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/courses/?search=&ordering=-created_at",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "courses",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "search",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "ordering",
+                                    "value": "-created_at"
+                                }
+                            ]
+                        },
+                        "description": "Returns a list of all published courses with basic information."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Course Details",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/courses/1/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "courses",
+                                "1",
+                                ""
+                            ]
+                        },
+                        "description": "Returns detailed information about a specific course, including its modules, lessons, and exercises."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create a Course",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"JavaScript Fundamentals\",\n  \"description\": \"Learn the core concepts of JavaScript programming.\",\n  \"thumbnail\": \"https://example.com/js-thumbnail.jpg\",\n  \"level\": \"beginner\",\n  \"category\": \"Programming\",\n  \"author_id\": \"instructor1\",\n  \"is_published\": false\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/courses/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "courses",
+                                ""
+                            ]
+                        },
+                        "description": "Creates a new course."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for managing courses in the Learning Management System."
+        },
+        {
+            "name": "LMS - Modules",
+            "item": [
+                {
+                    "name": "List All Modules",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/modules/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "modules",
+                                ""
+                            ]
+                        },
+                        "description": "Returns a list of all modules."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Course Modules",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/modules/course/1/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "modules",
+                                "course",
+                                "1",
+                                ""
+                            ]
+                        },
+                        "description": "Returns all modules for a specific course."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create a Module",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"course\": 1,\n  \"title\": \"Advanced Python Concepts\",\n  \"description\": \"Learn about decorators, generators, and more.\",\n  \"order\": 3\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/modules/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "modules",
+                                ""
+                            ]
+                        },
+                        "description": "Creates a new module for a course."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for managing modules in the Learning Management System."
+        },
+        {
+            "name": "LMS - Lessons",
+            "item": [
+                {
+                    "name": "List All Lessons",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/lessons/?module=",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "lessons",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "module",
+                                    "value": ""
+                                }
+                            ]
+                        },
+                        "description": "Returns a list of all lessons."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Module Lessons",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/lessons/module/1/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "lessons",
+                                "module",
+                                "1",
+                                ""
+                            ]
+                        },
+                        "description": "Returns all lessons for a specific module, including their content blocks."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create a Lesson",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"module\": 1,\n  \"title\": \"Python Virtual Environments\",\n  \"lesson_number\": 3,\n  \"estimated_time\": 25,\n  \"is_published\": false\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/lessons/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "lessons",
+                                ""
+                            ]
+                        },
+                        "description": "Creates a new lesson for a module."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for managing lessons in the Learning Management System."
+        },
+        {
+            "name": "LMS - Lesson Content Blocks",
+            "item": [
+                {
+                    "name": "List Content Blocks",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/content-blocks/?lesson=",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "content-blocks",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "lesson",
+                                    "value": ""
+                                }
+                            ]
+                        },
+                        "description": "Returns a list of all content blocks."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create a Content Block",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"lesson\": 1,\n  \"block_type\": \"problem\",\n  \"content\": {\n    \"problem_id\": 3,\n    \"introduction\": \"Let's test your understanding with a practice problem.\"\n  },\n  \"order\": 3\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/content-blocks/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "content-blocks",
+                                ""
+                            ]
+                        },
+                        "description": "Creates a new content block for a lesson."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Reorder Content Blocks",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"lesson_id\": 1,\n  \"block_order\": [2, 1, 3]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/content-blocks/reorder/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "content-blocks",
+                                "reorder",
+                                ""
+                            ]
+                        },
+                        "description": "Reorders content blocks within a lesson."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for managing lesson content blocks in the Learning Management System."
+        },
+        {
+            "name": "LMS - Problems",
+            "item": [
+                {
+                    "name": "List All Problems",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/problems/?search=&difficulty=",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "problems",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "search",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "difficulty",
+                                    "value": ""
+                                }
+                            ]
+                        },
+                        "description": "Returns a list of all problems with their hints and solution steps."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create a Problem",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"question_text\": \"What Python function would you use to get the length of a list?\",\n  \"question_type\": \"input\",\n  \"options\": null,\n  \"correct_answer\": \"len()\",\n  \"explanation\": \"The len() function returns the number of items in a container like a list.\",\n  \"difficulty\": \"beginner\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/problems/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "problems",
+                                ""
+                            ]
+                        },
+                        "description": "Creates a new problem with optional hints and solution steps."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Add a Hint to a Problem",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"content\": \"Think about functions that can count items\",\n  \"order\": 0\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/problems/1/hints/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "problems",
+                                "1",
+                                "hints",
+                                ""
+                            ]
+                        },
+                        "description": "Adds a hint to an existing problem."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Add a Solution Step to a Problem",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"explanation\": \"Use the len() function with the list as its argument: len(my_list)\",\n  \"order\": 0\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/problems/1/solution-steps/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "problems",
+                                "1",
+                                "solution-steps",
+                                ""
+                            ]
+                        },
+                        "description": "Adds a solution step to an existing problem."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for managing problems in the Learning Management System."
+        },
+        {
+            "name": "LMS - Practice Sets",
+            "item": [
+                {
+                    "name": "List All Practice Sets",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/practice-sets/?lesson=&module=&practice_type=&difficulty=",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "practice-sets",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "lesson",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "module",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "practice_type",
+                                    "value": ""
+                                },
+                                {
+                                    "key": "difficulty",
+                                    "value": ""
+                                }
+                            ]
+                        },
+                        "description": "Returns a list of all practice sets."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create a Practice Set",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Python Functions Review\",\n  \"lesson\": null,\n  \"module\": 1,\n  \"practice_type\": \"module\",\n  \"difficulty_level\": \"intermediate\",\n  \"is_randomized\": true,\n  \"is_published\": false\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/practice-sets/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "practice-sets",
+                                ""
+                            ]
+                        },
+                        "description": "Creates a new practice set linked to either a lesson or a module."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Add a Problem to a Practice Set",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"practice_set\": 2,\n  \"problem\": 2,\n  \"order\": 0\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/practice-set-problems/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "practice-set-problems",
+                                ""
+                            ]
+                        },
+                        "description": "Adds a problem to a practice set with a specified order."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Reorder Problems in a Practice Set",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"practice_set_id\": 2,\n  \"problem_order\": [3, 2, 1]\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/practice-set-problems/reorder/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "practice-set-problems",
+                                "reorder",
+                                ""
+                            ]
+                        },
+                        "description": "Reorders problems within a practice set."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for managing practice sets in the Learning Management System."
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000",
+            "type": "string",
+            "description": "Base URL for the API (change to production URL when needed)"
+        },
+        {
+            "key": "access_token",
+            "value": "",
+            "type": "string",
+            "description": "JWT access token for authenticated requests"
+        }
+    ]
+}

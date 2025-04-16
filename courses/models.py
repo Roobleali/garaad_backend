@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.text import slugify
+from django.conf import settings
 
 
 class Category(models.Model):
@@ -95,6 +96,16 @@ class Lesson(models.Model):
 
     class Meta:
         ordering = ['module', 'lesson_number']
+
+    def get_next_lesson(self):
+        """Returns the next lesson in the module or None if this is the last lesson"""
+        try:
+            return Lesson.objects.filter(
+                module=self.module,
+                lesson_number__gt=self.lesson_number
+            ).order_by('lesson_number').first()
+        except Lesson.DoesNotExist:
+            return None
 
 
 class LessonContentBlock(models.Model):
@@ -272,3 +283,245 @@ class PracticeSetProblem(models.Model):
         unique_together = ['practice_set', 'problem', 'order']
         verbose_name = "Practice Set Problem"
         verbose_name_plural = "Practice Set Problems"
+
+
+# New User Progress and Rewards Models
+
+class UserProgress(models.Model):
+    """
+    Tracks a user's progress on each lesson.
+    """
+    STATUS_CHOICES = (
+        ('not_started', 'Not Started'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name='progress', on_delete=models.CASCADE)
+    lesson = models.ForeignKey(
+        Lesson, related_name='user_progress', on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='not_started')
+    # Optional score for practice-enabled lessons
+    score = models.PositiveIntegerField(blank=True, null=True)
+    last_visited_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        unique_together = ['user', 'lesson']
+        verbose_name = "User Progress"
+        verbose_name_plural = "User Progress"
+
+    def __str__(self):
+        return f"{self.user.username} - {self.lesson.title} ({self.status})"
+
+    def mark_as_in_progress(self):
+        """Mark lesson as in progress if not already completed"""
+        if self.status != 'completed':
+            self.status = 'in_progress'
+            self.save()
+
+    def mark_as_completed(self, score=None):
+        """Mark lesson as completed with optional score"""
+        if self.status != 'completed':
+            from django.utils import timezone
+            self.status = 'completed'
+            if score is not None:
+                self.score = score
+            self.completed_at = timezone.now()
+            self.save()
+
+            # Create reward for completing a lesson
+            UserReward.objects.create(
+                user=self.user,
+                reward_type='points',
+                reward_name='Lesson Completion',
+                value=10
+            )
+
+            # Update leaderboard
+            LeaderboardEntry.update_points(self.user)
+
+            # Update course enrollment progress
+            CourseEnrollment.update_progress(
+                self.user, self.lesson.module.course)
+
+
+class CourseEnrollment(models.Model):
+    """
+    Tracks which course the user is enrolled in and their progress.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name='enrollments', on_delete=models.CASCADE)
+    course = models.ForeignKey(
+        Course, related_name='enrollments', on_delete=models.CASCADE)
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+    progress_percent = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ['user', 'course']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.course.title} ({self.progress_percent}%)"
+
+    @classmethod
+    def update_progress(cls, user, course):
+        """Update progress percentage based on completed lessons"""
+        # Get or create enrollment
+        enrollment, created = cls.objects.get_or_create(
+            user=user,
+            course=course
+        )
+
+        # Count total lessons in the course
+        total_lessons = Lesson.objects.filter(module__course=course).count()
+
+        if total_lessons > 0:
+            # Count completed lessons
+            completed_lessons = UserProgress.objects.filter(
+                user=user,
+                lesson__module__course=course,
+                status='completed'
+            ).count()
+
+            # Calculate percentage
+            enrollment.progress_percent = int(
+                (completed_lessons / total_lessons) * 100)
+            enrollment.save()
+
+            # Check if course completed (100%) - give a reward
+            if enrollment.progress_percent == 100:
+                UserReward.objects.create(
+                    user=user,
+                    reward_type='badge',
+                    reward_name=f'Course Completed: {course.title}',
+                    value=1
+                )
+                # Update leaderboard
+                LeaderboardEntry.update_points(user)
+
+        return enrollment
+
+    @classmethod
+    def enroll_user(cls, user, course):
+        """Enroll a user in a course if not already enrolled"""
+        enrollment, created = cls.objects.get_or_create(
+            user=user,
+            course=course
+        )
+        return enrollment
+
+
+class UserReward(models.Model):
+    """
+    Tracks points and badges for motivational gamification.
+    """
+    REWARD_TYPES = (
+        ('points', 'Points'),
+        ('badge', 'Badge'),
+        ('streak', 'Streak'),
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name='rewards', on_delete=models.CASCADE)
+    reward_type = models.CharField(max_length=20, choices=REWARD_TYPES)
+    reward_name = models.CharField(max_length=255)
+    value = models.PositiveIntegerField(default=0)
+    awarded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-awarded_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.reward_name} ({self.value})"
+
+    @classmethod
+    def award_practice_completion(cls, user, practice_set, score):
+        """Award points for completing a practice set with full marks"""
+        if score == 100:
+            reward = cls.objects.create(
+                user=user,
+                reward_type='points',
+                reward_name='Perfect Score on Practice',
+                value=15
+            )
+            # Update leaderboard
+            LeaderboardEntry.update_points(user)
+            return reward
+        return None
+
+
+class LeaderboardEntry(models.Model):
+    """
+    Tracks total user points for competition and visibility.
+    """
+    TIME_PERIODS = (
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('all_time', 'All Time'),
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name='leaderboard_entries', on_delete=models.CASCADE)
+    points = models.PositiveIntegerField(default=0)
+    time_period = models.CharField(max_length=20, choices=TIME_PERIODS)
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'time_period']
+        verbose_name = "Leaderboard Entry"
+        verbose_name_plural = "Leaderboard Entries"
+
+    def __str__(self):
+        return f"{self.user.username} - {self.time_period} ({self.points} points)"
+
+    @classmethod
+    def update_points(cls, user):
+        """Update leaderboard entries for all time periods for a user"""
+        from django.utils import timezone
+        from datetime import timedelta
+
+        # Calculate points for each time period
+        now = timezone.now()
+        week_ago = now - timedelta(days=7)
+        month_ago = now - timedelta(days=30)
+
+        # All time points
+        all_time_points = UserReward.objects.filter(
+            user=user,
+            reward_type='points'
+        ).aggregate(total=models.Sum('value'))['total'] or 0
+
+        # Weekly points
+        weekly_points = UserReward.objects.filter(
+            user=user,
+            reward_type='points',
+            awarded_at__gte=week_ago
+        ).aggregate(total=models.Sum('value'))['total'] or 0
+
+        # Monthly points
+        monthly_points = UserReward.objects.filter(
+            user=user,
+            reward_type='points',
+            awarded_at__gte=month_ago
+        ).aggregate(total=models.Sum('value'))['total'] or 0
+
+        # Update or create entries
+        cls.objects.update_or_create(
+            user=user,
+            time_period='all_time',
+            defaults={'points': all_time_points}
+        )
+
+        cls.objects.update_or_create(
+            user=user,
+            time_period='weekly',
+            defaults={'points': weekly_points}
+        )
+
+        cls.objects.update_or_create(
+            user=user,
+            time_period='monthly',
+            defaults={'points': monthly_points}
+        )

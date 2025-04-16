@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import (
     Category, Course, Module, Lesson, LessonContentBlock,
-    Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem
+    Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem,
+    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
 )
 
 
@@ -132,3 +133,134 @@ class CategorySerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'image',
             'in_progress', 'course_ids', 'courses'
         ]
+
+
+# New serializers for progress and rewards
+
+class UserProgressSerializer(serializers.ModelSerializer):
+    lesson_title = serializers.StringRelatedField(
+        source='lesson.title', read_only=True)
+    module_title = serializers.StringRelatedField(
+        source='lesson.module.title', read_only=True)
+
+    class Meta:
+        model = UserProgress
+        fields = [
+            'id', 'user', 'lesson', 'lesson_title', 'module_title',
+            'status', 'score', 'last_visited_at', 'completed_at'
+        ]
+        read_only_fields = ['last_visited_at', 'completed_at']
+
+
+class UserProgressUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating user progress (used for marking lessons as in progress or completed).
+    """
+    class Meta:
+        model = UserProgress
+        fields = ['status', 'score']
+
+
+class CourseEnrollmentSerializer(serializers.ModelSerializer):
+    course_title = serializers.StringRelatedField(
+        source='course.title', read_only=True)
+
+    class Meta:
+        model = CourseEnrollment
+        fields = [
+            'id', 'user', 'course', 'course_title',
+            'progress_percent', 'enrolled_at'
+        ]
+        read_only_fields = ['progress_percent', 'enrolled_at']
+
+
+class UserRewardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserReward
+        fields = [
+            'id', 'user', 'reward_type', 'reward_name',
+            'value', 'awarded_at'
+        ]
+        read_only_fields = ['awarded_at']
+
+
+class LeaderboardEntrySerializer(serializers.ModelSerializer):
+    username = serializers.StringRelatedField(
+        source='user.username', read_only=True)
+
+    class Meta:
+        model = LeaderboardEntry
+        fields = [
+            'id', 'user', 'username', 'points',
+            'time_period', 'last_updated'
+        ]
+        read_only_fields = ['points', 'last_updated']
+
+
+class LessonWithNextSerializer(LessonSerializer):
+    """
+    Extended Lesson serializer that includes information about the next lesson.
+    """
+    next_lesson = serializers.SerializerMethodField()
+    user_progress = serializers.SerializerMethodField()
+
+    class Meta(LessonSerializer.Meta):
+        fields = LessonSerializer.Meta.fields + \
+            ['next_lesson', 'user_progress']
+
+    def get_next_lesson(self, obj):
+        next_lesson = obj.get_next_lesson()
+        if next_lesson:
+            return {
+                'id': next_lesson.id,
+                'title': next_lesson.title,
+                'slug': next_lesson.slug
+            }
+        return None
+
+    def get_user_progress(self, obj):
+        # Get user from context if provided
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+
+        user = request.user
+        try:
+            progress = UserProgress.objects.get(user=user, lesson=obj)
+            return {
+                'status': progress.status,
+                'score': progress.score,
+                'completed_at': progress.completed_at
+            }
+        except UserProgress.DoesNotExist:
+            return {
+                'status': 'not_started',
+                'score': None,
+                'completed_at': None
+            }
+
+
+class CourseWithProgressSerializer(CourseSerializer):
+    """
+    Extended Course serializer that includes user's progress in the course.
+    """
+    user_progress = serializers.SerializerMethodField()
+
+    class Meta(CourseSerializer.Meta):
+        fields = CourseSerializer.Meta.fields + ['user_progress']
+
+    def get_user_progress(self, obj):
+        # Get user from context if provided
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+
+        user = request.user
+        try:
+            enrollment = CourseEnrollment.objects.get(user=user, course=obj)
+            return {
+                'enrolled_at': enrollment.enrolled_at,
+                'progress_percent': enrollment.progress_percent
+            }
+        except CourseEnrollment.DoesNotExist:
+            return None

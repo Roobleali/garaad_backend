@@ -1032,6 +1032,386 @@
                 }
             ],
             "description": "Endpoints for managing practice sets in the Learning Management System."
+        },
+        {
+            "name": "LMS - User Progress",
+            "item": [
+                {
+                    "name": "List User Progress",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/progress/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "progress",
+                                ""
+                            ]
+                        },
+                        "description": "Retrieves the authenticated user's progress across all lessons."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Progress for a Course",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/progress/by_course/?course_id=1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "progress",
+                                "by_course",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "course_id",
+                                    "value": "1"
+                                }
+                            ]
+                        },
+                        "description": "Retrieves the authenticated user's progress across all lessons in a specific course."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Progress Status",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"status\": \"completed\",\n  \"score\": 90\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/progress/1/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "progress",
+                                "1",
+                                ""
+                            ]
+                        },
+                        "description": "Updates the status of a user's progress on a specific lesson."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Mark Lesson as Complete",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"score\": 95\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/lessons/1/complete/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "lessons",
+                                "1",
+                                "complete",
+                                ""
+                            ]
+                        },
+                        "description": "Marks a lesson as completed for the authenticated user and optionally includes a score."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for tracking user progress through lessons, modules, and courses."
+        },
+        {
+            "name": "LMS - Course Enrollment",
+            "item": [
+                {
+                    "name": "List User Enrollments",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/enrollments/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "enrollments",
+                                ""
+                            ]
+                        },
+                        "description": "Retrieves all courses that the authenticated user is enrolled in."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Enroll in a Course",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"course\": 1\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/enrollments/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "enrollments",
+                                ""
+                            ]
+                        },
+                        "description": "Enrolls the authenticated user in a course."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Enroll via Course Detail",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/courses/1/enroll/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "courses",
+                                "1",
+                                "enroll",
+                                ""
+                            ]
+                        },
+                        "description": "Alternative endpoint to enroll the authenticated user in a specific course."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for managing user enrollment in courses."
+        },
+        {
+            "name": "LMS - User Rewards",
+            "item": [
+                {
+                    "name": "List User Rewards",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/rewards/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "rewards",
+                                ""
+                            ]
+                        },
+                        "description": "Retrieves all rewards earned by the authenticated user."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for the user reward and gamification system."
+        },
+        {
+            "name": "LMS - Leaderboard",
+            "item": [
+                {
+                    "name": "Get Leaderboard",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/leaderboard/?time_period=all_time&limit=10",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "leaderboard",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "time_period",
+                                    "value": "all_time"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                }
+                            ]
+                        },
+                        "description": "Retrieves the leaderboard for a specific time period."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get User's Rank",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{access_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/lms/leaderboard/my_rank/?time_period=all_time",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "lms",
+                                "leaderboard",
+                                "my_rank",
+                                ""
+                            ],
+                            "query": [
+                                {
+                                    "key": "time_period",
+                                    "value": "all_time"
+                                }
+                            ]
+                        },
+                        "description": "Retrieves the authenticated user's rank on the leaderboard for a specific time period."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Endpoints for the leaderboard functionality."
         }
     ],
     "event": [

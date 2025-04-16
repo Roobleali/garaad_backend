@@ -1,17 +1,24 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.http import Http404
+from django.utils import timezone
 from .models import (
     Category, Course, Module, Lesson, LessonContentBlock,
-    Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem
+    Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem,
+    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
 )
 from .serializers import (
     CategorySerializer, CourseSerializer, CourseListSerializer,
     ModuleSerializer, LessonSerializer, LessonContentBlockSerializer,
     ProblemSerializer, HintSerializer, SolutionStepSerializer,
-    PracticeSetSerializer, PracticeSetProblemSerializer
+    PracticeSetSerializer, PracticeSetProblemSerializer,
+    UserProgressSerializer, UserProgressUpdateSerializer,
+    CourseEnrollmentSerializer, UserRewardSerializer,
+    LeaderboardEntrySerializer, LessonWithNextSerializer,
+    CourseWithProgressSerializer
 )
 
 
@@ -46,6 +53,8 @@ class CourseViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'list':
             return CourseListSerializer
+        if self.action == 'retrieve' and self.request.user.is_authenticated:
+            return CourseWithProgressSerializer
         return CourseSerializer
 
     def get_queryset(self):
@@ -69,6 +78,17 @@ class CourseViewSet(viewsets.ModelViewSet):
         course.progress = min(max(0, progress), 100)
         course.save()
         return Response({'status': 'progress updated'})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def enroll(self, request, pk=None):
+        """
+        Enroll the authenticated user in a course.
+        """
+        course = self.get_object()
+        enrollment = CourseEnrollment.enroll_user(
+            user=request.user, course=course)
+        serializer = CourseEnrollmentSerializer(enrollment)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ModuleViewSet(viewsets.ModelViewSet):
@@ -187,7 +207,11 @@ class LessonViewSet(viewsets.ModelViewSet):
     API endpoint for lessons.
     """
     queryset = Lesson.objects.all()
-    serializer_class = LessonSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return LessonWithNextSerializer
+        return LessonSerializer
 
     def get_queryset(self):
         """
@@ -212,6 +236,56 @@ class LessonViewSet(viewsets.ModelViewSet):
         if str(lesson.module_id) != str(module_id):
             raise Http404("Lesson not found in this module")
         return lesson
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Override retrieve to mark the lesson as in progress for authenticated users
+        """
+        lesson = self.get_object()
+        response = super().retrieve(request, *args, **kwargs)
+
+        # If the user is authenticated, update their lesson progress
+        if request.user.is_authenticated:
+            # Ensure the user is enrolled in the course
+            CourseEnrollment.enroll_user(request.user, lesson.module.course)
+
+            # Get or create a progress record and mark as in progress
+            progress, created = UserProgress.objects.get_or_create(
+                user=request.user,
+                lesson=lesson
+            )
+
+            # Only update if the lesson isn't already completed
+            if progress.status != 'completed':
+                progress.mark_as_in_progress()
+
+        return response
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def complete(self, request, pk=None):
+        """
+        Mark a lesson as completed for the authenticated user.
+        Optionally include a score if the lesson has a practice component.
+        """
+        lesson = self.get_object()
+        score = request.data.get('score', None)
+
+        # Ensure the user is enrolled in the course
+        CourseEnrollment.enroll_user(request.user, lesson.module.course)
+
+        # Get or create progress record and mark as completed
+        progress, created = UserProgress.objects.get_or_create(
+            user=request.user,
+            lesson=lesson,
+            defaults={'status': 'in_progress'}
+        )
+
+        progress.mark_as_completed(score=score)
+
+        # Return the updated progress and next lesson info
+        serializer = LessonWithNextSerializer(
+            lesson, context={'request': request})
+        return Response(serializer.data)
 
 
 class LessonContentBlockViewSet(viewsets.ModelViewSet):
@@ -320,6 +394,45 @@ class PracticeSetViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def complete(self, request, pk=None):
+        """
+        Mark a practice set as completed and award points if score is perfect.
+        """
+        practice_set = self.get_object()
+        score = request.data.get('score', 0)
+
+        # Award points for perfect score
+        reward = None
+        if score == 100:
+            reward = UserReward.award_practice_completion(
+                user=request.user,
+                practice_set=practice_set,
+                score=score
+            )
+
+        # If practice set is associated with a lesson, mark lesson as completed
+        if practice_set.lesson:
+            progress, created = UserProgress.objects.get_or_create(
+                user=request.user,
+                lesson=practice_set.lesson
+            )
+            progress.mark_as_completed(score=score)
+
+        response_data = {
+            'practice_set': practice_set.id,
+            'score': score,
+            'completed': True
+        }
+
+        if reward:
+            response_data['reward'] = {
+                'points': reward.value,
+                'name': reward.reward_name
+            }
+
+        return Response(response_data)
+
 
 class PracticeSetProblemViewSet(viewsets.ModelViewSet):
     """
@@ -383,3 +496,177 @@ class PracticeSetProblemViewSet(viewsets.ModelViewSet):
         serializer = PracticeSetProblemSerializer(updated_problems, many=True)
 
         return Response(serializer.data)
+
+
+# New viewsets for user progress and rewards
+
+class UserProgressViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for user progress. 
+    Only authenticated users can access their own progress.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserProgressSerializer
+
+    def get_queryset(self):
+        """
+        Ensure users can only see their own progress.
+        """
+        return UserProgress.objects.filter(user=self.request.user)
+
+    def get_serializer_class(self):
+        if self.action in ['update', 'partial_update']:
+            return UserProgressUpdateSerializer
+        return UserProgressSerializer
+
+    @action(detail=False, methods=['get'])
+    def by_course(self, request):
+        """
+        Get all progress entries for a specific course.
+        """
+        course_id = request.query_params.get('course_id')
+        if not course_id:
+            return Response(
+                {'error': 'course_id parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Course not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Get all lessons for this course's modules
+        lesson_progress = UserProgress.objects.filter(
+            user=request.user,
+            lesson__module__course=course
+        )
+
+        serializer = self.get_serializer(lesson_progress, many=True)
+        return Response(serializer.data)
+
+
+class CourseEnrollmentViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for course enrollments.
+    Only authenticated users can access their own enrollments.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = CourseEnrollmentSerializer
+
+    def get_queryset(self):
+        """
+        Ensure users can only see their own enrollments.
+        """
+        return CourseEnrollment.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Enroll a user in a course.
+        """
+        course_id = request.data.get('course')
+        if not course_id:
+            return Response(
+                {'error': 'course is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Course not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        enrollment = CourseEnrollment.enroll_user(request.user, course)
+        serializer = self.get_serializer(enrollment)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class UserRewardViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint for viewing user rewards.
+    Only authenticated users can access their own rewards.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserRewardSerializer
+
+    def get_queryset(self):
+        """
+        Ensure users can only see their own rewards.
+        """
+        return UserReward.objects.filter(user=self.request.user)
+
+
+class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint for viewing the leaderboard.
+    """
+    serializer_class = LeaderboardEntrySerializer
+
+    def get_queryset(self):
+        """
+        Filter leaderboard by time period and limit to top users.
+        """
+        time_period = self.request.query_params.get('time_period', 'all_time')
+        limit = int(self.request.query_params.get('limit', 10))
+
+        if time_period not in dict(LeaderboardEntry.TIME_PERIODS):
+            time_period = 'all_time'
+
+        return LeaderboardEntry.objects.filter(
+            time_period=time_period
+        ).order_by('-points')[:limit]
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_rank(self, request):
+        """
+        Get the authenticated user's rank on the leaderboard.
+        """
+        time_period = request.query_params.get('time_period', 'all_time')
+
+        if time_period not in dict(LeaderboardEntry.TIME_PERIODS):
+            time_period = 'all_time'
+
+        try:
+            # Get user's entry
+            user_entry = LeaderboardEntry.objects.get(
+                user=request.user,
+                time_period=time_period
+            )
+
+            # Count users with more points
+            rank = LeaderboardEntry.objects.filter(
+                time_period=time_period,
+                points__gt=user_entry.points
+            ).count() + 1  # Add 1 to get 1-based ranking
+
+            # Get entries around the user's rank
+            above = LeaderboardEntry.objects.filter(
+                time_period=time_period,
+                points__gt=user_entry.points
+            ).order_by('-points').values('user__username', 'points')[:3]
+
+            below = LeaderboardEntry.objects.filter(
+                time_period=time_period,
+                points__lt=user_entry.points
+            ).order_by('-points').values('user__username', 'points')[:3]
+
+            return Response({
+                'rank': rank,
+                'points': user_entry.points,
+                'entries_above': list(above),
+                'entries_below': list(below)
+            })
+
+        except LeaderboardEntry.DoesNotExist:
+            # User doesn't have a leaderboard entry yet
+            LeaderboardEntry.update_points(request.user)
+            return Response({
+                'rank': 0,
+                'points': 0
+            })

@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryViewSet, CourseViewSet, ModuleViewSet, LessonViewSet,
     LessonContentBlockViewSet, ProblemViewSet, PracticeSetViewSet,
-    PracticeSetProblemViewSet
+    PracticeSetProblemViewSet, UserProgressViewSet, CourseEnrollmentViewSet,
+    UserRewardViewSet, LeaderboardViewSet
 )
 
 router = DefaultRouter()
@@ -17,6 +18,12 @@ router.register(r'problems', ProblemViewSet, basename='problem')
 router.register(r'practice-sets', PracticeSetViewSet, basename='practice-set')
 router.register(r'practice-set-problems',
                 PracticeSetProblemViewSet, basename='practice-set-problem')
+
+# Register new viewsets
+router.register(r'progress', UserProgressViewSet, basename='progress')
+router.register(r'enrollments', CourseEnrollmentViewSet, basename='enrollment')
+router.register(r'rewards', UserRewardViewSet, basename='reward')
+router.register(r'leaderboard', LeaderboardViewSet, basename='leaderboard')
 
 urlpatterns = [
     path('', include(router.urls)),

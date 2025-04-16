@@ -1,7 +1,8 @@
 from django.contrib import admin
 from .models import (
     Category, Course, Module, Lesson, LessonContentBlock,
-    Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem
+    Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem,
+    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
 )
 
 
@@ -92,6 +93,38 @@ class PracticeSetProblemAdmin(admin.ModelAdmin):
     search_fields = ['practice_set__title', 'problem__question_text']
 
 
+# New admin classes for progress and rewards models
+
+class UserProgressAdmin(admin.ModelAdmin):
+    list_display = ['user', 'lesson', 'status',
+                    'score', 'last_visited_at', 'completed_at']
+    list_filter = ['status', 'lesson__module', 'completed_at']
+    search_fields = ['user__username', 'lesson__title']
+    date_hierarchy = 'last_visited_at'
+
+
+class CourseEnrollmentAdmin(admin.ModelAdmin):
+    list_display = ['user', 'course', 'progress_percent', 'enrolled_at']
+    list_filter = ['course', 'enrolled_at']
+    search_fields = ['user__username', 'course__title']
+    date_hierarchy = 'enrolled_at'
+
+
+class UserRewardAdmin(admin.ModelAdmin):
+    list_display = ['user', 'reward_type',
+                    'reward_name', 'value', 'awarded_at']
+    list_filter = ['reward_type', 'awarded_at']
+    search_fields = ['user__username', 'reward_name']
+    date_hierarchy = 'awarded_at'
+
+
+class LeaderboardEntryAdmin(admin.ModelAdmin):
+    list_display = ['user', 'time_period', 'points', 'last_updated']
+    list_filter = ['time_period']
+    search_fields = ['user__username']
+    ordering = ['-points']
+
+
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(Course, CourseAdmin)
 admin.site.register(Module, ModuleAdmin)
@@ -100,3 +133,9 @@ admin.site.register(LessonContentBlock, LessonContentBlockAdmin)
 admin.site.register(Problem, ProblemAdmin)
 admin.site.register(PracticeSet, PracticeSetAdmin)
 admin.site.register(PracticeSetProblem, PracticeSetProblemAdmin)
+
+# Register new models
+admin.site.register(UserProgress, UserProgressAdmin)
+admin.site.register(CourseEnrollment, CourseEnrollmentAdmin)
+admin.site.register(UserReward, UserRewardAdmin)
+admin.site.register(LeaderboardEntry, LeaderboardEntryAdmin)

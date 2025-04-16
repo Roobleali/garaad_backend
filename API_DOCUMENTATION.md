@@ -1178,32 +1178,416 @@ The LMS API provides endpoints for managing and accessing courses, modules, less
 - 403 Forbidden: If user doesn't have permission
 - 404 Not Found: If the practice set does not exist
 
-## Common Error Responses
+## User Progress Tracking
 
-### 400 Bad Request
+This section covers the endpoints for tracking user progress through lessons, modules, and courses.
+
+### User Progress Endpoints
+
+#### 1. List User Progress
+
+**Endpoint:** `GET /api/lms/progress/`
+
+**Description:** Retrieves the authenticated user's progress across all lessons.
+
+**Authentication Required:** Yes
+
+**Query Parameters:**
+- None (returns all progress records for the authenticated user)
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "user": 1,
+    "lesson": 1,
+    "lesson_title": "Introduction to Python",
+    "module_title": "Python Basics",
+    "status": "completed",
+    "score": 95,
+    "last_visited_at": "2023-06-01T15:30:00Z",
+    "completed_at": "2023-06-01T16:00:00Z"
+  },
+  {
+    "id": 2,
+    "user": 1,
+    "lesson": 2,
+    "lesson_title": "Variables and Data Types",
+    "module_title": "Python Basics",
+    "status": "in_progress",
+    "score": null,
+    "last_visited_at": "2023-06-02T10:15:00Z",
+    "completed_at": null
+  }
+]
+```
+
+**Errors:**
+- 401 Unauthorized: If not authenticated
+
+#### 2. Get Progress for a Course
+
+**Endpoint:** `GET /api/lms/progress/by_course/?course_id={course_id}`
+
+**Description:** Retrieves the authenticated user's progress across all lessons in a specific course.
+
+**Authentication Required:** Yes
+
+**Query Parameters:**
+- `course_id`: ID of the course to retrieve progress for
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "user": 1,
+    "lesson": 1,
+    "lesson_title": "Introduction to Python",
+    "module_title": "Python Basics",
+    "status": "completed",
+    "score": 95,
+    "last_visited_at": "2023-06-01T15:30:00Z",
+    "completed_at": "2023-06-01T16:00:00Z"
+  },
+  {
+    "id": 2,
+    "user": 1,
+    "lesson": 2,
+    "lesson_title": "Variables and Data Types",
+    "module_title": "Python Basics",
+    "status": "in_progress",
+    "score": null,
+    "last_visited_at": "2023-06-02T10:15:00Z",
+    "completed_at": null
+  }
+]
+```
+
+**Errors:**
+- 400 Bad Request: If course_id is not provided
+- 401 Unauthorized: If not authenticated
+- 404 Not Found: If the course doesn't exist
+
+#### 3. Update Progress Status
+
+**Endpoint:** `PATCH /api/lms/progress/{id}/`
+
+**Description:** Updates the status of a user's progress on a specific lesson.
+
+**Authentication Required:** Yes
+
+**Request Body:**
 ```json
 {
-  "field_name": [
-    "Error message about this field"
+  "status": "completed",
+  "score": 90
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": 2,
+  "user": 1,
+  "lesson": 2,
+  "lesson_title": "Variables and Data Types",
+  "module_title": "Python Basics",
+  "status": "completed",
+  "score": 90,
+  "last_visited_at": "2023-06-02T10:15:00Z",
+  "completed_at": "2023-06-02T11:30:00Z"
+}
+```
+
+**Errors:**
+- 401 Unauthorized: If not authenticated
+- 403 Forbidden: If attempting to update another user's progress
+- 404 Not Found: If the progress record doesn't exist
+
+#### 4. Mark Lesson as Complete
+
+**Endpoint:** `POST /api/lms/lessons/{id}/complete/`
+
+**Description:** Marks a lesson as completed for the authenticated user and optionally includes a score.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "score": 95
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": 1,
+  "title": "Introduction to Python",
+  "slug": "introduction-to-python",
+  "module": 1,
+  "lesson_number": 1,
+  "estimated_time": 15,
+  "is_published": true,
+  "content_blocks": [...],
+  "created_at": "2023-04-01T10:00:00Z",
+  "updated_at": "2023-04-01T10:00:00Z",
+  "next_lesson": {
+    "id": 2,
+    "title": "Variables and Data Types",
+    "slug": "variables-and-data-types"
+  },
+  "user_progress": {
+    "status": "completed",
+    "score": 95,
+    "completed_at": "2023-06-01T16:00:00Z"
+  }
+}
+```
+
+**Errors:**
+- 401 Unauthorized: If not authenticated
+- 404 Not Found: If the lesson doesn't exist
+
+## Course Enrollment
+
+This section covers endpoints for managing user enrollment in courses.
+
+### Course Enrollment Endpoints
+
+#### 1. List User Enrollments
+
+**Endpoint:** `GET /api/lms/enrollments/`
+
+**Description:** Retrieves all courses that the authenticated user is enrolled in.
+
+**Authentication Required:** Yes
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "user": 1,
+    "course": 1,
+    "course_title": "Python Programming Fundamentals",
+    "progress_percent": 45,
+    "enrolled_at": "2023-05-15T09:30:00Z"
+  },
+  {
+    "id": 2,
+    "user": 1,
+    "course": 2,
+    "course_title": "Data Science Basics",
+    "progress_percent": 10,
+    "enrolled_at": "2023-05-20T14:45:00Z"
+  }
+]
+```
+
+**Errors:**
+- 401 Unauthorized: If not authenticated
+
+#### 2. Enroll in a Course
+
+**Endpoint:** `POST /api/lms/enrollments/`
+
+**Description:** Enrolls the authenticated user in a course.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "course": 3
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 3,
+  "user": 1,
+  "course": 3,
+  "course_title": "Web Development with Django",
+  "progress_percent": 0,
+  "enrolled_at": "2023-06-10T11:20:00Z"
+}
+```
+
+**Errors:**
+- 400 Bad Request: If course is not provided or invalid
+- 401 Unauthorized: If not authenticated
+- 404 Not Found: If the course doesn't exist
+
+#### 3. Enroll via Course Detail
+
+**Endpoint:** `POST /api/lms/courses/{id}/enroll/`
+
+**Description:** Alternative endpoint to enroll the authenticated user in a specific course.
+
+**Authentication Required:** Yes
+
+**Response (201 Created):**
+```json
+{
+  "id": 3,
+  "user": 1,
+  "course": 3,
+  "course_title": "Web Development with Django",
+  "progress_percent": 0,
+  "enrolled_at": "2023-06-10T11:20:00Z"
+}
+```
+
+**Errors:**
+- 401 Unauthorized: If not authenticated
+- 404 Not Found: If the course doesn't exist
+
+## User Rewards
+
+This section covers endpoints for the user reward and gamification system.
+
+### User Reward Endpoints
+
+#### 1. List User Rewards
+
+**Endpoint:** `GET /api/lms/rewards/`
+
+**Description:** Retrieves all rewards earned by the authenticated user.
+
+**Authentication Required:** Yes
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "user": 1,
+    "reward_type": "points",
+    "reward_name": "Lesson Completion",
+    "value": 10,
+    "awarded_at": "2023-06-01T16:00:00Z"
+  },
+  {
+    "id": 2,
+    "user": 1,
+    "reward_type": "points",
+    "reward_name": "Perfect Score on Practice",
+    "value": 15,
+    "awarded_at": "2023-06-02T14:30:00Z"
+  },
+  {
+    "id": 3,
+    "user": 1,
+    "reward_type": "badge",
+    "reward_name": "Course Completed: Python Programming Fundamentals",
+    "value": 1,
+    "awarded_at": "2023-06-05T11:15:00Z"
+  }
+]
+```
+
+**Errors:**
+- 401 Unauthorized: If not authenticated
+
+## Leaderboard
+
+This section covers endpoints for the leaderboard functionality.
+
+### Leaderboard Endpoints
+
+#### 1. Get Leaderboard
+
+**Endpoint:** `GET /api/lms/leaderboard/?time_period={time_period}&limit={limit}`
+
+**Description:** Retrieves the leaderboard for a specific time period.
+
+**Authentication Required:** No
+
+**Query Parameters:**
+- `time_period`: Time period for the leaderboard (weekly, monthly, all_time). Default: all_time
+- `limit`: Maximum number of entries to return. Default: 10
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 5,
+    "user": 3,
+    "username": "top_learner",
+    "points": 450,
+    "time_period": "all_time",
+    "last_updated": "2023-06-09T16:20:00Z"
+  },
+  {
+    "id": 2,
+    "user": 2,
+    "username": "codeMaster",
+    "points": 380,
+    "time_period": "all_time",
+    "last_updated": "2023-06-10T14:30:00Z"
+  },
+  {
+    "id": 1,
+    "user": 1,
+    "username": "learner123",
+    "points": 325,
+    "time_period": "all_time",
+    "last_updated": "2023-06-08T10:15:00Z"
+  }
+]
+```
+
+#### 2. Get User's Rank
+
+**Endpoint:** `GET /api/lms/leaderboard/my_rank/?time_period={time_period}`
+
+**Description:** Retrieves the authenticated user's rank on the leaderboard for a specific time period.
+
+**Authentication Required:** Yes
+
+**Query Parameters:**
+- `time_period`: Time period for the leaderboard (weekly, monthly, all_time). Default: all_time
+
+**Response (200 OK):**
+```json
+{
+  "rank": 3,
+  "points": 325,
+  "entries_above": [
+    {
+      "user__username": "top_learner",
+      "points": 450
+    },
+    {
+      "user__username": "codeMaster",
+      "points": 380
+    }
+  ],
+  "entries_below": [
+    {
+      "user__username": "newbie42",
+      "points": 290
+    },
+    {
+      "user__username": "pythonFan",
+      "points": 275
+    },
+    {
+      "user__username": "dataScientist",
+      "points": 250
+    }
   ]
 }
 ```
 
-### 401 Unauthorized
-```json
-{
-  "detail": "Authentication credentials were not provided."
-}
-```
+**Errors:**
+- 401 Unauthorized: If not authenticated
 
-### 404 Not Found
-```json
-{
-  "detail": "Not found."
-}
-```
-
-## Integration Guide for Frontend Developers
+## Client Integration Examples
 
 ### Authentication Flow
 

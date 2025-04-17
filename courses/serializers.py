@@ -4,6 +4,7 @@ from .models import (
     Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem,
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
 )
+from django.db import models
 
 
 class HintSerializer(serializers.ModelSerializer):
@@ -187,14 +188,70 @@ class UserRewardSerializer(serializers.ModelSerializer):
 class LeaderboardEntrySerializer(serializers.ModelSerializer):
     username = serializers.StringRelatedField(
         source='user.username', read_only=True)
+    user_info = serializers.SerializerMethodField()
 
     class Meta:
         model = LeaderboardEntry
         fields = [
             'id', 'user', 'username', 'points',
-            'time_period', 'last_updated'
+            'time_period', 'last_updated', 'user_info'
         ]
         read_only_fields = ['points', 'last_updated']
+
+    def get_user_info(self, obj):
+        """
+        Get additional user information including profile, badges, 
+        total rewards, and stats.
+        """
+        user = obj.user
+
+        # Get user's badges
+        badges = UserReward.objects.filter(
+            user=user,
+            reward_type='badge'
+        ).values('id', 'reward_name', 'value', 'awarded_at')
+
+        # Get user's streak information
+        streak = UserReward.objects.filter(
+            user=user,
+            reward_type='streak'
+        ).order_by('-awarded_at').first()
+
+        # Get total points
+        total_points = UserReward.objects.filter(
+            user=user,
+            reward_type='points'
+        ).aggregate(total=models.Sum('value'))['total'] or 0
+
+        # Get progress data
+        completed_lessons = UserProgress.objects.filter(
+            user=user,
+            status='completed'
+        ).count()
+
+        enrolled_courses = CourseEnrollment.objects.filter(
+            user=user
+        ).count()
+
+        # Return compiled user information
+        return {
+            # Basic user info
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+
+            # User stats
+            'stats': {
+                'total_points': total_points,
+                'completed_lessons': completed_lessons,
+                'enrolled_courses': enrolled_courses,
+                'current_streak': streak.value if streak else 0,
+                'badges_count': len(badges)
+            },
+
+            # Badges collection
+            'badges': list(badges)
+        }
 
 
 class LessonWithNextSerializer(LessonSerializer):

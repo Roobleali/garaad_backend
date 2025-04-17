@@ -1503,7 +1503,7 @@ This section covers endpoints for the leaderboard functionality.
 
 **Endpoint:** `GET /api/lms/leaderboard/?time_period={time_period}&limit={limit}`
 
-**Description:** Retrieves the leaderboard for a specific time period.
+**Description:** Retrieves the leaderboard for a specific time period with comprehensive user information.
 
 **Authentication Required:** No
 
@@ -1520,7 +1520,33 @@ This section covers endpoints for the leaderboard functionality.
     "username": "top_learner",
     "points": 450,
     "time_period": "all_time",
-    "last_updated": "2023-06-09T16:20:00Z"
+    "last_updated": "2023-06-09T16:20:00Z",
+    "user_info": {
+      "email": "top_learner@example.com",
+      "first_name": "Top",
+      "last_name": "Learner",
+      "stats": {
+        "total_points": 450,
+        "completed_lessons": 15,
+        "enrolled_courses": 3,
+        "current_streak": 7,
+        "badges_count": 5
+      },
+      "badges": [
+        {
+          "id": 12,
+          "reward_name": "Course Completed: Python Programming Fundamentals",
+          "value": 1,
+          "awarded_at": "2023-06-05T11:15:00Z"
+        },
+        {
+          "id": 15,
+          "reward_name": "Course Completed: Data Science Basics",
+          "value": 1,
+          "awarded_at": "2023-06-08T09:30:00Z"
+        }
+      ]
+    }
   },
   {
     "id": 2,
@@ -1528,15 +1554,27 @@ This section covers endpoints for the leaderboard functionality.
     "username": "codeMaster",
     "points": 380,
     "time_period": "all_time",
-    "last_updated": "2023-06-10T14:30:00Z"
-  },
-  {
-    "id": 1,
-    "user": 1,
-    "username": "learner123",
-    "points": 325,
-    "time_period": "all_time",
-    "last_updated": "2023-06-08T10:15:00Z"
+    "last_updated": "2023-06-10T14:30:00Z",
+    "user_info": {
+      "email": "codemaster@example.com",
+      "first_name": "Code",
+      "last_name": "Master",
+      "stats": {
+        "total_points": 380,
+        "completed_lessons": 12,
+        "enrolled_courses": 2,
+        "current_streak": 5,
+        "badges_count": 3
+      },
+      "badges": [
+        {
+          "id": 8,
+          "reward_name": "Course Completed: Web Development with Django",
+          "value": 1,
+          "awarded_at": "2023-06-07T16:45:00Z"
+        }
+      ]
+    }
   }
 ]
 ```
@@ -1545,7 +1583,7 @@ This section covers endpoints for the leaderboard functionality.
 
 **Endpoint:** `GET /api/lms/leaderboard/my_rank/?time_period={time_period}`
 
-**Description:** Retrieves the authenticated user's rank on the leaderboard for a specific time period.
+**Description:** Retrieves the authenticated user's rank on the leaderboard for a specific time period, including comprehensive user information.
 
 **Authentication Required:** Yes
 
@@ -1580,7 +1618,27 @@ This section covers endpoints for the leaderboard functionality.
       "user__username": "dataScientist",
       "points": 250
     }
-  ]
+  ],
+  "user_info": {
+    "email": "learner123@example.com",
+    "first_name": "Learner",
+    "last_name": "One",
+    "stats": {
+      "total_points": 325,
+      "completed_lessons": 10,
+      "enrolled_courses": 2,
+      "current_streak": 3,
+      "badges_count": 2
+    },
+    "badges": [
+      {
+        "id": 5,
+        "reward_name": "Course Completed: Python Programming Fundamentals",
+        "value": 1,
+        "awarded_at": "2023-06-05T11:15:00Z"
+      }
+    ]
+  }
 }
 ```
 

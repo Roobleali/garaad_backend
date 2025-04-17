@@ -656,11 +656,16 @@ class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
                 points__lt=user_entry.points
             ).order_by('-points').values('user__username', 'points')[:3]
 
+            # Get user's comprehensive information
+            serializer = self.get_serializer(user_entry)
+            user_info = serializer.data.get('user_info')
+
             return Response({
                 'rank': rank,
                 'points': user_entry.points,
                 'entries_above': list(above),
-                'entries_below': list(below)
+                'entries_below': list(below),
+                'user_info': user_info
             })
 
         except LeaderboardEntry.DoesNotExist:

@@ -2,7 +2,8 @@ FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=garaad.settings
 
 # Set work directory
 WORKDIR /app
@@ -32,5 +33,5 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Start command
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile - --error-logfile - garaad.wsgi:application"] 
+# Start command with logging
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile - --error-logfile - --log-level debug --capture-output --enable-stdio-inheritance garaad.wsgi:application"] 

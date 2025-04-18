@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.http import HttpResponse
 from django.db import connections
 from django.db.utils import OperationalError
+import json
 
 # Simple hello world view
 
@@ -12,7 +13,15 @@ def hello_world(request):
 # Health check view
 def health_check(request):
     """Health check endpoint for App Runner"""
-    return HttpResponse("OK", status=200)
+    response_data = {
+        "status": "healthy",
+        "version": "1.0.0"
+    }
+    return HttpResponse(
+        json.dumps(response_data),
+        status=200,
+        content_type="application/json"
+    )
 
 urlpatterns = [
     path('admin/', admin.site.urls),

@@ -10,7 +10,7 @@
   "variables": {
     "DEBUG": "False",
     "ALLOWED_HOSTS": "api.garaad.org",
-    "CORS_ALLOWED_ORIGINS": "https://api.garaad.org",
+    "CORS_ALLOWED_ORIGINS": "https://garaad.org",
     "PYTHONUNBUFFERED": "1",
     "DJANGO_SETTINGS_MODULE": "garaad.settings",
     "PYTHONDONTWRITEBYTECODE": "1"

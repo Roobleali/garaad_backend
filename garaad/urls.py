@@ -11,27 +11,8 @@ def hello_world(request):
 
 # Health check view
 def health_check(request):
-    try:
-        # Test database connection
-        db_conn = connections['default']
-        db_conn.cursor()
-        
-        return HttpResponse(
-            "OK - Database connected",
-            status=200,
-            content_type="text/plain"
-        )
-    except OperationalError:
-        return HttpResponse(
-            "Database unavailable",
-            status=500,
-            content_type="text/plain"
-        )
-
-def health_check(request):
     """Health check endpoint for App Runner"""
     return HttpResponse("OK", status=200)
-
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -45,5 +26,6 @@ urlpatterns = [
 
     # Add hello-world endpoint
     path('hello-world/', hello_world, name='hello_world'),
- 
+    path('', health_check, name='health_check'),
+    path('health/', health_check, name='health_check_alt'),
 ]

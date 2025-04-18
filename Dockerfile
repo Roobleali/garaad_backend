@@ -31,4 +31,4 @@ RUN useradd -m appuser \
 USER appuser
 
 # Start command
-CMD gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 3 --timeout 120 --access-logfile - --error-logfile - garaad.wsgi:application 
+CMD gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile - --error-logfile - garaad.wsgi:application 

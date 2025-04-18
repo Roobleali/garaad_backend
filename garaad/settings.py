@@ -115,7 +115,7 @@ TEMPLATES = [
 ]
 
 # Update application paths
-WSGI_APPLICATION = 'garaad.wsgi.application'
+# WSGI_APPLICATION = 'garaad.wsgi.application'
 ASGI_APPLICATION = 'garaad.asgi.application'
 
 # Password validation

@@ -1,0 +1,28 @@
+version: 1.0
+runtime: python3
+build:
+  commands:
+    build:
+      - pip install -r requirements.txt
+run:
+  runtime-version: 3.11
+  command: gunicorn --bind 0.0.0.0:8080 --workers 3 --timeout 120 garaad.wsgi:application
+  network:
+    port: 8080
+    protocol: HTTP
+  health-check:
+    path: /health/
+    protocol: HTTP
+    interval: 10
+    timeout: 5
+    healthy-threshold: 1
+    unhealthy-threshold: 3
+  env:
+    - name: PORT
+      value: 8080
+    - name: PYTHONUNBUFFERED
+      value: "1"
+    - name: DJANGO_SETTINGS_MODULE
+      value: garaad.settings
+    - name: ALLOWED_HOSTS
+      value: "*.awsapprunner.com"

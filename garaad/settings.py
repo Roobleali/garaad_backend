@@ -71,11 +71,11 @@ else:
     CSRF_COOKIE_SECURE = False
 
 # Allow all hosts in development, restrict in production
-ALLOWED_HOSTS = ['*'] if DEBUG else os.getenv('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = ['*'] if DEBUG else ['api.garaad.org']
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = DEBUG
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
+CORS_ALLOWED_ORIGINS = ['https://api.garaad.org'] if not DEBUG else []
 CORS_ALLOW_CREDENTIALS = True
 
 # Database configuration

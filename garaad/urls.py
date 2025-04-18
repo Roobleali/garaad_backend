@@ -9,6 +9,11 @@ def hello_world(request):
     return HttpResponse("Hello, World!")
 
 
+def health_check(request):
+    """Health check endpoint for App Runner"""
+    return HttpResponse("OK", status=200)
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     # Comment out or remove conflicting lines
@@ -21,4 +26,5 @@ urlpatterns = [
 
     # Add hello-world endpoint
     path('hello-world/', hello_world, name='hello_world'),
+    path('health/', health_check, name='health_check'),  # Single health check endpoint
 ]

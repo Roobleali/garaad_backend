@@ -1,0 +1,52 @@
+version: 1.0
+runtime: python3
+build:
+  commands:
+    build:
+      - pip install -r requirements.txt
+run:
+  runtime-version: 3.11.0
+  command: gunicorn garaad.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile - --error-logfile -
+  network:
+    port: 8000
+    healthCheck:
+      path: "/health/"
+      interval: 5
+      timeout: 5
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+  env:
+    - name: PYTHONUNBUFFERED
+      value: "1"
+    - name: DEBUG
+      value: "False"
+    - name: ALLOWED_HOSTS
+      value: ".awsapprunner.com,localhost,127.0.0.1"
+    - name: CORS_ALLOWED_ORIGINS
+      value: "*"
+    - name: SECURE_SSL_REDIRECT
+      value: "False"
+    - name: SESSION_COOKIE_SECURE
+      value: "False"
+    - name: CSRF_COOKIE_SECURE
+      value: "False"
+    # Supabase Database Configuration
+    - name: DATABASE_URL
+      value: "postgres://postgres.icbgyzaihxqcfjzwllll:{{DB_PASSWORD}}@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+    - name: DB_HOST
+      value: "db.icbgyzaihxqcfjzwllll.supabase.co"
+    - name: DB_NAME
+      value: "postgres"
+    - name: DB_USER
+      value: "postgres.icbgyzaihxqcfjzwllll"
+    - name: DB_PORT
+      value: "5432"
+    - name: SUPABASE_URL
+      value: "https://icbgyzaihxqcfjzwllll.supabase.co"
+    - name: SUPABASE_JWT_SECRET
+      value: "{{SUPABASE_JWT_SECRET}}"
+    - name: SUPABASE_ANON_KEY
+      value: "{{SUPABASE_ANON_KEY}}"
+    - name: SUPABASE_SERVICE_ROLE_KEY
+      value: "{{SUPABASE_SERVICE_ROLE_KEY}}"
+    # Note: DB_PASSWORD should be added as a secret in App Runner console

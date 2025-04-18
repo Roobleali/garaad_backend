@@ -6,7 +6,6 @@ from django.db.utils import OperationalError
 
 # Simple hello world view
 
-
 def hello_world(request):
     return HttpResponse("Hello, World!")
 
@@ -29,6 +28,11 @@ def health_check(request):
             content_type="text/plain"
         )
 
+def health_check(request):
+    """Health check endpoint for App Runner"""
+    return HttpResponse("OK", status=200)
+
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     # Comment out or remove conflicting lines
@@ -41,6 +45,5 @@ urlpatterns = [
 
     # Add hello-world endpoint
     path('hello-world/', hello_world, name='hello_world'),
-    path('', health_check, name='health_check'),  # Root path for App Runner health check
-    path('health/', health_check, name='health_check_alt'),
+ 
 ]

@@ -2,8 +2,7 @@ FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PORT=8000
+    PYTHONUNBUFFERED=1
 
 # Set work directory
 WORKDIR /app
@@ -30,5 +29,8 @@ RUN useradd -m appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
+# Expose port
+EXPOSE 8000
+
 # Start command
-CMD gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile - --error-logfile - garaad.wsgi:application 
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile - --error-logfile - garaad.wsgi:application"] 

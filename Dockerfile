@@ -1,17 +1,15 @@
-FROM python:3.11-slim-bookworm
+FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PORT=8080 \
-    WEB_CONCURRENCY=3
+    PORT=8000
 
 # Set work directory
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -32,8 +30,5 @@ RUN useradd -m appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
-# Make port 8080 available
-EXPOSE 8080
-
 # Start command
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:8080 --workers ${WEB_CONCURRENCY} --threads 2 --timeout 120 --access-logfile - --error-logfile - --log-level info garaad.wsgi:application"] 
+CMD gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 3 --timeout 120 --access-logfile - --error-logfile - garaad.wsgi:application 

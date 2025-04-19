@@ -75,7 +75,12 @@ ALLOWED_HOSTS = ['*'] if DEBUG else ['api.garaad.org']
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = DEBUG
-CORS_ALLOWED_ORIGINS = ['https://garaad.org', 'https://www.garaad.org'] if not DEBUG else []
+CORS_ALLOWED_ORIGINS = [
+    'https://garaad.org',
+    'https://www.garaad.org',
+    'https://garaad-backend-production.up.railway.app',
+    'https://garaad-backend-development.up.railway.app'
+] if not DEBUG else ['http://localhost:3000']
 CORS_ALLOW_CREDENTIALS = True
 
 # Database configuration

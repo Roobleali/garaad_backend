@@ -1,12 +1,5 @@
 from rest_framework import permissions
 
-class AllowAnyForAuth(permissions.BasePermission):
-    """
-    Custom permission to allow any access to auth endpoints
-    """
-    def has_permission(self, request, view):
-        return True
-
 class IsProgrammaticRequest(permissions.BasePermission):
     """
     Custom permission to only allow programmatic requests (no browser access)

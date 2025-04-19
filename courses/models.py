@@ -12,7 +12,7 @@ class Category(models.Model):
     description = models.TextField()
     image = models.CharField(max_length=255)
     in_progress = models.BooleanField(default=False)
-    course_ids = models.JSONField(default=list)
+    course_ids = models.JSONField(default=list, null=True, blank=True)
 
     def __str__(self):
         return self.title

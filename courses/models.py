@@ -60,7 +60,7 @@ class Module(models.Model):
         Course, related_name='modules', on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     description = models.TextField()
-    lesson_ids = models.JSONField(default=list)
+    lesson_ids = models.JSONField(default=list, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

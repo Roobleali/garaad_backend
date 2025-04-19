@@ -1,1922 +1,522 @@
-# Garaad Backend API Documentation
-
-This document provides a comprehensive guide to the Garaad Backend API, including authentication, available endpoints, request formats, and response formats.
+# Garaad LMS API Documentation
 
 ## Base URL
-
-For local development:
 ```
-http://localhost:8000/
-```
-
-For production:
-```
-https://api.garaad.org/
+https://api.garaad.org/api/lms/
 ```
 
 ## Authentication
-
-The API uses JWT (JSON Web Token) for authentication. Most endpoints require authentication.
-
-### Authentication Headers
-
-For protected endpoints, include the JWT token in the Authorization header:
-
+All endpoints require JWT authentication. Include the token in the Authorization header:
 ```
-Authorization: Bearer <access_token>
+Authorization: Bearer <your_jwt_token>
 ```
 
-### Token Lifecycle
+## Endpoints
 
-- Access tokens are valid for 15 minutes
-- Refresh tokens are valid for 1 day
-- Use the refresh endpoint to get a new access token before it expires
+### Categories
 
-## API Endpoints
+#### List Categories
+```http
+GET /categories/
+```
+**Purpose**: Similar to Brilliant.org's topic browsing, this endpoint allows users to explore different subject areas and find courses that interest them. It provides a hierarchical view of learning paths, helping users discover content based on their interests.
 
-### Authentication Endpoints
-
-#### 1. User Registration with Onboarding
-
-**Endpoint:** `POST /api/signup/`
-
-**Description:** Registers a new user and creates onboarding information in a single request.
-
-**Request Body:**
+Response:
 ```json
 {
-  "name": "User Full Name",
-  "email": "user@example.com",
-  "password": "securepassword123",
-  "goal": "Horumarinta xirfadaha",
-  "learning_approach": "Waxbarasho shaqsiyeed",
-  "topic": "Xisaab",
-  "math_level": "Bilowga",
-  "minutes_per_day": 30
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "message": "User registered successfully",
-  "user": {
-    "id": 1,
-    "username": "User Full Name",
-    "email": "user@example.com",
-    "first_name": "User",
-    "last_name": "Full Name",
-    "is_premium": false,
-    "has_completed_onboarding": true
-  },
-  "tokens": {
-    "refresh": "eyJhbGciOiJIUzI1NiIsInR5...",
-    "access": "eyJhbGciOiJIUzI1NiIsInR5..."
-  }
-}
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails (e.g., email already exists, invalid data)
-
-#### 2. User Login
-
-**Endpoint:** `POST /api/signin/`
-
-**Description:** Authenticates a user and returns tokens.
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "password": "securepassword123"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "user": {
-    "id": 1,
-    "username": "User Full Name",
-    "email": "user@example.com",
-    "first_name": "User",
-    "last_name": "Full Name",
-    "is_premium": false,
-    "has_completed_onboarding": true
-  },
-  "tokens": {
-    "refresh": "eyJhbGciOiJIUzI1NiIsInR5...",
-    "access": "eyJhbGciOiJIUzI1NiIsInR5..."
-  }
-}
-```
-
-**Errors:**
-- 401 Unauthorized: If credentials are invalid
-
-#### 3. Token Refresh
-
-**Endpoint:** `POST /api/auth/refresh/`
-
-**Description:** Get a new access token using a refresh token.
-
-**Request Body:**
-```json
-{
-  "refresh": "eyJhbGciOiJIUzI1NiIsInR5..."
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "access": "eyJhbGciOiJIUzI1NiIsInR5..."
-}
-```
-
-**Errors:**
-- 401 Unauthorized: If refresh token is invalid or expired
-
-### User Profile
-
-#### 1. Get User Profile
-
-**Endpoint:** `GET /api/auth/profile/`
-
-**Description:** Retrieves the authenticated user's profile information.
-
-**Authentication Required:** Yes
-
-**Response (200 OK):**
-```json
-{
-  "id": 1,
-  "username": "User Full Name",
-  "email": "user@example.com",
-  "first_name": "User",
-  "last_name": "Full Name",
-  "is_premium": false
-}
-```
-
-**Errors:**
-- 401 Unauthorized: If not authenticated
-
-### Onboarding
-
-#### 1. Get Onboarding Status
-
-**Endpoint:** `GET /api/auth/onboarding/status/`
-
-**Description:** Checks if a user has completed onboarding.
-
-**Authentication Required:** Yes
-
-**Response (200 OK):**
-```json
-{
-  "has_completed_onboarding": true
-}
-```
-
-**Errors:**
-- 401 Unauthorized: If not authenticated
-
-#### 2. Complete Onboarding
-
-**Endpoint:** `POST /api/auth/onboarding/complete/`
-
-**Description:** Submit onboarding information for an existing user.
-
-**Authentication Required:** Yes
-
-**Request Body:**
-```json
-{
-  "goal": "Horumarinta xirfadaha",
-  "learning_approach": "Waxbarasho shaqsiyeed",
-  "topic": "Xisaab",
-  "math_level": "Bilowga",
-  "minutes_per_day": 30
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "goal": "Horumarinta xirfadaha",
-  "learning_approach": "Waxbarasho shaqsiyeed",
-  "topic": "Xisaab",
-  "math_level": "Bilowga",
-  "minutes_per_day": 30,
-  "has_completed_onboarding": true
-}
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-
-### Student Profile
-
-#### 1. Register Student Profile
-
-**Endpoint:** `POST /api/auth/student/register/`
-
-**Description:** Create a student profile for an authenticated user.
-
-**Authentication Required:** Yes
-
-**Request Body:**
-```json
-{
-  "preferred_study_time": ["morning", "evening"],
-  "subjects": ["math", "science"],
-  "proficiency_level": "Intermediate",
-  "study_frequency": 3
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "preferred_study_time": ["morning", "evening"],
-  "subjects": ["math", "science"],
-  "proficiency_level": "Intermediate",
-  "study_frequency": 3
-}
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails or profile already exists
-- 401 Unauthorized: If not authenticated
-
-### Other Endpoints
-
-#### 1. API Root
-
-**Endpoint:** `GET /api/`
-
-**Description:** Returns information about available API endpoints.
-
-**Authentication Required:** No
-
-**Response (200 OK):**
-```json
-{
-  "status": "online",
-  "version": "1.0.0",
-  "endpoints": {
-    "auth": "/api/auth/",
-    "hello": "/hello-world/",
-    "signup": "/api/signup/",
-    "signin": "/api/signin/",
-    "lms": "/api/lms/"
-  }
-}
-```
-
-#### 2. Hello World
-
-**Endpoint:** `GET /hello-world/`
-
-**Description:** A simple endpoint that returns "Hello, World!"
-
-**Authentication Required:** No
-
-**Response (200 OK):**
-```
-Hello, World!
-```
-
-### Learning Management System (LMS) API
-
-The LMS API provides endpoints for managing and accessing courses, modules, lessons, lesson content blocks, problems, and practice sets.
-
-#### Courses
-
-##### 1. List All Courses
-
-**Endpoint:** `GET /api/lms/courses/`
-
-**Description:** Returns a list of all published courses with basic information.
-
-**Authentication Required:** No (for listing public courses)
-
-**Query Parameters:**
-- `search`: Search courses by title, description, or category
-- `ordering`: Order courses by created_at, title (use `-created_at` for descending order)
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "title": "Introduction to Python Programming",
-    "slug": "introduction-to-python-programming",
-    "description": "Learn the basics of Python programming language.",
-    "thumbnail": "https://example.com/python-thumbnail.jpg",
-    "level": "beginner",
-    "category": "Programming",
-    "author_id": "instructor1",
-    "is_published": true,
-    "module_count": 2,
-    "created_at": "2023-04-01T10:00:00Z",
-    "updated_at": "2023-04-01T10:00:00Z"
-  },
-  {
-    "id": 2,
-    "title": "Arabic for Beginners",
-    "slug": "arabic-for-beginners",
-    "description": "Learn the basics of Arabic language.",
-    "thumbnail": "https://example.com/arabic-thumbnail.jpg",
-    "level": "beginner",
-    "category": "Languages",
-    "author_id": "instructor2",
-    "is_published": true,
-    "module_count": 1,
-    "created_at": "2023-04-02T10:00:00Z",
-    "updated_at": "2023-04-02T10:00:00Z"
-  }
-]
-```
-
-##### 2. Get Course Details
-
-**Endpoint:** `GET /api/lms/courses/{id}/`
-
-**Description:** Returns detailed information about a specific course, including its modules, lessons, and exercises.
-
-**Authentication Required:** No (for public courses)
-
-**Response (200 OK):**
-```json
-{
-  "id": 1,
-  "title": "Introduction to Python Programming",
-  "slug": "introduction-to-python-programming",
-  "description": "Learn the basics of Python programming language.",
-  "thumbnail": "https://example.com/python-thumbnail.jpg",
-  "level": "beginner",
-  "category": "Programming",
-  "author_id": "instructor1",
-  "is_published": true,
-  "created_at": "2023-04-01T10:00:00Z",
-  "updated_at": "2023-04-01T10:00:00Z",
-  "modules": [
-    {
-      "id": 1,
-      "title": "Getting Started with Python",
-      "description": "Learn how to set up your Python environment.",
-      "order": 1,
-      "lessons": [
+    "count": 1,
+    "next": null,
+    "previous": null,
+    "results": [
         {
-          "id": 1,
-          "title": "Installing Python",
-          "content": "In this lesson, you will learn how to install Python...",
-          "type": "lesson",
-          "order": 1,
-          "exercises": []
-        },
-        {
-          "id": 2,
-          "title": "Your First Python Program",
-          "content": "In this lesson, you will write your first Python program...",
-          "type": "lesson",
-          "order": 2,
-          "exercises": []
+            "id": "string",
+            "title": "string",
+            "description": "string",
+            "image": "string",
+            "in_progress": boolean,
+            "courses": [
+                {
+                    "id": "string",
+                    "title": "string",
+                    "description": "string",
+                    "thumbnail": "string",
+                    "is_new": boolean,
+                    "progress": number,
+                    "is_published": boolean
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }
 ```
 
-**Errors:**
-- 404 Not Found: If the course does not exist
+### Courses
 
-##### 3. Create a Course
+#### List Courses
+```http
+GET /courses/
+```
+**Purpose**: Like Brilliant.org's course catalog, this endpoint provides a comprehensive view of available courses. It includes course details, progress tracking, and module structure, enabling users to:
+- Browse available courses
+- Track their progress
+- See course structure before enrolling
+- Discover new content
 
-**Endpoint:** `POST /api/lms/courses/`
-
-**Description:** Creates a new course.
-
-**Authentication Required:** Yes (admin or instructor)
-
-**Request Body:**
+Response:
 ```json
 {
-  "title": "JavaScript Fundamentals",
-  "description": "Learn the core concepts of JavaScript programming.",
-  "thumbnail": "https://example.com/js-thumbnail.jpg",
-  "level": "beginner",
-  "category": "Programming",
-  "author_id": "instructor1",
-  "is_published": false
+    "count": 1,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "id": "string",
+            "title": "string",
+            "slug": "string",
+            "description": "string",
+            "thumbnail": "string",
+            "is_new": boolean,
+            "progress": number,
+            "author_id": "string",
+            "is_published": boolean,
+            "category": "string",
+            "modules": [
+                {
+                    "id": "string",
+                    "title": "string",
+                    "description": "string",
+                    "lessons": [
+                        {
+                            "id": "string",
+                            "title": "string",
+                            "slug": "string",
+                            "lesson_number": number,
+                            "estimated_time": number,
+                            "is_published": boolean
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
 }
 ```
 
-**Response (201 Created):**
+### Modules
+
+#### Get Module
+```http
+GET /modules/{id}/
+```
+**Purpose**: Similar to Brilliant.org's module structure, this endpoint provides:
+- Module overview
+- Lesson organization
+- Learning path structure
+- Progress tracking within the module
+
+Response:
 ```json
 {
-  "id": 3,
-  "title": "JavaScript Fundamentals",
-  "slug": "javascript-fundamentals",
-  "description": "Learn the core concepts of JavaScript programming.",
-  "thumbnail": "https://example.com/js-thumbnail.jpg",
-  "level": "beginner",
-  "category": "Programming",
-  "author_id": "instructor1",
-  "is_published": false,
-  "created_at": "2023-06-15T14:30:00Z",
-  "updated_at": "2023-06-15T14:30:00Z",
-  "modules": []
-}
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If user doesn't have permission to create courses
-
-#### Modules
-
-##### 1. List All Modules
-
-**Endpoint:** `GET /api/lms/modules/`
-
-**Description:** Returns a list of all modules.
-
-**Authentication Required:** No
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "course": 1,
-    "title": "Getting Started with Python",
-    "description": "Learn how to set up your Python environment.",
-    "order": 1,
-    "created_at": "2023-04-01T10:01:00Z",
-    "updated_at": "2023-04-01T10:01:00Z"
-  }
-]
-```
-
-##### 2. Get Course Modules
-
-**Endpoint:** `GET /api/lms/modules/course/{course_id}/`
-
-**Description:** Returns all modules for a specific course.
-
-**Authentication Required:** No (for public courses)
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "course": 1,
-    "title": "Getting Started with Python",
-    "description": "Learn how to set up your Python environment.",
-    "order": 1,
-    "created_at": "2023-04-01T10:01:00Z",
-    "updated_at": "2023-04-01T10:01:00Z",
+    "id": "string",
+    "title": "string",
+    "description": "string",
+    "course": "string",
     "lessons": [
-      {
-        "id": 1,
-        "title": "Installing Python",
-        "content": "In this lesson, you will learn how to install Python...",
-        "type": "lesson",
-        "order": 1
-      },
-      {
-        "id": 2,
-        "title": "Your First Python Program",
-        "content": "In this lesson, you will write your first Python program...",
-        "type": "lesson",
-        "order": 2
-      }
+        {
+            "id": "string",
+            "title": "string",
+            "slug": "string",
+            "lesson_number": number,
+            "estimated_time": number,
+            "is_published": boolean
+        }
     ]
-  },
-  {
-    "id": 2,
-    "course": 1,
-    "title": "Python Basics",
-    "description": "Learn about variables, data types, and basic operations.",
-    "order": 2,
-    "created_at": "2023-04-01T10:02:00Z",
-    "updated_at": "2023-04-01T10:02:00Z",
-    "lessons": []
-  }
-]
-```
-
-##### 3. Create a Module
-
-**Endpoint:** `POST /api/lms/modules/`
-
-**Description:** Creates a new module for a course.
-
-**Authentication Required:** Yes (admin or instructor)
-
-**Request Body:**
-```json
-{
-  "course": 1,
-  "title": "Advanced Python Concepts",
-  "description": "Learn about decorators, generators, and more.",
-  "order": 3
 }
 ```
 
-**Response (201 Created):**
+### Lessons
+
+#### Get Lesson Content
+```http
+GET /lessons/{id}/
+```
+**Purpose**: Similar to Brilliant.org's lesson pages, this endpoint provides the core learning content. It delivers:
+- Structured lesson content
+- Interactive elements
+- Progress tracking
+- Estimated completion time
+- Content blocks for different types of learning materials
+
+Response:
 ```json
 {
-  "id": 4,
-  "course": 1,
-  "title": "Advanced Python Concepts",
-  "description": "Learn about decorators, generators, and more.",
-  "order": 3,
-  "created_at": "2023-06-15T15:00:00Z",
-  "updated_at": "2023-06-15T15:00:00Z",
-  "lessons": []
-}
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If user doesn't have permission
-
-#### Lessons
-
-##### 1. List All Lessons
-
-**Endpoint:** `GET /api/lms/lessons/`
-
-**Description:** Returns a list of all lessons.
-
-**Authentication Required:** No
-
-**Query Parameters:**
-- `module`: Filter lessons by module ID
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "module": 1,
-    "title": "Installing Python",
-    "slug": "installing-python",
-    "lesson_number": 1,
-    "estimated_time": 15,
-    "is_published": true,
-    "created_at": "2023-04-01T10:03:00Z",
-    "updated_at": "2023-04-01T10:03:00Z"
-  }
-]
-```
-
-##### 2. Get Module Lessons
-
-**Endpoint:** `GET /api/lms/lessons/module/{module_id}/`
-
-**Description:** Returns all lessons for a specific module, including their content blocks.
-
-**Authentication Required:** No (for public courses)
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "module": 1,
-    "title": "Installing Python",
-    "slug": "installing-python",
-    "lesson_number": 1,
-    "estimated_time": 15,
-    "is_published": true,
-    "created_at": "2023-04-01T10:03:00Z",
-    "updated_at": "2023-04-01T10:03:00Z",
+    "id": "string",
+    "title": "string",
+    "slug": "string",
+    "module": "string",
+    "lesson_number": number,
+    "estimated_time": number,
+    "is_published": boolean,
     "content_blocks": [
-      {
-        "id": 1,
-        "lesson": 1,
-        "block_type": "text",
-        "content": {
-          "text": "In this lesson, you will learn how to install Python..."
-        },
-        "order": 1,
-        "created_at": "2023-04-01T10:04:00Z"
-      },
-      {
-        "id": 2,
-        "lesson": 1,
-        "block_type": "example",
-        "content": {
-          "title": "Installation Example",
-          "text": "Here's an example of installing Python on different operating systems..."
-        },
-        "order": 2,
-        "created_at": "2023-04-01T10:05:00Z"
-      }
+        {
+            "id": "string",
+            "block_type": "string",
+            "content": {},
+            "order": number
+        }
     ]
-  },
-  {
-    "id": 2,
-    "module": 1,
-    "title": "Your First Python Program",
-    "slug": "your-first-python-program",
-    "lesson_number": 2,
-    "estimated_time": 20,
-    "is_published": true,
-    "created_at": "2023-04-01T10:04:00Z",
-    "updated_at": "2023-04-01T10:04:00Z",
-    "content_blocks": []
-  }
-]
-```
-
-##### 3. Create a Lesson
-
-**Endpoint:** `POST /api/lms/lessons/`
-
-**Description:** Creates a new lesson for a module.
-
-**Authentication Required:** Yes (admin or instructor)
-
-**Request Body:**
-```json
-{
-  "module": 1,
-  "title": "Python Virtual Environments",
-  "lesson_number": 3,
-  "estimated_time": 25,
-  "is_published": false
 }
 ```
 
-**Response (201 Created):**
+### Content Blocks
+
+#### Get Content Block
+```http
+GET /content-blocks/{id}/
+```
+**Purpose**: Similar to Brilliant.org's interactive content elements, this endpoint provides:
+- Different types of content (text, video, interactive)
+- Structured learning materials
+- Ordered content presentation
+- Rich media support
+
+Response:
 ```json
 {
-  "id": 3,
-  "module": 1,
-  "title": "Python Virtual Environments",
-  "slug": "python-virtual-environments",
-  "lesson_number": 3,
-  "estimated_time": 25,
-  "is_published": false,
-  "created_at": "2023-06-15T15:30:00Z",
-  "updated_at": "2023-06-15T15:30:00Z",
-  "content_blocks": []
+    "id": "string",
+    "block_type": "string",
+    "content": {},
+    "order": number,
+    "lesson": "string"
 }
 ```
 
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If user doesn't have permission
+### Problems
 
-#### Lesson Content Blocks
-
-##### 1. List Content Blocks
-
-**Endpoint:** `GET /api/lms/content-blocks/`
-
-**Description:** Returns a list of all content blocks.
-
-**Authentication Required:** No
-
-**Query Parameters:**
-- `lesson`: Filter content blocks by lesson ID
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "lesson": 1,
-    "block_type": "text",
-    "content": {
-      "text": "In this lesson, you will learn how to install Python..."
-    },
-    "order": 1,
-    "created_at": "2023-04-01T10:04:00Z"
-  },
-  {
-    "id": 2,
-    "lesson": 1,
-    "block_type": "example",
-    "content": {
-      "title": "Installation Example",
-      "text": "Here's an example of installing Python on different operating systems..."
-    },
-    "order": 2,
-    "created_at": "2023-04-01T10:05:00Z"
-  }
-]
+#### Get Problem
+```http
+GET /problems/{id}/
 ```
+**Purpose**: Like Brilliant.org's practice problems, this endpoint provides:
+- Interactive problem content
+- Multiple question types
+- Hints and solutions
+- Difficulty levels
+- Immediate feedback
 
-##### 2. Create a Content Block
-
-**Endpoint:** `POST /api/lms/content-blocks/`
-
-**Description:** Creates a new content block for a lesson.
-
-**Authentication Required:** Yes (admin or instructor)
-
-**Request Body:**
+Response:
 ```json
 {
-  "lesson": 1,
-  "block_type": "problem",
-  "content": {
-    "problem_id": 3,
-    "introduction": "Let's test your understanding with a practice problem."
-  },
-  "order": 3
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": 3,
-  "lesson": 1,
-  "block_type": "problem",
-  "content": {
-    "problem_id": 3,
-    "introduction": "Let's test your understanding with a practice problem."
-  },
-  "order": 3,
-  "created_at": "2023-06-15T16:00:00Z"
-}
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If user doesn't have permission
-
-##### 3. Reorder Content Blocks
-
-**Endpoint:** `POST /api/lms/content-blocks/reorder/`
-
-**Description:** Reorders content blocks within a lesson.
-
-**Authentication Required:** Yes (admin or instructor)
-
-**Request Body:**
-```json
-{
-  "lesson_id": 1,
-  "block_order": [2, 1, 3]
-}
-```
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 2,
-    "lesson": 1,
-    "block_type": "example",
-    "content": {
-      "title": "Installation Example",
-      "text": "Here's an example of installing Python on different operating systems..."
-    },
-    "order": 0,
-    "created_at": "2023-04-01T10:05:00Z"
-  },
-  {
-    "id": 1,
-    "lesson": 1,
-    "block_type": "text",
-    "content": {
-      "text": "In this lesson, you will learn how to install Python..."
-    },
-    "order": 1,
-    "created_at": "2023-04-01T10:04:00Z"
-  },
-  {
-    "id": 3,
-    "lesson": 1,
-    "block_type": "problem",
-    "content": {
-      "problem_id": 3,
-      "introduction": "Let's test your understanding with a practice problem."
-    },
-    "order": 2,
-    "created_at": "2023-06-15T16:00:00Z"
-  }
-]
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If user doesn't have permission
-- 404 Not Found: If the lesson does not exist
-
-#### Problems
-
-##### 1. List All Problems
-
-**Endpoint:** `GET /api/lms/problems/`
-
-**Description:** Returns a list of all problems with their hints and solution steps.
-
-**Authentication Required:** No
-
-**Query Parameters:**
-- `search`: Search problems by question text
-- `difficulty`: Filter problems by difficulty level
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "question_text": "What command do you use to run a Python script named 'hello.py'?",
-    "question_type": "input",
-    "options": null,
-    "correct_answer": "python hello.py",
-    "explanation": "To run a Python script, you use the 'python' command followed by the filename.",
-    "difficulty": "beginner",
+    "id": "string",
+    "question_text": "string",
+    "image": "string",
+    "question_type": "string",
+    "options": {},
+    "correct_answer": {},
+    "explanation": "string",
+    "difficulty": "string",
     "hints": [
-      {
-        "id": 1,
-        "content": "The command starts with 'python'",
-        "order": 0
-      },
-      {
-        "id": 2,
-        "content": "After the command, you need to specify the file name",
-        "order": 1
-      }
+        {
+            "id": "string",
+            "content": "string",
+            "order": number
+        }
     ],
     "solution_steps": [
-      {
-        "id": 1,
-        "explanation": "First, open your terminal or command prompt",
-        "order": 0
-      },
-      {
-        "id": 2,
-        "explanation": "Navigate to the directory containing your script using 'cd' commands",
-        "order": 1
-      },
-      {
-        "id": 3,
-        "explanation": "Type 'python hello.py' and press Enter to execute the script",
-        "order": 2
-      }
-    ],
-    "created_at": "2023-04-01T10:07:00Z",
-    "updated_at": "2023-04-01T10:07:00Z"
-  }
-]
-```
-
-##### 2. Create a Problem
-
-**Endpoint:** `POST /api/lms/problems/`
-
-**Description:** Creates a new problem with optional hints and solution steps.
-
-**Authentication Required:** Yes (admin or instructor)
-
-**Request Body:**
-```json
-{
-  "question_text": "What Python function would you use to get the length of a list?",
-  "question_type": "input",
-  "options": null,
-  "correct_answer": "len()",
-  "explanation": "The len() function returns the number of items in a container like a list.",
-  "difficulty": "beginner"
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": 2,
-  "question_text": "What Python function would you use to get the length of a list?",
-  "question_type": "input",
-  "options": null,
-  "correct_answer": "len()",
-  "explanation": "The len() function returns the number of items in a container like a list.",
-  "difficulty": "beginner",
-  "hints": [],
-  "solution_steps": [],
-  "created_at": "2023-06-15T16:30:00Z",
-  "updated_at": "2023-06-15T16:30:00Z"
-}
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If user doesn't have permission
-
-##### 3. Add a Hint to a Problem
-
-**Endpoint:** `POST /api/lms/problems/{problem_id}/hints/`
-
-**Description:** Adds a hint to an existing problem.
-
-**Authentication Required:** Yes (admin or instructor)
-
-**Request Body:**
-```json
-{
-  "content": "Think about functions that can count items",
-  "order": 0
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": 3,
-  "content": "Think about functions that can count items",
-  "order": 0
-}
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If user doesn't have permission
-- 404 Not Found: If the problem does not exist
-
-##### 4. Add a Solution Step to a Problem
-
-**Endpoint:** `POST /api/lms/problems/{problem_id}/solution-steps/`
-
-**Description:** Adds a solution step to an existing problem.
-
-**Authentication Required:** Yes (admin or instructor)
-
-**Request Body:**
-```json
-{
-  "explanation": "Use the len() function with the list as its argument: len(my_list)",
-  "order": 0
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": 4,
-  "explanation": "Use the len() function with the list as its argument: len(my_list)",
-  "order": 0
-}
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If user doesn't have permission
-- 404 Not Found: If the problem does not exist
-
-#### Practice Sets
-
-##### 1. List All Practice Sets
-
-**Endpoint:** `GET /api/lms/practice-sets/`
-
-**Description:** Returns a list of all practice sets.
-
-**Authentication Required:** No
-
-**Query Parameters:**
-- `lesson`: Filter practice sets by lesson ID
-- `module`: Filter practice sets by module ID
-- `practice_type`: Filter by practice type (lesson, module, mixed, challenge)
-- `difficulty`: Filter by difficulty level
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "title": "Python Basics Practice",
-    "lesson": 2,
-    "module": null,
-    "practice_type": "lesson",
-    "difficulty_level": "beginner",
-    "is_randomized": false,
-    "is_published": true,
-    "practice_set_problems": [
-      {
-        "id": 1,
-        "practice_set": 1,
-        "problem": 1,
-        "problem_details": {
-          "id": 1,
-          "question_text": "What command do you use to run a Python script named 'hello.py'?",
-          "question_type": "input",
-          "options": null,
-          "correct_answer": "python hello.py",
-          "explanation": "To run a Python script, you use the 'python' command followed by the filename.",
-          "difficulty": "beginner",
-          "hints": [...],
-          "solution_steps": [...],
-          "created_at": "2023-04-01T10:07:00Z",
-          "updated_at": "2023-04-01T10:07:00Z"
-        },
-        "order": 0
-      }
-    ],
-    "created_at": "2023-04-01T11:00:00Z",
-    "updated_at": "2023-04-01T11:00:00Z"
-  }
-]
-```
-
-##### 2. Create a Practice Set
-
-**Endpoint:** `POST /api/lms/practice-sets/`
-
-**Description:** Creates a new practice set linked to either a lesson or a module.
-
-**Authentication Required:** Yes (admin or instructor)
-
-**Request Body:**
-```json
-{
-  "title": "Python Functions Review",
-  "lesson": null,
-  "module": 1,
-  "practice_type": "module",
-  "difficulty_level": "intermediate",
-  "is_randomized": true,
-  "is_published": false
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": 2,
-  "title": "Python Functions Review",
-  "lesson": null,
-  "module": 1,
-  "practice_type": "module",
-  "difficulty_level": "intermediate",
-  "is_randomized": true,
-  "is_published": false,
-  "practice_set_problems": [],
-  "created_at": "2023-06-15T17:00:00Z",
-  "updated_at": "2023-06-15T17:00:00Z"
-}
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If user doesn't have permission
-
-##### 3. Add a Problem to a Practice Set
-
-**Endpoint:** `POST /api/lms/practice-set-problems/`
-
-**Description:** Adds a problem to a practice set with a specified order.
-
-**Authentication Required:** Yes (admin or instructor)
-
-**Request Body:**
-```json
-{
-  "practice_set": 2,
-  "problem": 2,
-  "order": 0
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": 2,
-  "practice_set": 2,
-  "problem": 2,
-  "problem_details": {
-    "id": 2,
-    "question_text": "What Python function would you use to get the length of a list?",
-    "question_type": "input",
-    "options": null,
-    "correct_answer": "len()",
-    "explanation": "The len() function returns the number of items in a container like a list.",
-    "difficulty": "beginner",
-    "hints": [],
-    "solution_steps": [],
-    "created_at": "2023-06-15T16:30:00Z",
-    "updated_at": "2023-06-15T16:30:00Z"
-  },
-  "order": 0
-}
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If user doesn't have permission
-
-##### 4. Reorder Problems in a Practice Set
-
-**Endpoint:** `POST /api/lms/practice-set-problems/reorder/`
-
-**Description:** Reorders problems within a practice set.
-
-**Authentication Required:** Yes (admin or instructor)
-
-**Request Body:**
-```json
-{
-  "practice_set_id": 2,
-  "problem_order": [3, 2, 1]
-}
-```
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 3,
-    "practice_set": 2,
-    "problem": 3,
-    "problem_details": {...},
-    "order": 0
-  },
-  {
-    "id": 2,
-    "practice_set": 2,
-    "problem": 2,
-    "problem_details": {...},
-    "order": 1
-  },
-  {
-    "id": 1,
-    "practice_set": 2,
-    "problem": 1,
-    "problem_details": {...},
-    "order": 2
-  }
-]
-```
-
-**Errors:**
-- 400 Bad Request: If validation fails
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If user doesn't have permission
-- 404 Not Found: If the practice set does not exist
-
-## User Progress Tracking
-
-This section covers the endpoints for tracking user progress through lessons, modules, and courses.
-
-### User Progress Endpoints
-
-#### 1. List User Progress
-
-**Endpoint:** `GET /api/lms/progress/`
-
-**Description:** Retrieves the authenticated user's progress across all lessons.
-
-**Authentication Required:** Yes
-
-**Query Parameters:**
-- None (returns all progress records for the authenticated user)
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "user": 1,
-    "lesson": 1,
-    "lesson_title": "Introduction to Python",
-    "module_title": "Python Basics",
-    "status": "completed",
-    "score": 95,
-    "last_visited_at": "2023-06-01T15:30:00Z",
-    "completed_at": "2023-06-01T16:00:00Z"
-  },
-  {
-    "id": 2,
-    "user": 1,
-    "lesson": 2,
-    "lesson_title": "Variables and Data Types",
-    "module_title": "Python Basics",
-    "status": "in_progress",
-    "score": null,
-    "last_visited_at": "2023-06-02T10:15:00Z",
-    "completed_at": null
-  }
-]
-```
-
-**Errors:**
-- 401 Unauthorized: If not authenticated
-
-#### 2. Get Progress for a Course
-
-**Endpoint:** `GET /api/lms/progress/by_course/?course_id={course_id}`
-
-**Description:** Retrieves the authenticated user's progress across all lessons in a specific course.
-
-**Authentication Required:** Yes
-
-**Query Parameters:**
-- `course_id`: ID of the course to retrieve progress for
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "user": 1,
-    "lesson": 1,
-    "lesson_title": "Introduction to Python",
-    "module_title": "Python Basics",
-    "status": "completed",
-    "score": 95,
-    "last_visited_at": "2023-06-01T15:30:00Z",
-    "completed_at": "2023-06-01T16:00:00Z"
-  },
-  {
-    "id": 2,
-    "user": 1,
-    "lesson": 2,
-    "lesson_title": "Variables and Data Types",
-    "module_title": "Python Basics",
-    "status": "in_progress",
-    "score": null,
-    "last_visited_at": "2023-06-02T10:15:00Z",
-    "completed_at": null
-  }
-]
-```
-
-**Errors:**
-- 400 Bad Request: If course_id is not provided
-- 401 Unauthorized: If not authenticated
-- 404 Not Found: If the course doesn't exist
-
-#### 3. Update Progress Status
-
-**Endpoint:** `PATCH /api/lms/progress/{id}/`
-
-**Description:** Updates the status of a user's progress on a specific lesson.
-
-**Authentication Required:** Yes
-
-**Request Body:**
-```json
-{
-  "status": "completed",
-  "score": 90
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "id": 2,
-  "user": 1,
-  "lesson": 2,
-  "lesson_title": "Variables and Data Types",
-  "module_title": "Python Basics",
-  "status": "completed",
-  "score": 90,
-  "last_visited_at": "2023-06-02T10:15:00Z",
-  "completed_at": "2023-06-02T11:30:00Z"
-}
-```
-
-**Errors:**
-- 401 Unauthorized: If not authenticated
-- 403 Forbidden: If attempting to update another user's progress
-- 404 Not Found: If the progress record doesn't exist
-
-#### 4. Mark Lesson as Complete
-
-**Endpoint:** `POST /api/lms/lessons/{id}/complete/`
-
-**Description:** Marks a lesson as completed for the authenticated user and optionally includes a score.
-
-**Authentication Required:** Yes
-
-**Request Body:**
-```json
-{
-  "score": 95
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "id": 1,
-  "title": "Introduction to Python",
-  "slug": "introduction-to-python",
-  "module": 1,
-  "lesson_number": 1,
-  "estimated_time": 15,
-  "is_published": true,
-  "content_blocks": [...],
-  "created_at": "2023-04-01T10:00:00Z",
-  "updated_at": "2023-04-01T10:00:00Z",
-  "next_lesson": {
-    "id": 2,
-    "title": "Variables and Data Types",
-    "slug": "variables-and-data-types"
-  },
-  "user_progress": {
-    "status": "completed",
-    "score": 95,
-    "completed_at": "2023-06-01T16:00:00Z"
-  }
-}
-```
-
-**Errors:**
-- 401 Unauthorized: If not authenticated
-- 404 Not Found: If the lesson doesn't exist
-
-## Course Enrollment
-
-This section covers endpoints for managing user enrollment in courses.
-
-### Course Enrollment Endpoints
-
-#### 1. List User Enrollments
-
-**Endpoint:** `GET /api/lms/enrollments/`
-
-**Description:** Retrieves all courses that the authenticated user is enrolled in.
-
-**Authentication Required:** Yes
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "user": 1,
-    "course": 1,
-    "course_title": "Python Programming Fundamentals",
-    "progress_percent": 45,
-    "enrolled_at": "2023-05-15T09:30:00Z"
-  },
-  {
-    "id": 2,
-    "user": 1,
-    "course": 2,
-    "course_title": "Data Science Basics",
-    "progress_percent": 10,
-    "enrolled_at": "2023-05-20T14:45:00Z"
-  }
-]
-```
-
-**Errors:**
-- 401 Unauthorized: If not authenticated
-
-#### 2. Enroll in a Course
-
-**Endpoint:** `POST /api/lms/enrollments/`
-
-**Description:** Enrolls the authenticated user in a course.
-
-**Authentication Required:** Yes
-
-**Request Body:**
-```json
-{
-  "course": 3
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": 3,
-  "user": 1,
-  "course": 3,
-  "course_title": "Web Development with Django",
-  "progress_percent": 0,
-  "enrolled_at": "2023-06-10T11:20:00Z"
-}
-```
-
-**Errors:**
-- 400 Bad Request: If course is not provided or invalid
-- 401 Unauthorized: If not authenticated
-- 404 Not Found: If the course doesn't exist
-
-#### 3. Enroll via Course Detail
-
-**Endpoint:** `POST /api/lms/courses/{id}/enroll/`
-
-**Description:** Alternative endpoint to enroll the authenticated user in a specific course.
-
-**Authentication Required:** Yes
-
-**Response (201 Created):**
-```json
-{
-  "id": 3,
-  "user": 1,
-  "course": 3,
-  "course_title": "Web Development with Django",
-  "progress_percent": 0,
-  "enrolled_at": "2023-06-10T11:20:00Z"
-}
-```
-
-**Errors:**
-- 401 Unauthorized: If not authenticated
-- 404 Not Found: If the course doesn't exist
-
-## User Rewards
-
-This section covers endpoints for the user reward and gamification system.
-
-### User Reward Endpoints
-
-#### 1. List User Rewards
-
-**Endpoint:** `GET /api/lms/rewards/`
-
-**Description:** Retrieves all rewards earned by the authenticated user.
-
-**Authentication Required:** Yes
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "user": 1,
-    "reward_type": "points",
-    "reward_name": "Lesson Completion",
-    "value": 10,
-    "awarded_at": "2023-06-01T16:00:00Z"
-  },
-  {
-    "id": 2,
-    "user": 1,
-    "reward_type": "points",
-    "reward_name": "Perfect Score on Practice",
-    "value": 15,
-    "awarded_at": "2023-06-02T14:30:00Z"
-  },
-  {
-    "id": 3,
-    "user": 1,
-    "reward_type": "badge",
-    "reward_name": "Course Completed: Python Programming Fundamentals",
-    "value": 1,
-    "awarded_at": "2023-06-05T11:15:00Z"
-  }
-]
-```
-
-**Errors:**
-- 401 Unauthorized: If not authenticated
-
-## Leaderboard
-
-This section covers endpoints for the leaderboard functionality.
-
-### Leaderboard Endpoints
-
-#### 1. Get Leaderboard
-
-**Endpoint:** `GET /api/lms/leaderboard/?time_period={time_period}&limit={limit}`
-
-**Description:** Retrieves the leaderboard for a specific time period with comprehensive user information.
-
-**Authentication Required:** No
-
-**Query Parameters:**
-- `time_period`: Time period for the leaderboard (weekly, monthly, all_time). Default: all_time
-- `limit`: Maximum number of entries to return. Default: 10
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 5,
-    "user": 3,
-    "username": "top_learner",
-    "points": 450,
-    "time_period": "all_time",
-    "last_updated": "2023-06-09T16:20:00Z",
-    "user_info": {
-      "email": "top_learner@example.com",
-      "first_name": "Top",
-      "last_name": "Learner",
-      "stats": {
-        "total_points": 450,
-        "completed_lessons": 15,
-        "enrolled_courses": 3,
-        "current_streak": 7,
-        "badges_count": 5
-      },
-      "badges": [
         {
-          "id": 12,
-          "reward_name": "Course Completed: Python Programming Fundamentals",
-          "value": 1,
-          "awarded_at": "2023-06-05T11:15:00Z"
-        },
-        {
-          "id": 15,
-          "reward_name": "Course Completed: Data Science Basics",
-          "value": 1,
-          "awarded_at": "2023-06-08T09:30:00Z"
+            "id": "string",
+            "explanation": "string",
+            "order": number
         }
-      ]
-    }
-  },
-  {
-    "id": 2,
-    "user": 2,
-    "username": "codeMaster",
-    "points": 380,
-    "time_period": "all_time",
-    "last_updated": "2023-06-10T14:30:00Z",
-    "user_info": {
-      "email": "codemaster@example.com",
-      "first_name": "Code",
-      "last_name": "Master",
-      "stats": {
-        "total_points": 380,
-        "completed_lessons": 12,
-        "enrolled_courses": 2,
-        "current_streak": 5,
-        "badges_count": 3
-      },
-      "badges": [
-        {
-          "id": 8,
-          "reward_name": "Course Completed: Web Development with Django",
-          "value": 1,
-          "awarded_at": "2023-06-07T16:45:00Z"
-        }
-      ]
-    }
-  }
-]
-```
-
-#### 2. Get User's Rank
-
-**Endpoint:** `GET /api/lms/leaderboard/my_rank/?time_period={time_period}`
-
-**Description:** Retrieves the authenticated user's rank on the leaderboard for a specific time period, including comprehensive user information.
-
-**Authentication Required:** Yes
-
-**Query Parameters:**
-- `time_period`: Time period for the leaderboard (weekly, monthly, all_time). Default: all_time
-
-**Response (200 OK):**
-```json
-{
-  "rank": 3,
-  "points": 325,
-  "entries_above": [
-    {
-      "user__username": "top_learner",
-      "points": 450
-    },
-    {
-      "user__username": "codeMaster",
-      "points": 380
-    }
-  ],
-  "entries_below": [
-    {
-      "user__username": "newbie42",
-      "points": 290
-    },
-    {
-      "user__username": "pythonFan",
-      "points": 275
-    },
-    {
-      "user__username": "dataScientist",
-      "points": 250
-    }
-  ],
-  "user_info": {
-    "email": "learner123@example.com",
-    "first_name": "Learner",
-    "last_name": "One",
-    "stats": {
-      "total_points": 325,
-      "completed_lessons": 10,
-      "enrolled_courses": 2,
-      "current_streak": 3,
-      "badges_count": 2
-    },
-    "badges": [
-      {
-        "id": 5,
-        "reward_name": "Course Completed: Python Programming Fundamentals",
-        "value": 1,
-        "awarded_at": "2023-06-05T11:15:00Z"
-      }
     ]
-  }
 }
 ```
 
-**Errors:**
-- 401 Unauthorized: If not authenticated
+### Practice Sets
 
-## Client Integration Examples
+#### Get Practice Set
+```http
+GET /practice-sets/{id}/
+```
+**Purpose**: Like Brilliant.org's practice problem sets, this endpoint provides:
+- Interactive problem sets
+- Immediate feedback
+- Difficulty levels
+- Randomized questions
+- Progress tracking
+- Problem explanations
 
-### Authentication Flow
-
-1. **Registration:**
-   - Call the signup endpoint with user details and onboarding information
-   - Store the returned access and refresh tokens securely (e.g., in HttpOnly cookies or localStorage)
-
-2. **Login:**
-   - Call the signin endpoint with email and password
-   - Store the returned tokens
-
-3. **Making Authenticated Requests:**
-   - Include the access token in the Authorization header for every protected request
-   - `Authorization: Bearer <access_token>`
-
-4. **Token Refresh:**
-   - When the access token expires, use the refresh token to get a new one
-   - Implement token refresh before access token expiration (e.g., after 14 minutes for a 15-minute token)
-
-5. Log out users when refresh token expires or is invalid 
-
-### Error Handling
-
-- Always handle 400, 401, and 404 errors appropriately in your frontend
-- Display validation errors to the user in a friendly format
-- Redirect to login page on 401 errors (after attempting token refresh)
-
-### Example: User Registration Flow
-
-```javascript
-// Example using fetch API
-async function registerUser(userData) {
-  try {
-    const response = await fetch('http://localhost:8000/api/signup/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(JSON.stringify(errorData));
-    }
-    
-    const data = await response.json();
-    
-    // Store tokens
-    localStorage.setItem('accessToken', data.tokens.access);
-    localStorage.setItem('refreshToken', data.tokens.refresh);
-    
-    return data.user;
-  } catch (error) {
-    console.error('Registration error:', error);
-    throw error;
-  }
+Response:
+```json
+{
+    "id": "string",
+    "title": "string",
+    "practice_type": "string",
+    "difficulty_level": "string",
+    "is_randomized": boolean,
+    "practice_set_problems": [
+        {
+            "id": "string",
+            "problem": "string",
+            "order": number,
+            "problem_details": {
+                "id": "string",
+                "question_text": "string",
+                "question_type": "string",
+                "options": {},
+                "correct_answer": {},
+                "explanation": "string",
+                "difficulty": "string"
+            }
+        }
+    ]
 }
 ```
 
-### Example: Making Authenticated Requests
+### Practice Set Problems
 
-```javascript
-async function fetchUserProfile() {
-  try {
-    const accessToken = localStorage.getItem('accessToken');
-    
-    const response = await fetch('http://localhost:8000/api/auth/profile/', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
-    
-    if (response.status === 401) {
-      // Token expired, try to refresh
-      await refreshToken();
-      return fetchUserProfile(); // Retry with new token
-    }
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch profile');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Profile fetch error:', error);
-    throw error;
-  }
-}
+#### Get Practice Set Problem
+```http
+GET /practice-set-problems/{id}/
+```
+**Purpose**: Similar to Brilliant.org's problem organization, this endpoint:
+- Links problems to practice sets
+- Maintains problem order
+- Provides problem details
+- Enables problem navigation
 
-async function refreshToken() {
-  const refreshToken = localStorage.getItem('refreshToken');
-  
-  const response = await fetch('http://localhost:8000/api/auth/refresh/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ refresh: refreshToken }),
-  });
-  
-  if (!response.ok) {
-    // Refresh failed, redirect to login
-    window.location.href = '/login';
-    throw new Error('Session expired');
-  }
-  
-  const data = await response.json();
-  localStorage.setItem('accessToken', data.access);
-  return data.access;
+Response:
+```json
+{
+    "id": "string",
+    "problem": "string",
+    "order": number,
+    "practice_set": "string",
+    "problem_details": {
+        "id": "string",
+        "question_text": "string",
+        "question_type": "string",
+        "options": {},
+        "correct_answer": {},
+        "explanation": "string",
+        "difficulty": "string"
+    }
 }
 ```
 
-### Example: Working with the Learning Management System API
+### User Progress
 
-#### Fetching and Displaying Courses
+#### Get User Progress
+```http
+GET /progress/
+```
+**Purpose**: Similar to Brilliant.org's progress tracking, this endpoint:
+- Tracks completion status
+- Records scores
+- Shows learning history
+- Provides motivation through progress visualization
+- Enables personalized learning paths
 
-```javascript
-// Example function to fetch and display courses
-async function fetchCourses() {
-  try {
-    const response = await fetch('http://localhost:8000/api/lms/courses/', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch courses');
-    }
-    
-    const courses = await response.json();
-    
-    // Display courses in your UI
-    const coursesList = document.getElementById('courses-list');
-    coursesList.innerHTML = '';
-    
-    courses.forEach(course => {
-      const courseElement = document.createElement('div');
-      courseElement.className = 'course-card';
-      courseElement.innerHTML = `
-        <img src="${course.thumbnail || 'default-course.jpg'}" alt="${course.title}">
-        <h3>${course.title}</h3>
-        <p>${course.description.substring(0, 100)}...</p>
-        <span class="level-badge">${course.level}</span>
-        <a href="/course/${course.slug}" class="btn">View Course</a>
-      `;
-      coursesList.appendChild(courseElement);
-    });
-    
-    return courses;
-  } catch (error) {
-    console.error('Error fetching courses:', error);
-    // Show error message to user
-    document.getElementById('error-message').textContent = 'Unable to load courses. Please try again later.';
-    throw error;
-  }
-}
-
-// Function to fetch a specific course with all its content
-async function fetchCourseDetails(courseId) {
-  try {
-    const accessToken = localStorage.getItem('accessToken');
-    const headers = accessToken ? 
-      { 'Authorization': `Bearer ${accessToken}` } : 
-      { 'Content-Type': 'application/json' };
-    
-    const response = await fetch(`http://localhost:8000/api/lms/courses/${courseId}/`, {
-      method: 'GET',
-      headers: headers,
-    });
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('Course not found');
-      }
-      throw new Error('Failed to fetch course details');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching course details:', error);
-    throw error;
-  }
-}
-
-// Function to submit an exercise answer
-async function submitExerciseAnswer(exerciseId, answer) {
-  try {
-    const accessToken = localStorage.getItem('accessToken');
-    
-    if (!accessToken) {
-      // Redirect to login if user is not authenticated
-      window.location.href = '/login?redirect=' + window.location.pathname;
-      return;
-    }
-    
-    const response = await fetch(`http://localhost:8000/api/lms/exercises/${exerciseId}/submit/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ answer }),
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401) {
-        // Token expired, try to refresh
-        await refreshToken();
-        return submitExerciseAnswer(exerciseId, answer);
-      }
-      
-      throw new Error('Failed to submit answer');
-    }
-    
-    const result = await response.json();
-    
-    // Display the result to the user
-    const resultElement = document.getElementById('exercise-result');
-    if (result.is_correct) {
-      resultElement.innerHTML = `
-        <div class="correct-answer">
-          <h4>Correct!</h4>
-          <p>${result.explanation}</p>
-        </div>
-      `;
-    } else {
-      resultElement.innerHTML = `
-        <div class="wrong-answer">
-          <h4>Incorrect</h4>
-          <p>${result.explanation}</p>
-        </div>
-      `;
-    }
-    
-    return result;
-  } catch (error) {
-    console.error('Error submitting exercise answer:', error);
-    throw error;
-  }
+Response:
+```json
+{
+    "count": 1,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "id": "string",
+            "user": "string",
+            "lesson": "string",
+            "lesson_title": "string",
+            "module_title": "string",
+            "status": "string",
+            "score": number,
+            "last_visited_at": "datetime",
+            "completed_at": "datetime"
+        }
+    ]
 }
 ```
 
-#### Best Practices for LMS Integration
+#### Update Progress
+```http
+PATCH /progress/{id}/
+```
+**Purpose**: Enables real-time progress tracking and achievement recording, similar to Brilliant.org's progress system.
 
-1. **Progressive Loading**: First load the course list, then load course details only when a user selects a specific course.
+Request Body:
+```json
+{
+    "status": "string",
+    "score": number
+}
+```
 
-2. **Caching**: Consider caching course structure (but not exercises) in localStorage to improve performance.
+### Course Enrollments
 
-3. **Course Navigation**: Create a side navigation that displays the module and lesson structure for easy navigation within a course.
+#### List User Enrollments
+```http
+GET /enrollments/
+```
+**Purpose**: Like Brilliant.org's "My Courses" section, this endpoint:
+- Shows enrolled courses
+- Displays progress
+- Enables quick access to ongoing learning
+- Provides course completion tracking
 
-4. **Exercise Handling**: 
-   - For multiple choice exercises, validate selection before submission
-   - For input exercises, provide clear instructions on expected answer format
-   - Always display meaningful feedback after submission
+Response:
+```json
+{
+    "count": 1,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "id": "string",
+            "user": "string",
+            "course": "string",
+            "course_title": "string",
+            "progress_percent": number,
+            "enrolled_at": "datetime"
+        }
+    ]
+}
+```
 
-5. **Progress Tracking**: Implement client-side progress tracking to help users know which lessons they've completed.
+#### Enroll in Course
+```http
+POST /enrollments/
+```
+**Purpose**: Enables users to start new courses, similar to Brilliant.org's course enrollment system.
 
-6. **Responsive Design**: Ensure your course UI is responsive for both desktop and mobile learning experiences.
+Request Body:
+```json
+{
+    "course": "string"
+}
+```
 
-7. **Error Handling**: Provide user-friendly messages when content fails to load or submissions fail.
+### User Rewards
 
-## Development Guidelines
+#### Get User Rewards
+```http
+GET /rewards/
+```
+**Purpose**: Similar to Brilliant.org's achievement system, this endpoint:
+- Tracks earned badges
+- Shows points
+- Displays achievements
+- Provides motivation through gamification
+- Rewards learning milestones
 
-1. Always validate input on the frontend before sending to API
-2. Implement proper error handling for all API calls
-3. Use the token refresh mechanism to maintain session
-4. Securely store tokens (HttpOnly cookies are preferred in production)
-5. Log out users when refresh token expires or is invalid 
+Response:
+```json
+{
+    "count": 1,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "id": "string",
+            "user": "string",
+            "reward_type": "string",
+            "reward_name": "string",
+            "value": number,
+            "awarded_at": "datetime"
+        }
+    ]
+}
+```
+
+### Leaderboard
+
+#### Get Leaderboard
+```http
+GET /leaderboard/
+```
+**Purpose**: Similar to Brilliant.org's community features, this endpoint:
+- Fosters healthy competition
+- Shows community engagement
+- Displays user achievements
+- Encourages consistent learning
+- Builds learning community
+
+Response:
+```json
+{
+    "count": 1,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "id": "string",
+            "user": "string",
+            "username": "string",
+            "points": number,
+            "time_period": "string",
+            "last_updated": "datetime",
+            "user_info": {
+                "email": "string",
+                "first_name": "string",
+                "last_name": "string",
+                "stats": {
+                    "total_points": number,
+                    "completed_lessons": number,
+                    "enrolled_courses": number,
+                    "current_streak": number,
+                    "badges_count": number
+                },
+                "badges": [
+                    {
+                        "id": "string",
+                        "reward_name": "string",
+                        "value": number,
+                        "awarded_at": "datetime"
+                    }
+                ]
+            }
+        }
+    ]
+}
+```
+
+## Common Response Status Codes
+
+- 200: Success
+- 201: Created
+- 400: Bad Request
+- 401: Unauthorized
+- 403: Forbidden
+- 404: Not Found
+- 500: Server Error
+
+## Notes
+
+1. All endpoints require authentication using JWT tokens
+2. For POST/PATCH requests, only include the fields you want to update
+3. All IDs are strings
+4. Dates are returned in ISO 8601 format
+5. For nested resources, you can use the ID to fetch more details
+6. Pagination is supported on all list endpoints
+7. Filtering and searching capabilities are available on most endpoints
+
+## Error Handling
+
+All error responses follow this format:
+```json
+{
+    "detail": "Error message here",
+    "code": "error_code"
+}
+```
+
+For validation errors:
+```json
+{
+    "field_name": ["Error message"],
+    "field_name2": ["Error message"]
+}
+```
 
 

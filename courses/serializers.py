@@ -81,6 +81,7 @@ class ModuleSerializer(serializers.ModelSerializer):
     lessons = LessonSerializer(many=True, read_only=True)
     practice_sets = PracticeSetSerializer(many=True, read_only=True)
     course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all())
+    lesson_ids = serializers.JSONField(required=False, allow_null=True)
 
     class Meta:
         model = Module

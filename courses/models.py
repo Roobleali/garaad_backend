@@ -162,6 +162,7 @@ class Problem(models.Model):
     )
 
     question_text = models.TextField()
+    image = models.URLField(blank=True, null=True, help_text="URL to an image associated with the question")
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
     options = models.JSONField(
         null=True, blank=True, help_text="Answer options for applicable question types")

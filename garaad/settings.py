@@ -92,71 +92,13 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'core.permissions.IsAuthenticatedOrReadOnly',
-    ),
-    'DEFAULT_RENDERER_CLASSES': (
-        'rest_framework.renderers.JSONRenderer',
-    ),
-    'DEFAULT_PARSER_CLASSES': (
-        'rest_framework.parsers.JSONParser',
-    ),
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle'
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/day',
-        'user': '1000/day'
-    },
-    # Disable browsable API in production
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
-    'UNAUTHENTICATED_USER': None,
-    'UNAUTHENTICATED_TOKEN': None,
 }
-
-# Security settings
-if not DEBUG:
-    REST_FRAMEWORK.update({
-        'DEFAULT_RENDERER_CLASSES': (
-            'rest_framework.renderers.JSONRenderer',
-        ),
-        'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
-    })
-
-# Admin site settings
-ADMIN_SITE_HEADER = "Garaad Admin"
-ADMIN_SITE_TITLE = "Garaad Administration"
-ADMIN_INDEX_TITLE = "Welcome to Garaad Admin"
-
-# Custom admin site class
-from django.contrib.admin import AdminSite
-
-class GaraadAdminSite(AdminSite):
-    site_header = ADMIN_SITE_HEADER
-    site_title = ADMIN_SITE_TITLE
-    index_title = ADMIN_INDEX_TITLE
-
-    def has_permission(self, request):
-        return request.user.is_active and request.user.is_staff
-
-admin_site = GaraadAdminSite(name='admin')
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': True,
+    'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': True,
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
-    'VERIFYING_KEY': None,
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
 # URL configuration

@@ -31,7 +31,7 @@ class Course(models.Model):
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     is_new = models.BooleanField(default=False)
     progress = models.IntegerField(default=0)
-    module_ids = models.JSONField(default=list)
+    module_ids = models.JSONField(default=list, null=True, blank=True)
     description = models.TextField()
     thumbnail = models.URLField(blank=True, null=True)
     author_id = models.CharField(max_length=255)

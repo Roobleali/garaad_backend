@@ -108,14 +108,39 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/day',
         'user': '1000/day'
-    }
+    },
+    # Disable browsable API in production
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'UNAUTHENTICATED_USER': None,
+    'UNAUTHENTICATED_TOKEN': None,
 }
 
 # Security settings
 if not DEBUG:
-    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
-        'rest_framework.renderers.JSONRenderer',
-    )
+    REST_FRAMEWORK.update({
+        'DEFAULT_RENDERER_CLASSES': (
+            'rest_framework.renderers.JSONRenderer',
+        ),
+        'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    })
+
+# Admin site settings
+ADMIN_SITE_HEADER = "Garaad Admin"
+ADMIN_SITE_TITLE = "Garaad Administration"
+ADMIN_INDEX_TITLE = "Welcome to Garaad Admin"
+
+# Custom admin site class
+from django.contrib.admin import AdminSite
+
+class GaraadAdminSite(AdminSite):
+    site_header = ADMIN_SITE_HEADER
+    site_title = ADMIN_SITE_TITLE
+    index_title = ADMIN_INDEX_TITLE
+
+    def has_permission(self, request):
+        return request.user.is_active and request.user.is_staff
+
+admin_site = GaraadAdminSite(name='admin')
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),

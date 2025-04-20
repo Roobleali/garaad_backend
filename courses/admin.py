@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    Category, Course, Module, Lesson, LessonContentBlock,
+    Category, Course, Lesson, LessonContentBlock,
     Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem,
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
 )
@@ -18,12 +18,6 @@ class CourseAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('title',)}
 
 
-class ModuleAdmin(admin.ModelAdmin):
-    list_display = ['id', 'title', 'course', 'created_at']
-    list_filter = ['course']
-    search_fields = ['title', 'description']
-
-
 class LessonContentBlockInline(admin.TabularInline):
     model = LessonContentBlock
     extra = 1
@@ -31,9 +25,9 @@ class LessonContentBlockInline(admin.TabularInline):
 
 
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ['title', 'module', 'lesson_number',
+    list_display = ['title', 'course', 'lesson_number',
                     'estimated_time', 'is_published', 'created_at']
-    list_filter = ['module', 'is_published']
+    list_filter = ['course', 'is_published']
     search_fields = ['title']
     prepopulated_fields = {'slug': ('title',)}
     inlines = [LessonContentBlockInline]
@@ -41,7 +35,7 @@ class LessonAdmin(admin.ModelAdmin):
 
 class LessonContentBlockAdmin(admin.ModelAdmin):
     list_display = ['id', 'lesson', 'block_type', 'order', 'created_at']
-    list_filter = ['block_type', 'lesson__module']
+    list_filter = ['block_type', 'lesson__course']
     search_fields = ['lesson__title', 'content']
 
 
@@ -83,7 +77,7 @@ class PracticeSetAdmin(admin.ModelAdmin):
     inlines = [PracticeSetProblemInline]
 
     def related_to(self, obj):
-        return obj.lesson.title if obj.lesson else obj.module.title
+        return obj.lesson.title if obj.lesson else obj.course.title
     related_to.short_description = "Related To"
 
 
@@ -98,7 +92,7 @@ class PracticeSetProblemAdmin(admin.ModelAdmin):
 class UserProgressAdmin(admin.ModelAdmin):
     list_display = ['user', 'lesson', 'status',
                     'score', 'last_visited_at', 'completed_at']
-    list_filter = ['status', 'lesson__module', 'completed_at']
+    list_filter = ['status', 'lesson__course', 'completed_at']
     search_fields = ['user__username', 'lesson__title']
     date_hierarchy = 'last_visited_at'
 
@@ -127,7 +121,6 @@ class LeaderboardEntryAdmin(admin.ModelAdmin):
 
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(Course, CourseAdmin)
-admin.site.register(Module, ModuleAdmin)
 admin.site.register(Lesson, LessonAdmin)
 admin.site.register(LessonContentBlock, LessonContentBlockAdmin)
 admin.site.register(Problem, ProblemAdmin)

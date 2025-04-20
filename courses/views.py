@@ -1,18 +1,18 @@
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django.utils import timezone
 from .models import (
-    Category, Course, Module, Lesson, LessonContentBlock,
+    Category, Course, Lesson, LessonContentBlock,
     Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem,
-    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry, DiagrammarContent
+    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
 )
 from .serializers import (
     CategorySerializer, CourseSerializer, CourseListSerializer,
-    ModuleSerializer, LessonSerializer, LessonContentBlockSerializer,
+    LessonSerializer, LessonContentBlockSerializer,
     ProblemSerializer, HintSerializer, SolutionStepSerializer,
     PracticeSetSerializer, PracticeSetProblemSerializer,
     UserProgressSerializer, UserProgressUpdateSerializer,
@@ -20,7 +20,6 @@ from .serializers import (
     LeaderboardEntrySerializer, LessonWithNextSerializer,
     CourseWithProgressSerializer
 )
-from .diagrammar_utils import get_feedback
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -92,117 +91,6 @@ class CourseViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ModuleViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint for modules.
-    """
-    queryset = Module.objects.all()
-    serializer_class = ModuleSerializer
-
-    def get_queryset(self):
-        """
-        Optionally restricts the returned modules by filtering
-        against query parameters in the URL.
-        """
-        queryset = Module.objects.all()
-        course_id = self.request.query_params.get('course', None)
-        if course_id is not None:
-            queryset = queryset.filter(course_id=course_id)
-        return queryset
-
-    def get_object(self):
-        """
-        Override to ensure module belongs to the specified course
-        """
-        course_id = self.request.query_params.get('course', None)
-        if not course_id:
-            return super().get_object()
-
-        module = super().get_object()
-        if str(module.course_id) != str(course_id):
-            raise Http404("Module not found in this course")
-        return module
-
-    def update(self, request, *args, **kwargs):
-        """
-        Update a module with validation.
-        """
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-
-        # Validate lesson_ids if provided
-        if 'lesson_ids' in request.data:
-            lesson_ids = request.data['lesson_ids']
-            if not isinstance(lesson_ids, list):
-                return Response(
-                    {'error': 'lesson_ids must be a list'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Validate that all lesson IDs exist and belong to this module
-            invalid_lessons = Lesson.objects.filter(
-                id__in=lesson_ids
-            ).exclude(module=instance).exists()
-
-            if invalid_lessons:
-                return Response(
-                    {'error': 'One or more lesson IDs do not belong to this module'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-        self.perform_update(serializer)
-        return Response(serializer.data)
-
-    def destroy(self, request, *args, **kwargs):
-        """
-        Delete a module and handle related lessons.
-        """
-        instance = self.get_object()
-
-        # Check if module has any lessons
-        if instance.lessons.exists():
-            return Response(
-                {'error': 'Cannot delete module with existing lessons. Please delete the lessons first.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        self.perform_destroy(instance)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(detail=True, methods=['post'])
-    def update_lesson_order(self, request, pk=None):
-        """
-        Update the order of lessons in a module.
-        """
-        module = self.get_object()
-        lesson_ids = request.data.get('lesson_ids', [])
-
-        if not isinstance(lesson_ids, list):
-            return Response(
-                {'error': 'lesson_ids must be a list'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Validate that all lesson IDs exist and belong to this module
-        invalid_lessons = Lesson.objects.filter(
-            id__in=lesson_ids
-        ).exclude(module=module).exists()
-
-        if invalid_lessons:
-            return Response(
-                {'error': 'One or more lesson IDs do not belong to this module'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        module.lesson_ids = lesson_ids
-        module.save()
-
-        return Response({'status': 'lesson order updated'})
-
-
 class LessonViewSet(viewsets.ModelViewSet):
     """
     API endpoint for lessons.
@@ -220,22 +108,22 @@ class LessonViewSet(viewsets.ModelViewSet):
         against query parameters in the URL.
         """
         queryset = Lesson.objects.all()
-        module_id = self.request.query_params.get('module', None)
-        if module_id is not None:
-            queryset = queryset.filter(module_id=module_id)
+        course_id = self.request.query_params.get('course', None)
+        if course_id is not None:
+            queryset = queryset.filter(course_id=course_id)
         return queryset
 
     def get_object(self):
         """
-        Override to ensure lesson belongs to the specified module
+        Override to ensure lesson belongs to the specified course
         """
-        module_id = self.request.query_params.get('module', None)
-        if not module_id:
+        course_id = self.request.query_params.get('course', None)
+        if not course_id:
             return super().get_object()
 
         lesson = super().get_object()
-        if str(lesson.module_id) != str(module_id):
-            raise Http404("Lesson not found in this module")
+        if str(lesson.course_id) != str(course_id):
+            raise Http404("Lesson not found in this course")
         return lesson
 
     def retrieve(self, request, *args, **kwargs):
@@ -248,7 +136,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         # If the user is authenticated, update their lesson progress
         if request.user.is_authenticated:
             # Ensure the user is enrolled in the course
-            CourseEnrollment.enroll_user(request.user, lesson.module.course)
+            CourseEnrollment.enroll_user(request.user, lesson.course)
 
             # Get or create a progress record and mark as in progress
             progress, created = UserProgress.objects.get_or_create(
@@ -272,7 +160,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         score = request.data.get('score', None)
 
         # Ensure the user is enrolled in the course
-        CourseEnrollment.enroll_user(request.user, lesson.module.course)
+        CourseEnrollment.enroll_user(request.user, lesson.course)
 
         # Get or create progress record and mark as completed
         progress, created = UserProgress.objects.get_or_create(
@@ -361,24 +249,6 @@ class ProblemViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['question_text']
     ordering_fields = ['created_at', 'difficulty']
-
-    @action(detail=True, methods=['post'])
-    def validate_diagrammar(self, request, pk=None):
-        """
-        Validates a Diagrammar state against correct answers
-        """
-        problem = self.get_object()
-        try:
-            diagrammar_content = problem.diagrammar_content
-        except DiagrammarContent.DoesNotExist:
-            return Response({'error': 'No Diagrammar content found'}, status=404)
-            
-        user_state = request.data.get('state')
-        if not user_state:
-            return Response({'error': 'No state provided'}, status=400)
-            
-        feedback = get_feedback(user_state, diagrammar_content.correct_states)
-        return Response(feedback)
 
 
 class PracticeSetViewSet(viewsets.ModelViewSet):
@@ -694,45 +564,3 @@ class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
                 'rank': 0,
                 'points': 0
             })
-
-@api_view(['POST'])
-def validate_diagrammar_state(request, problem_id):
-    """
-    Validates a Diagrammar state against correct answers
-    """
-    try:
-        problem = Problem.objects.get(id=problem_id)
-        if problem.question_type != 'diagrammar':
-            return Response(
-                {'error': 'This problem is not a Diagrammar problem'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        try:
-            diagrammar_content = problem.diagrammar_content.get()
-        except DiagrammarContent.DoesNotExist:
-            return Response(
-                {'error': 'No Diagrammar content found for this problem'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-            
-        user_state = request.data.get('state')
-        if not user_state:
-            return Response(
-                {'error': 'No state provided in request body'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        feedback = get_feedback(user_state, diagrammar_content.correct_states)
-        return Response(feedback, status=status.HTTP_200_OK)
-        
-    except Problem.DoesNotExist:
-        return Response(
-            {'error': 'Problem not found'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )

@@ -31,7 +31,6 @@ class Course(models.Model):
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     is_new = models.BooleanField(default=False)
     progress = models.IntegerField(default=0)
-    module_ids = models.JSONField(default=list, null=True, blank=True)
     description = models.TextField()
     thumbnail = models.URLField(blank=True, null=True)
     author_id = models.CharField(max_length=255)
@@ -51,32 +50,12 @@ class Course(models.Model):
         ordering = ['-created_at']
 
 
-class Module(models.Model):
-    """
-    Represents a module within a course.
-    """
-    id = models.CharField(max_length=50, primary_key=True)
-    course = models.ForeignKey(
-        Course, related_name='modules', on_delete=models.CASCADE)
-    title = models.CharField(max_length=255)
-    description = models.TextField()
-    lesson_ids = models.JSONField(default=list, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.course.title} - {self.title}"
-
-    class Meta:
-        ordering = ['course', 'id']
-
-
 class Lesson(models.Model):
     """
-    Represents a lesson within a module. Basic lesson info.
+    Represents a lesson within a course. Basic lesson info.
     """
-    module = models.ForeignKey(
-        Module, related_name='lessons', on_delete=models.CASCADE)
+    course = models.ForeignKey(
+        Course, related_name='lessons', on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255)
     lesson_number = models.PositiveIntegerField(default=1)
@@ -92,16 +71,16 @@ class Lesson(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.module.title} - {self.title}"
+        return f"{self.course.title} - {self.title}"
 
     class Meta:
-        ordering = ['module', 'lesson_number']
+        ordering = ['course', 'lesson_number']
 
     def get_next_lesson(self):
-        """Returns the next lesson in the module or None if this is the last lesson"""
+        """Returns the next lesson in the course or None if this is the last lesson"""
         try:
             return Lesson.objects.filter(
-                module=self.module,
+                course=self.course,
                 lesson_number__gt=self.lesson_number
             ).order_by('lesson_number').first()
         except Lesson.DoesNotExist:
@@ -152,7 +131,6 @@ class Problem(models.Model):
         ('open_ended', 'Open Ended'),
         ('math_expression', 'Math Expression'),
         ('code', 'Coding Problem'),
-        ('diagrammar', 'Diagrammar Interactive'),
     )
 
     DIFFICULTY_LEVELS = (
@@ -220,11 +198,11 @@ class SolutionStep(models.Model):
 
 class PracticeSet(models.Model):
     """
-    Group of extra practice problems for a lesson/module.
+    Group of extra practice problems for a lesson/course.
     """
     PRACTICE_TYPES = (
         ('lesson', 'Lesson Practice'),
-        ('module', 'Module Review'),
+        ('course', 'Course Review'),
         ('mixed', 'Mixed Practice'),
         ('challenge', 'Challenge Problems'),
     )
@@ -239,8 +217,8 @@ class PracticeSet(models.Model):
     title = models.CharField(max_length=255)
     lesson = models.ForeignKey(
         Lesson, related_name='practice_sets', on_delete=models.CASCADE, null=True, blank=True)
-    module = models.ForeignKey(
-        Module, related_name='practice_sets', on_delete=models.CASCADE, null=True, blank=True)
+    course = models.ForeignKey(
+        Course, related_name='practice_sets', on_delete=models.CASCADE, null=True, blank=True)
     practice_type = models.CharField(max_length=20, choices=PRACTICE_TYPES)
     difficulty_level = models.CharField(
         max_length=12, choices=DIFFICULTY_LEVELS, default='intermediate')
@@ -252,13 +230,13 @@ class PracticeSet(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
-        # Ensure either lesson or module is provided, but not both
-        if (self.lesson is None and self.module is None) or (self.lesson is not None and self.module is not None):
+        # Ensure either lesson or course is provided, but not both
+        if (self.lesson is None and self.course is None) or (self.lesson is not None and self.course is not None):
             raise ValidationError(
-                "Either lesson or module must be provided, but not both.")
+                "Either lesson or course must be provided, but not both.")
 
     def __str__(self):
-        related_to = self.lesson.title if self.lesson else self.module.title
+        related_to = self.lesson.title if self.lesson else self.course.title
         return f"{self.title} ({related_to})"
 
     class Meta:
@@ -347,7 +325,7 @@ class UserProgress(models.Model):
 
             # Update course enrollment progress
             CourseEnrollment.update_progress(
-                self.user, self.lesson.module.course)
+                self.user, self.lesson.course)
 
 
 class CourseEnrollment(models.Model):
@@ -377,13 +355,13 @@ class CourseEnrollment(models.Model):
         )
 
         # Count total lessons in the course
-        total_lessons = Lesson.objects.filter(module__course=course).count()
+        total_lessons = Lesson.objects.filter(course=course).count()
 
         if total_lessons > 0:
             # Count completed lessons
             completed_lessons = UserProgress.objects.filter(
                 user=user,
-                lesson__module__course=course,
+                lesson__course=course,
                 status='completed'
             ).count()
 
@@ -527,28 +505,3 @@ class LeaderboardEntry(models.Model):
             time_period='monthly',
             defaults={'points': monthly_points}
         )
-
-
-class DiagrammarContent(models.Model):
-    """
-    Stores Diagrammar-specific content and configuration
-    """
-    problem = models.ForeignKey(
-        Problem, related_name='diagrammar_content', on_delete=models.CASCADE)
-    diagram_definition = models.JSONField(
-        help_text="JSON definition of the diagram structure")
-    initial_state = models.JSONField(
-        help_text="Initial state of the diagram", null=True, blank=True)
-    correct_states = models.JSONField(
-        help_text="Array of correct states for validation", null=True, blank=True)
-    hints = models.JSONField(
-        help_text="Diagram-specific hints", null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Diagrammar content for Problem {self.problem.id}"
-
-    class Meta:
-        verbose_name = "Diagrammar Content"
-        verbose_name_plural = "Diagrammar Contents"

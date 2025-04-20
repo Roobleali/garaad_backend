@@ -4,7 +4,7 @@ from .views import (
     CategoryViewSet, CourseViewSet, ModuleViewSet, LessonViewSet,
     LessonContentBlockViewSet, ProblemViewSet, PracticeSetViewSet,
     PracticeSetProblemViewSet, UserProgressViewSet, CourseEnrollmentViewSet,
-    UserRewardViewSet, LeaderboardViewSet
+    UserRewardViewSet, LeaderboardViewSet, validate_diagrammar_state
 )
 
 router = DefaultRouter()
@@ -27,4 +27,7 @@ router.register(r'leaderboard', LeaderboardViewSet, basename='leaderboard')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('problems/<int:problem_id>/validate-diagrammar/', 
+         validate_diagrammar_state, 
+         name='validate-diagrammar'),
 ]

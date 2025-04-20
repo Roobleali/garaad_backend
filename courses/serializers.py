@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     Category, Course, Module, Lesson, LessonContentBlock,
     Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem,
-    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
+    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry, DiagrammarContent
 )
 from django.db import models
 
@@ -19,16 +19,24 @@ class SolutionStepSerializer(serializers.ModelSerializer):
         fields = ['id', 'explanation', 'order']
 
 
+class DiagrammarContentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiagrammarContent
+        fields = ['id', 'diagram_definition', 'initial_state', 'correct_states', 'hints']
+
+
 class ProblemSerializer(serializers.ModelSerializer):
     hints = HintSerializer(many=True, read_only=True)
     solution_steps = SolutionStepSerializer(many=True, read_only=True)
+    diagrammar_content = DiagrammarContentSerializer(read_only=True)
 
     class Meta:
         model = Problem
         fields = [
             'id', 'question_text', 'image', 'question_type', 'options',
             'correct_answer', 'explanation', 'difficulty',
-            'hints', 'solution_steps', 'created_at', 'updated_at'
+            'hints', 'solution_steps', 'created_at', 'updated_at',
+            'diagrammar_content'
         ]
         read_only_fields = ['created_at', 'updated_at']
 

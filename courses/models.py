@@ -152,6 +152,7 @@ class Problem(models.Model):
         ('open_ended', 'Open Ended'),
         ('math_expression', 'Math Expression'),
         ('code', 'Coding Problem'),
+        ('diagrammar', 'Diagrammar Interactive'),
     )
 
     DIFFICULTY_LEVELS = (
@@ -526,3 +527,28 @@ class LeaderboardEntry(models.Model):
             time_period='monthly',
             defaults={'points': monthly_points}
         )
+
+
+class DiagrammarContent(models.Model):
+    """
+    Stores Diagrammar-specific content and configuration
+    """
+    problem = models.ForeignKey(
+        Problem, related_name='diagrammar_content', on_delete=models.CASCADE)
+    diagram_definition = models.JSONField(
+        help_text="JSON definition of the diagram structure")
+    initial_state = models.JSONField(
+        help_text="Initial state of the diagram", null=True, blank=True)
+    correct_states = models.JSONField(
+        help_text="Array of correct states for validation", null=True, blank=True)
+    hints = models.JSONField(
+        help_text="Diagram-specific hints", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Diagrammar content for Problem {self.problem.id}"
+
+    class Meta:
+        verbose_name = "Diagrammar Content"
+        verbose_name_plural = "Diagrammar Contents"

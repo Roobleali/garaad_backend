@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
@@ -8,7 +8,7 @@ from django.utils import timezone
 from .models import (
     Category, Course, Module, Lesson, LessonContentBlock,
     Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem,
-    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
+    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry, DiagrammarContent
 )
 from .serializers import (
     CategorySerializer, CourseSerializer, CourseListSerializer,
@@ -20,6 +20,7 @@ from .serializers import (
     LeaderboardEntrySerializer, LessonWithNextSerializer,
     CourseWithProgressSerializer
 )
+from .diagrammar_utils import get_feedback
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -361,6 +362,24 @@ class ProblemViewSet(viewsets.ModelViewSet):
     search_fields = ['question_text']
     ordering_fields = ['created_at', 'difficulty']
 
+    @action(detail=True, methods=['post'])
+    def validate_diagrammar(self, request, pk=None):
+        """
+        Validates a Diagrammar state against correct answers
+        """
+        problem = self.get_object()
+        try:
+            diagrammar_content = problem.diagrammar_content
+        except DiagrammarContent.DoesNotExist:
+            return Response({'error': 'No Diagrammar content found'}, status=404)
+            
+        user_state = request.data.get('state')
+        if not user_state:
+            return Response({'error': 'No state provided'}, status=400)
+            
+        feedback = get_feedback(user_state, diagrammar_content.correct_states)
+        return Response(feedback)
+
 
 class PracticeSetViewSet(viewsets.ModelViewSet):
     """
@@ -675,3 +694,25 @@ class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
                 'rank': 0,
                 'points': 0
             })
+
+@api_view(['POST'])
+def validate_diagrammar_state(request, problem_id):
+    """
+    Validates a Diagrammar state against correct answers
+    """
+    try:
+        problem = Problem.objects.get(id=problem_id)
+        try:
+            diagrammar_content = problem.diagrammar_content
+        except DiagrammarContent.DoesNotExist:
+            return Response({'error': 'No Diagrammar content found'}, status=404)
+            
+        user_state = request.data.get('state')
+        if not user_state:
+            return Response({'error': 'No state provided'}, status=400)
+            
+        feedback = get_feedback(user_state, diagrammar_content.correct_states)
+        return Response(feedback)
+        
+    except Problem.DoesNotExist:
+        return Response({'error': 'Problem not found'}, status=404)

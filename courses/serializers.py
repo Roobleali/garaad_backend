@@ -95,21 +95,22 @@ class CourseSerializer(serializers.ModelSerializer):
 
 class CourseListSerializer(serializers.ModelSerializer):
     """
-    Serializer for listing courses without including all related modules.
+    Serializer for listing courses without including all related lessons.
     """
-    module_count = serializers.SerializerMethodField()
+    category = serializers.StringRelatedField()
+    lesson_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = [
             'id', 'title', 'slug', 'description', 'thumbnail',
             'is_new', 'progress', 'category', 'author_id',
-            'is_published', 'module_count', 'created_at', 'updated_at'
+            'is_published', 'lesson_count', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['slug', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
 
-    def get_module_count(self, obj):
-        return obj.modules.count()
+    def get_lesson_count(self, obj):
+        return obj.lessons.count()
 
 
 class CategorySerializer(serializers.ModelSerializer):

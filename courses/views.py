@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
@@ -702,17 +702,37 @@ def validate_diagrammar_state(request, problem_id):
     """
     try:
         problem = Problem.objects.get(id=problem_id)
+        if problem.question_type != 'diagrammar':
+            return Response(
+                {'error': 'This problem is not a Diagrammar problem'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
         try:
-            diagrammar_content = problem.diagrammar_content
+            diagrammar_content = problem.diagrammar_content.get()
         except DiagrammarContent.DoesNotExist:
-            return Response({'error': 'No Diagrammar content found'}, status=404)
+            return Response(
+                {'error': 'No Diagrammar content found for this problem'},
+                status=status.HTTP_404_NOT_FOUND
+            )
             
         user_state = request.data.get('state')
         if not user_state:
-            return Response({'error': 'No state provided'}, status=400)
+            return Response(
+                {'error': 'No state provided in request body'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
             
         feedback = get_feedback(user_state, diagrammar_content.correct_states)
-        return Response(feedback)
+        return Response(feedback, status=status.HTTP_200_OK)
         
     except Problem.DoesNotExist:
-        return Response({'error': 'Problem not found'}, status=404)
+        return Response(
+            {'error': 'Problem not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

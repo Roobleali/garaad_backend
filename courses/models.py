@@ -101,7 +101,7 @@ class LessonContentBlock(models.Model):
         ('image', 'Image Block'),
         ('video', 'Video Block'),
         ('quiz', 'Quiz Block'),
-        ('problem', 'Problem Block'),  # New type to reference Problem model
+        ('problem', 'Problem Block'),  # References Problem model
     ]
 
     lesson = models.ForeignKey(
@@ -122,6 +122,41 @@ class LessonContentBlock(models.Model):
         verbose_name = "Lesson Content Block"
         verbose_name_plural = "Lesson Content Blocks"
 
+    @property
+    def default_problem_content(self):
+        """Default content structure for problem blocks"""
+        return {
+            "introduction": "",  # Optional text to show before the problem
+            "show_hints": True,  # Whether to show hints button
+            "show_solution": False,  # Whether to show solution button
+            "attempts_allowed": 3,  # Number of attempts allowed
+            "points": 10  # Points awarded for correct solution
+        }
+
+    def get_complete_content(self):
+        """
+        Get the complete content for this block, including problem data if it's a problem block
+        """
+        if self.block_type == 'problem' and self.problem:
+            return {
+                # Include the display settings from content
+                "introduction": self.content.get('introduction', ''),
+                "show_hints": self.content.get('show_hints', True),
+                "show_solution": self.content.get('show_solution', False),
+                "attempts_allowed": self.content.get('attempts_allowed', 3),
+                "points": self.content.get('points', 10),
+                # Include the actual problem data
+                "problem_data": {
+                    "id": self.problem.id,
+                    "question_text": self.problem.question_text,
+                    "question_type": self.problem.question_type,
+                    "options": self.problem.options,
+                    "difficulty": self.problem.difficulty,
+                    "content": self.problem.content
+                }
+            }
+        return self.content
+
     def clean(self):
         """Validate content based on block_type"""
         super().clean()
@@ -129,20 +164,27 @@ class LessonContentBlock(models.Model):
 
     def validate_content(self):
         """Ensure content matches the required structure for the block_type"""
+        if not self.content:
+            self.content = {}
+
+        if self.block_type == 'problem':
+            if not self.problem:
+                raise ValidationError("Problem block must reference a Problem")
+            # Ensure minimum content structure for problem blocks
+            default_content = self.default_problem_content
+            for key, value in default_content.items():
+                if key not in self.content:
+                    self.content[key] = value
+            return
+
+        # Validation for other block types...
         default_content = {
             'text': {
                 'text': '',
-                'format': 'markdown'  # or 'html'
-            },
-            'example': {
-                'title': '',
-                'description': '',
-                'problem': '',
-                'solution': '',
-                'explanation': ''
+                'format': 'markdown'
             },
             'code': {
-                'language': 'plaintext',
+                'language': 'python',
                 'code': '',
                 'explanation': '',
                 'show_line_numbers': True
@@ -164,11 +206,6 @@ class LessonContentBlock(models.Model):
             'quiz': {
                 'title': '',
                 'questions': []
-            },
-            'problem': {
-                'introduction': '',
-                'show_hints': True,
-                'show_solution': False
             }
         }
 
@@ -180,18 +217,12 @@ class LessonContentBlock(models.Model):
             self.content = default_structure
             return
 
-        # Validate content structure
+        # Validate content structure based on block type
         if self.block_type == 'text':
             if not isinstance(self.content.get('text'), str):
                 raise ValidationError("Text block must have a 'text' string field")
             if self.content.get('format') not in ['markdown', 'html']:
                 raise ValidationError("Text block format must be 'markdown' or 'html'")
-
-        elif self.block_type == 'example':
-            required_fields = ['title', 'description', 'problem', 'solution', 'explanation']
-            for field in required_fields:
-                if not isinstance(self.content.get(field), str):
-                    raise ValidationError(f"Example block must have a '{field}' string field")
 
         elif self.block_type == 'code':
             if not isinstance(self.content.get('code'), str):
@@ -216,15 +247,6 @@ class LessonContentBlock(models.Model):
                 raise ValidationError("Quiz block must have a 'title' string field")
             if not isinstance(self.content.get('questions'), list):
                 raise ValidationError("Quiz block must have a 'questions' list")
-            for question in self.content.get('questions', []):
-                if not all(key in question for key in ['question', 'type', 'correct_answer']):
-                    raise ValidationError("Each quiz question must have question, type, and correct_answer")
-                if question.get('type') not in ['multiple_choice', 'true_false', 'short_answer']:
-                    raise ValidationError("Question type must be multiple_choice, true_false, or short_answer")
-
-        elif self.block_type == 'problem':
-            if not self.problem:
-                raise ValidationError("Problem block must reference a Problem")
 
     def save(self, *args, **kwargs):
         self.validate_content()

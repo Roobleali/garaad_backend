@@ -90,17 +90,18 @@ class Lesson(models.Model):
 
 class LessonContentBlock(models.Model):
     """
-    A lesson is composed of multiple ordered content blocks
-    (text, image, interactive, example, problem, etc.).
+    A lesson is composed of multiple ordered content blocks.
+    Each block can be text, code, image, etc., or can reference a problem.
+    This is the central model for organizing lesson content.
     """
     BLOCK_TYPES = [
         ('text', 'Text Block'),
         ('example', 'Example Block'),
         ('code', 'Code Block'),
         ('image', 'Image Block'),
-        ('practice', 'Practice Block'),
         ('video', 'Video Block'),
         ('quiz', 'Quiz Block'),
+        ('problem', 'Problem Block'),  # New type to reference Problem model
     ]
 
     lesson = models.ForeignKey(
@@ -108,9 +109,18 @@ class LessonContentBlock(models.Model):
     block_type = models.CharField(max_length=20, choices=BLOCK_TYPES)
     order = models.PositiveIntegerField(default=0)
     content = models.JSONField(default=dict)
+    problem = models.ForeignKey(
+        'Problem', 
+        null=True, 
+        blank=True, 
+        on_delete=models.SET_NULL, 
+        help_text="Reference to a Problem for problem-type blocks"
+    )
 
     class Meta:
-        ordering = ['order']
+        ordering = ['lesson', 'order']
+        verbose_name = "Lesson Content Block"
+        verbose_name_plural = "Lesson Content Blocks"
 
     def clean(self):
         """Validate content based on block_type"""
@@ -144,10 +154,6 @@ class LessonContentBlock(models.Model):
                 'width': None,
                 'height': None
             },
-            'practice': {
-                'title': '',
-                'problems': []
-            },
             'video': {
                 'url': '',
                 'title': '',
@@ -158,6 +164,11 @@ class LessonContentBlock(models.Model):
             'quiz': {
                 'title': '',
                 'questions': []
+            },
+            'problem': {
+                'introduction': '',
+                'show_hints': True,
+                'show_solution': False
             }
         }
 
@@ -194,15 +205,6 @@ class LessonContentBlock(models.Model):
             if not isinstance(self.content.get('alt'), str):
                 raise ValidationError("Image block must have an 'alt' string field")
 
-        elif self.block_type == 'practice':
-            if not isinstance(self.content.get('title'), str):
-                raise ValidationError("Practice block must have a 'title' string field")
-            if not isinstance(self.content.get('problems'), list):
-                raise ValidationError("Practice block must have a 'problems' list")
-            for problem in self.content.get('problems', []):
-                if not all(key in problem for key in ['question', 'options', 'correct_answer']):
-                    raise ValidationError("Each practice problem must have question, options, and correct_answer")
-
         elif self.block_type == 'video':
             if not isinstance(self.content.get('url'), str):
                 raise ValidationError("Video block must have a 'url' string field")
@@ -220,17 +222,16 @@ class LessonContentBlock(models.Model):
                 if question.get('type') not in ['multiple_choice', 'true_false', 'short_answer']:
                     raise ValidationError("Question type must be multiple_choice, true_false, or short_answer")
 
+        elif self.block_type == 'problem':
+            if not self.problem:
+                raise ValidationError("Problem block must reference a Problem")
+
     def save(self, *args, **kwargs):
         self.validate_content()
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.lesson.title} - {self.get_block_type_display()} Block #{self.order}"
-
-    class Meta:
-        ordering = ['lesson', 'order']
-        verbose_name = "Lesson Content Block"
-        verbose_name_plural = "Lesson Content Blocks"
 
 
 def get_default_content():

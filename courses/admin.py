@@ -21,7 +21,8 @@ class CourseAdmin(admin.ModelAdmin):
 class LessonContentBlockInline(admin.TabularInline):
     model = LessonContentBlock
     extra = 1
-    fields = ['block_type', 'content', 'order']
+    fields = ['block_type', 'content', 'problem', 'order']
+    raw_id_fields = ['problem']
     
     def get_formset(self, request, obj=None, **kwargs):
         formset = super().get_formset(request, obj, **kwargs)
@@ -30,18 +31,27 @@ class LessonContentBlockInline(admin.TabularInline):
 
 
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ['title', 'course', 'lesson_number',
-                    'estimated_time', 'is_published', 'created_at']
+    list_display = ['title', 'course', 'lesson_number', 'is_published']
     list_filter = ['course', 'is_published']
-    search_fields = ['title']
-    prepopulated_fields = {'slug': ('title',)}
+    search_fields = ['title', 'course__title']
     inlines = [LessonContentBlockInline]
+    
+    def get_inline_instances(self, request, obj=None):
+        if not obj:  # Don't show inlines on create view
+            return []
+        return super().get_inline_instances(request, obj)
 
 
 class LessonContentBlockAdmin(admin.ModelAdmin):
-    list_display = ['id', 'lesson', 'block_type', 'order']
+    list_display = ['lesson', 'block_type', 'order', 'has_problem']
     list_filter = ['block_type', 'lesson__course']
     search_fields = ['lesson__title', 'content']
+    raw_id_fields = ['problem']
+    
+    def has_problem(self, obj):
+        return bool(obj.problem)
+    has_problem.boolean = True
+    has_problem.short_description = 'Has Problem'
     
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
@@ -51,7 +61,7 @@ class LessonContentBlockAdmin(admin.ModelAdmin):
     
     def save_model(self, request, obj, form, change):
         if not change:  # Only for new objects
-            obj.content = LessonContentBlock.DEFAULT_CONTENT.get(obj.block_type, {})
+            obj.content = obj.default_content.get(obj.block_type, {})
         super().save_model(request, obj, form, change)
 
 

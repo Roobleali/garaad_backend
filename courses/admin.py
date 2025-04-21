@@ -67,12 +67,34 @@ class SolutionStepInline(admin.TabularInline):
     fields = ['explanation', 'order']
 
 
+class ProblemInline(admin.TabularInline):
+    model = Problem
+    extra = 1
+    fields = ['question_text', 'question_type', 'order']
+    
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        formset.form.base_fields['content'].initial = {}
+        return formset
+
+
 class ProblemAdmin(admin.ModelAdmin):
-    list_display = ['id', 'question_text_short',
-                    'question_type', 'difficulty', 'created_at']
-    list_filter = ['question_type', 'difficulty']
+    list_display = ['id', 'question_text_short', 'lesson', 'question_type', 
+                   'difficulty', 'order', 'created_at']
+    list_filter = ['question_type', 'difficulty', 'lesson__course']
     search_fields = ['question_text', 'explanation']
     inlines = [HintInline, SolutionStepInline]
+    
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj is None:  # Only for new objects
+            form.base_fields['content'].initial = {}
+        return form
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # Only for new objects
+            obj.content = {}
+        super().save_model(request, obj, form, change)
 
     def question_text_short(self, obj):
         return obj.question_text[:50] + "..." if len(obj.question_text) > 50 else obj.question_text

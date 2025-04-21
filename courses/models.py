@@ -255,6 +255,8 @@ class Problem(models.Model):
         ('expert', 'Expert'),
     )
 
+    lesson = models.ForeignKey(
+        Lesson, related_name='problems', on_delete=models.CASCADE, null=True, blank=True)
     question_text = models.TextField()
     image = models.URLField(blank=True, null=True, help_text="URL to an image associated with the question")
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
@@ -266,8 +268,26 @@ class Problem(models.Model):
         blank=True, help_text="Explanation of the answer")
     difficulty = models.CharField(
         max_length=12, choices=DIFFICULTY_LEVELS, default='intermediate')
+    order = models.PositiveIntegerField(default=0)
+    content = models.JSONField(default=dict, help_text="Additional content for the problem")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['lesson', 'order']
+        unique_together = ['lesson', 'order']
+
+    def save(self, *args, **kwargs):
+        if not self.order and self.lesson:
+            # Get the highest order number for this lesson
+            last_order = Problem.objects.filter(lesson=self.lesson).aggregate(
+                models.Max('order'))['order__max'] or 0
+            # Get the highest order number from content blocks
+            last_content_order = LessonContentBlock.objects.filter(
+                lesson=self.lesson).aggregate(models.Max('order'))['order__max'] or 0
+            # Set order to the next available number
+            self.order = max(last_order, last_content_order) + 1
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.question_text[:50]}..."

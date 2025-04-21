@@ -34,7 +34,7 @@ class LessonAdmin(admin.ModelAdmin):
 
 
 class LessonContentBlockAdmin(admin.ModelAdmin):
-    list_display = ['id', 'lesson', 'block_type', 'order', 'created_at']
+    list_display = ['id', 'lesson', 'block_type', 'order']
     list_filter = ['block_type', 'lesson__course']
     search_fields = ['lesson__title', 'content']
 

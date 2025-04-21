@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.text import slugify
 from django.conf import settings
+from django.core.exceptions import ValidationError
 
 
 class Category(models.Model):
@@ -92,22 +93,136 @@ class LessonContentBlock(models.Model):
     A lesson is composed of multiple ordered content blocks
     (text, image, interactive, example, problem, etc.).
     """
-    BLOCK_TYPES = (
-        ('text', 'Text'),
-        ('image', 'Image'),
-        ('video', 'Video'),
-        ('interactive', 'Interactive'),
-        ('example', 'Example'),
-        ('problem', 'Problem'),
-        ('code', 'Code'),
-    )
+    BLOCK_TYPES = [
+        ('text', 'Text Block'),
+        ('example', 'Example Block'),
+        ('code', 'Code Block'),
+        ('image', 'Image Block'),
+        ('practice', 'Practice Block'),
+        ('video', 'Video Block'),
+        ('quiz', 'Quiz Block'),
+    ]
 
     lesson = models.ForeignKey(
         Lesson, related_name='content_blocks', on_delete=models.CASCADE)
     block_type = models.CharField(max_length=20, choices=BLOCK_TYPES)
-    content = models.JSONField(help_text="JSON content depends on block_type")
     order = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
+    content = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ['order']
+
+    def clean(self):
+        """Validate content based on block_type"""
+        super().clean()
+        self.validate_content()
+
+    def validate_content(self):
+        """Ensure content matches the required structure for the block_type"""
+        default_content = {
+            'text': {
+                'text': '',
+                'format': 'markdown'  # or 'html'
+            },
+            'example': {
+                'title': '',
+                'description': '',
+                'problem': '',
+                'solution': '',
+                'explanation': ''
+            },
+            'code': {
+                'language': 'plaintext',
+                'code': '',
+                'explanation': '',
+                'show_line_numbers': True
+            },
+            'image': {
+                'url': '',
+                'caption': '',
+                'alt': '',
+                'width': None,
+                'height': None
+            },
+            'practice': {
+                'title': '',
+                'problems': []
+            },
+            'video': {
+                'url': '',
+                'title': '',
+                'description': '',
+                'thumbnail': '',
+                'duration': None
+            },
+            'quiz': {
+                'title': '',
+                'questions': []
+            }
+        }
+
+        # Get the default structure for this block type
+        default_structure = default_content.get(self.block_type, {})
+        
+        # If content is empty, use default structure
+        if not self.content:
+            self.content = default_structure
+            return
+
+        # Validate content structure
+        if self.block_type == 'text':
+            if not isinstance(self.content.get('text'), str):
+                raise ValidationError("Text block must have a 'text' string field")
+            if self.content.get('format') not in ['markdown', 'html']:
+                raise ValidationError("Text block format must be 'markdown' or 'html'")
+
+        elif self.block_type == 'example':
+            required_fields = ['title', 'description', 'problem', 'solution', 'explanation']
+            for field in required_fields:
+                if not isinstance(self.content.get(field), str):
+                    raise ValidationError(f"Example block must have a '{field}' string field")
+
+        elif self.block_type == 'code':
+            if not isinstance(self.content.get('code'), str):
+                raise ValidationError("Code block must have a 'code' string field")
+            if not isinstance(self.content.get('language'), str):
+                raise ValidationError("Code block must have a 'language' string field")
+
+        elif self.block_type == 'image':
+            if not isinstance(self.content.get('url'), str):
+                raise ValidationError("Image block must have a 'url' string field")
+            if not isinstance(self.content.get('alt'), str):
+                raise ValidationError("Image block must have an 'alt' string field")
+
+        elif self.block_type == 'practice':
+            if not isinstance(self.content.get('title'), str):
+                raise ValidationError("Practice block must have a 'title' string field")
+            if not isinstance(self.content.get('problems'), list):
+                raise ValidationError("Practice block must have a 'problems' list")
+            for problem in self.content.get('problems', []):
+                if not all(key in problem for key in ['question', 'options', 'correct_answer']):
+                    raise ValidationError("Each practice problem must have question, options, and correct_answer")
+
+        elif self.block_type == 'video':
+            if not isinstance(self.content.get('url'), str):
+                raise ValidationError("Video block must have a 'url' string field")
+            if not isinstance(self.content.get('title'), str):
+                raise ValidationError("Video block must have a 'title' string field")
+
+        elif self.block_type == 'quiz':
+            if not isinstance(self.content.get('title'), str):
+                raise ValidationError("Quiz block must have a 'title' string field")
+            if not isinstance(self.content.get('questions'), list):
+                raise ValidationError("Quiz block must have a 'questions' list")
+            for question in self.content.get('questions', []):
+                if not all(key in question for key in ['question', 'type', 'correct_answer']):
+                    raise ValidationError("Each quiz question must have question, type, and correct_answer")
+                if question.get('type') not in ['multiple_choice', 'true_false', 'short_answer']:
+                    raise ValidationError("Question type must be multiple_choice, true_false, or short_answer")
+
+    def save(self, *args, **kwargs):
+        self.validate_content()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.lesson.title} - {self.get_block_type_display()} Block #{self.order}"

@@ -235,4 +235,94 @@ class LMSTestCase(TestCase):
         response = self.client.get(url, {'course': self.course.id})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['title'], 'Python Data Types') 
+        self.assertEqual(response.data[0]['title'], 'Python Data Types')
+
+    def test_create_lesson_content_blocks(self):
+        """Test creating different types of lesson content blocks"""
+        # Create a text block
+        text_block_data = {
+            'lesson': self.lesson.id,
+            'block_type': 'text',
+            'content': {
+                'text': 'This is a test text block',
+                'format': 'markdown'
+            },
+            'order': 1
+        }
+        url = reverse('lesson-content-block-list')
+        response = self.client.post(url, text_block_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['block_type'], 'text')
+        self.assertEqual(response.data['content']['text'], 'This is a test text block')
+
+        # Create a code block
+        code_block_data = {
+            'lesson': self.lesson.id,
+            'block_type': 'code',
+            'content': {
+                'language': 'python',
+                'code': 'print("Hello, World!")',
+                'explanation': 'A simple print statement'
+            },
+            'order': 2
+        }
+        response = self.client.post(url, code_block_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['block_type'], 'code')
+        self.assertEqual(response.data['content']['language'], 'python')
+
+        # Create a practice block
+        practice_block_data = {
+            'lesson': self.lesson.id,
+            'block_type': 'practice',
+            'content': {
+                'title': 'Practice Problems',
+                'problems': [
+                    {
+                        'question': 'What is 2 + 2?',
+                        'options': ['3', '4', '5', '6'],
+                        'correct_answer': '4'
+                    }
+                ]
+            },
+            'order': 3
+        }
+        response = self.client.post(url, practice_block_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['block_type'], 'practice')
+        self.assertEqual(len(response.data['content']['problems']), 1)
+
+    def test_invalid_content_block(self):
+        """Test validation of invalid content blocks"""
+        url = reverse('lesson-content-block-list')
+
+        # Test invalid text block (missing format)
+        invalid_text_block = {
+            'lesson': self.lesson.id,
+            'block_type': 'text',
+            'content': {
+                'text': 'Test text'
+                # missing format field
+            },
+            'order': 1
+        }
+        response = self.client.post(url, invalid_text_block, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Test invalid practice block (missing required fields)
+        invalid_practice_block = {
+            'lesson': self.lesson.id,
+            'block_type': 'practice',
+            'content': {
+                'title': 'Practice',
+                'problems': [
+                    {
+                        'question': 'Test question'
+                        # missing options and correct_answer
+                    }
+                ]
+            },
+            'order': 2
+        }
+        response = self.client.post(url, invalid_practice_block, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST) 

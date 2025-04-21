@@ -36,9 +36,81 @@ class ProblemSerializer(serializers.ModelSerializer):
 class LessonContentBlockSerializer(serializers.ModelSerializer):
     class Meta:
         model = LessonContentBlock
-        fields = ['id', 'lesson', 'block_type',
-                  'content', 'order', 'created_at']
-        read_only_fields = ['created_at']
+        fields = ['id', 'block_type', 'content', 'order']
+
+    def validate_content(self, value):
+        block_type = self.initial_data.get('block_type')
+        
+        # Define content schemas for each block type
+        content_schemas = {
+            'text': {
+                'text': serializers.CharField(),
+                'format': serializers.ChoiceField(choices=['markdown', 'html'])
+            },
+            'example': {
+                'title': serializers.CharField(),
+                'description': serializers.CharField(),
+                'problem': serializers.CharField(),
+                'solution': serializers.CharField(),
+                'explanation': serializers.CharField()
+            },
+            'code': {
+                'language': serializers.CharField(),
+                'code': serializers.CharField(),
+                'explanation': serializers.CharField(required=False),
+                'show_line_numbers': serializers.BooleanField(default=True)
+            },
+            'image': {
+                'url': serializers.URLField(),
+                'caption': serializers.CharField(required=False),
+                'alt': serializers.CharField(),
+                'width': serializers.IntegerField(required=False, allow_null=True),
+                'height': serializers.IntegerField(required=False, allow_null=True)
+            },
+            'practice': {
+                'title': serializers.CharField(),
+                'problems': serializers.ListField(
+                    child=serializers.DictField(
+                        child={
+                            'question': serializers.CharField(),
+                            'options': serializers.ListField(child=serializers.CharField()),
+                            'correct_answer': serializers.CharField()
+                        }
+                    )
+                )
+            },
+            'video': {
+                'url': serializers.URLField(),
+                'title': serializers.CharField(),
+                'description': serializers.CharField(required=False),
+                'thumbnail': serializers.URLField(required=False),
+                'duration': serializers.IntegerField(required=False, allow_null=True)
+            },
+            'quiz': {
+                'title': serializers.CharField(),
+                'questions': serializers.ListField(
+                    child=serializers.DictField(
+                        child={
+                            'question': serializers.CharField(),
+                            'type': serializers.ChoiceField(choices=['multiple_choice', 'true_false', 'short_answer']),
+                            'options': serializers.ListField(child=serializers.CharField(), required=False),
+                            'correct_answer': serializers.CharField(),
+                            'explanation': serializers.CharField(required=False)
+                        }
+                    )
+                )
+            }
+        }
+
+        if block_type not in content_schemas:
+            raise serializers.ValidationError(f"Invalid block type: {block_type}")
+
+        schema = content_schemas[block_type]
+        for field, field_type in schema.items():
+            if field not in value and not field_type.required:
+                value[field] = field_type.default if hasattr(field_type, 'default') else None
+
+        return value
 
 
 class LessonSerializer(serializers.ModelSerializer):

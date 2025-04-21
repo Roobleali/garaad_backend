@@ -67,6 +67,13 @@ class LessonContentBlockSerializer(serializers.ModelSerializer):
                 'width': serializers.IntegerField(required=False, allow_null=True),
                 'height': serializers.IntegerField(required=False, allow_null=True)
             },
+            'problem': {
+                'introduction': serializers.CharField(required=False),
+                'show_hints': serializers.BooleanField(default=True),
+                'show_solution': serializers.BooleanField(default=False),
+                'attempts_allowed': serializers.IntegerField(default=3),
+                'points': serializers.IntegerField(default=10)
+            },
             'practice': {
                 'title': serializers.CharField(),
                 'problems': serializers.ListField(

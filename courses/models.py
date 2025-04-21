@@ -152,7 +152,8 @@ class LessonContentBlock(models.Model):
                     "question_type": self.problem.question_type,
                     "options": self.problem.options,
                     "difficulty": self.problem.difficulty,
-                    "content": self.problem.content
+                    "content": self.problem.content,
+                    "diagram_config": self.problem.diagram_config if self.problem.question_type == 'diagram' else None
                 }
             }
         return self.content
@@ -168,9 +169,7 @@ class LessonContentBlock(models.Model):
             self.content = {}
 
         if self.block_type == 'problem':
-            if not self.problem:
-                raise ValidationError("Problem block must reference a Problem")
-            # Ensure minimum content structure for problem blocks
+            # Initialize with default content for problem blocks
             default_content = self.default_problem_content
             for key, value in default_content.items():
                 if key not in self.content:
@@ -182,6 +181,13 @@ class LessonContentBlock(models.Model):
             'text': {
                 'text': '',
                 'format': 'markdown'
+            },
+            'example': {
+                'title': '',
+                'description': '',
+                'problem': '',
+                'solution': '',
+                'explanation': ''
             },
             'code': {
                 'language': 'python',
@@ -249,6 +255,8 @@ class LessonContentBlock(models.Model):
                 raise ValidationError("Quiz block must have a 'questions' list")
 
     def save(self, *args, **kwargs):
+        if self.block_type == 'problem' and not self.problem:
+            raise ValidationError("Problem block must reference a Problem")
         self.validate_content()
         super().save(*args, **kwargs)
 

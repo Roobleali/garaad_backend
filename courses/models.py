@@ -161,15 +161,19 @@ class LessonContentBlock(models.Model):
     def clean(self):
         """Validate content based on block_type"""
         super().clean()
-        self.validate_content()
-
-    def validate_content(self):
-        """Ensure content matches the required structure for the block_type"""
-        if not self.content:
+        
+        # Ensure content is a dictionary
+        if not isinstance(self.content, dict):
             self.content = {}
-
+        
+        # Validate problem block requirements
         if self.block_type == 'problem':
-            # Initialize with default content for problem blocks
+            if not self.problem:
+                raise ValidationError({
+                    'problem': 'A Problem reference is required for problem blocks'
+                })
+            
+            # Initialize with default content
             default_content = self.default_problem_content
             for key, value in default_content.items():
                 if key not in self.content:
@@ -177,6 +181,14 @@ class LessonContentBlock(models.Model):
             return
 
         # Validation for other block types...
+        self.validate_content()
+
+    def validate_content(self):
+        """Ensure content matches the required structure for the block_type"""
+        if not isinstance(self.content, dict):
+            self.content = {}
+
+        # Default content structures for different block types
         default_content = {
             'text': {
                 'text': '',
@@ -220,44 +232,39 @@ class LessonContentBlock(models.Model):
         
         # If content is empty, use default structure
         if not self.content:
-            self.content = default_structure
+            self.content = default_structure.copy()
             return
 
-        # Validate content structure based on block type
-        if self.block_type == 'text':
-            if not isinstance(self.content.get('text'), str):
-                raise ValidationError("Text block must have a 'text' string field")
-            if self.content.get('format') not in ['markdown', 'html']:
-                raise ValidationError("Text block format must be 'markdown' or 'html'")
-
-        elif self.block_type == 'code':
-            if not isinstance(self.content.get('code'), str):
-                raise ValidationError("Code block must have a 'code' string field")
-            if not isinstance(self.content.get('language'), str):
-                raise ValidationError("Code block must have a 'language' string field")
-
-        elif self.block_type == 'image':
-            if not isinstance(self.content.get('url'), str):
-                raise ValidationError("Image block must have a 'url' string field")
-            if not isinstance(self.content.get('alt'), str):
-                raise ValidationError("Image block must have an 'alt' string field")
-
-        elif self.block_type == 'video':
-            if not isinstance(self.content.get('url'), str):
-                raise ValidationError("Video block must have a 'url' string field")
-            if not isinstance(self.content.get('title'), str):
-                raise ValidationError("Video block must have a 'title' string field")
-
-        elif self.block_type == 'quiz':
-            if not isinstance(self.content.get('title'), str):
-                raise ValidationError("Quiz block must have a 'title' string field")
-            if not isinstance(self.content.get('questions'), list):
-                raise ValidationError("Quiz block must have a 'questions' list")
+        # Merge default values for missing fields
+        for key, value in default_structure.items():
+            if key not in self.content:
+                self.content[key] = value
 
     def save(self, *args, **kwargs):
-        if self.block_type == 'problem' and not self.problem:
-            raise ValidationError("Problem block must reference a Problem")
-        self.validate_content()
+        """
+        Custom save method to ensure content is properly initialized and validated
+        """
+        # Ensure content is a dictionary
+        if not isinstance(self.content, dict):
+            self.content = {}
+
+        # Handle problem blocks
+        if self.block_type == 'problem':
+            if not self.problem:
+                raise ValidationError({
+                    'problem': 'A Problem reference is required for problem blocks'
+                })
+            
+            # Initialize with default content
+            default_content = self.default_problem_content
+            self.content = {
+                **default_content,
+                **self.content
+            }
+        else:
+            # For other block types
+            self.validate_content()
+
         super().save(*args, **kwargs)
 
     def __str__(self):

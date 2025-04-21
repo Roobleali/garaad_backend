@@ -4,6 +4,7 @@ from .models import (
     Problem, Hint, SolutionStep,
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
 )
+from django.core.exceptions import ValidationError
 
 
 class CategoryAdmin(admin.ModelAdmin):
@@ -46,7 +47,7 @@ class LessonContentBlockAdmin(admin.ModelAdmin):
     list_display = ['lesson', 'block_type', 'order', 'has_problem']
     list_filter = ['block_type', 'lesson__course']
     search_fields = ['lesson__title', 'content']
-    raw_id_fields = ['problem']
+    raw_id_fields = ['problem', 'lesson']
     
     def has_problem(self, obj):
         return bool(obj.problem)
@@ -57,12 +58,38 @@ class LessonContentBlockAdmin(admin.ModelAdmin):
         form = super().get_form(request, obj, **kwargs)
         if obj is None:  # Only for new objects
             form.base_fields['content'].initial = {}
+            
+        # Make problem field required for problem block type
+        if obj and obj.block_type == 'problem':
+            form.base_fields['problem'].required = True
+            
         return form
     
     def save_model(self, request, obj, form, change):
+        """
+        Custom save method to handle content initialization
+        """
         if not change:  # Only for new objects
-            obj.content = obj.default_content.get(obj.block_type, {})
-        super().save_model(request, obj, form, change)
+            if obj.block_type == 'problem':
+                # Initialize problem block content
+                obj.content = {
+                    "introduction": obj.content.get('introduction', ''),
+                    "show_hints": obj.content.get('show_hints', True),
+                    "show_solution": obj.content.get('show_solution', False),
+                    "attempts_allowed": obj.content.get('attempts_allowed', 3),
+                    "points": obj.content.get('points', 10)
+                }
+            else:
+                # For other block types
+                obj.content = obj.content or {}
+        
+        try:
+            super().save_model(request, obj, form, change)
+        except Exception as e:
+            # Add more context to the error
+            if 'content' in str(e):
+                raise ValidationError(f"Content validation error: {str(e)}")
+            raise
 
 
 class HintInline(admin.TabularInline):

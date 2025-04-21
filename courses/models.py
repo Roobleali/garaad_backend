@@ -233,6 +233,93 @@ class LessonContentBlock(models.Model):
         verbose_name_plural = "Lesson Content Blocks"
 
 
+def get_default_content():
+    return {
+        "metadata": {
+            "difficulty": "medium",
+            "estimated_time": 10,
+            "tags": ["algebra", "equations"]
+        },
+        "hints": [
+            {
+                "text": "Consider breaking down the problem into smaller steps",
+                "order": 1
+            }
+        ],
+        "steps": [
+            {
+                "text": "First, identify the known variables",
+                "order": 1
+            },
+            {
+                "text": "Then, set up the equation",
+                "order": 2
+            }
+        ],
+        "feedback": {
+            "correct": "Great job! You've mastered this concept.",
+            "incorrect": "Let's review the steps and try again."
+        }
+    }
+
+def get_default_diagram_config():
+    return {
+        "type": "scale-weight",
+        "parameters": {
+            "weight": 40,
+            "items": [
+                {
+                    "type": "square",
+                    "count": 4,
+                    "color": "#3498db",
+                    "size": 20
+                }
+            ],
+            "scale": {
+                "width": 300,
+                "height": 200,
+                "color": "#2c3e50"
+            }
+        },
+        "interactive": True,
+        "controls": [
+            {
+                "type": "slider",
+                "name": "weight",
+                "label": "Total Weight",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "default": 40
+            },
+            {
+                "type": "slider",
+                "name": "items_count",
+                "label": "Number of Items",
+                "min": 1,
+                "max": 10,
+                "step": 1,
+                "default": 4
+            }
+        ],
+        "animations": {
+            "weight_change": {
+                "duration": 500,
+                "easing": "easeInOut"
+            },
+            "item_addition": {
+                "duration": 300,
+                "easing": "easeOut"
+            }
+        },
+        "styles": {
+            "background": "#f8f9fa",
+            "text_color": "#2c3e50",
+            "font_family": "Arial, sans-serif",
+            "font_size": "14px"
+        }
+    }
+
 class Problem(models.Model):
     """
     Reusable question entity (used in lessons or practice sets).
@@ -270,13 +357,8 @@ class Problem(models.Model):
     difficulty = models.CharField(
         max_length=12, choices=DIFFICULTY_LEVELS, default='intermediate')
     order = models.PositiveIntegerField(default=0)
-    content = models.JSONField(default=dict, help_text="Additional content for the problem")
-    diagram_config = models.JSONField(
-        default=dict, 
-        help_text="Configuration for interactive diagrams",
-        blank=True,
-        null=True
-    )
+    content = models.JSONField(default=get_default_content)
+    diagram_config = models.JSONField(default=get_default_diagram_config, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -295,28 +377,13 @@ class Problem(models.Model):
             # Set order to the next available number
             self.order = max(last_order, last_content_order) + 1
         
+        # Initialize content if empty
+        if not self.content:
+            self.content = get_default_content()
+        
         # Initialize diagram_config if it's a diagram problem
         if self.question_type == 'diagram' and not self.diagram_config:
-            self.diagram_config = {
-                'type': 'scale-weight',  # or other diagram types
-                'parameters': {
-                    'weight': 40,
-                    'items': [
-                        {'type': 'square', 'count': 4}
-                    ]
-                },
-                'interactive': True,
-                'controls': [
-                    {
-                        'type': 'slider',
-                        'name': 'weight',
-                        'min': 0,
-                        'max': 100,
-                        'step': 1,
-                        'default': 40
-                    }
-                ]
-            }
+            self.diagram_config = get_default_diagram_config()
         
         super().save(*args, **kwargs)
 

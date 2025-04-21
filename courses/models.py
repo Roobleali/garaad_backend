@@ -246,6 +246,7 @@ class Problem(models.Model):
         ('open_ended', 'Open Ended'),
         ('math_expression', 'Math Expression'),
         ('code', 'Coding Problem'),
+        ('diagram', 'Diagram Problem'),
     )
 
     DIFFICULTY_LEVELS = (
@@ -270,6 +271,12 @@ class Problem(models.Model):
         max_length=12, choices=DIFFICULTY_LEVELS, default='intermediate')
     order = models.PositiveIntegerField(default=0)
     content = models.JSONField(default=dict, help_text="Additional content for the problem")
+    diagram_config = models.JSONField(
+        default=dict, 
+        help_text="Configuration for interactive diagrams",
+        blank=True,
+        null=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -287,6 +294,30 @@ class Problem(models.Model):
                 lesson=self.lesson).aggregate(models.Max('order'))['order__max'] or 0
             # Set order to the next available number
             self.order = max(last_order, last_content_order) + 1
+        
+        # Initialize diagram_config if it's a diagram problem
+        if self.question_type == 'diagram' and not self.diagram_config:
+            self.diagram_config = {
+                'type': 'scale-weight',  # or other diagram types
+                'parameters': {
+                    'weight': 40,
+                    'items': [
+                        {'type': 'square', 'count': 4}
+                    ]
+                },
+                'interactive': True,
+                'controls': [
+                    {
+                        'type': 'slider',
+                        'name': 'weight',
+                        'min': 0,
+                        'max': 100,
+                        'step': 1,
+                        'default': 40
+                    }
+                ]
+            }
+        
         super().save(*args, **kwargs)
 
     def __str__(self):

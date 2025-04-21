@@ -22,6 +22,11 @@ class LessonContentBlockInline(admin.TabularInline):
     model = LessonContentBlock
     extra = 1
     fields = ['block_type', 'content', 'order']
+    
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        formset.form.base_fields['content'].initial = {}
+        return formset
 
 
 class LessonAdmin(admin.ModelAdmin):
@@ -37,6 +42,17 @@ class LessonContentBlockAdmin(admin.ModelAdmin):
     list_display = ['id', 'lesson', 'block_type', 'order']
     list_filter = ['block_type', 'lesson__course']
     search_fields = ['lesson__title', 'content']
+    
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj is None:  # Only for new objects
+            form.base_fields['content'].initial = {}
+        return form
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # Only for new objects
+            obj.content = LessonContentBlock.DEFAULT_CONTENT.get(obj.block_type, {})
+        super().save_model(request, obj, form, change)
 
 
 class HintInline(admin.TabularInline):

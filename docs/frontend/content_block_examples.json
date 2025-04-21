@@ -1,0 +1,72 @@
+{
+  "default_structures": {
+    "text": {
+      "text": "",
+      "format": "markdown"
+    },
+    "code": {
+      "language": "plaintext",
+      "code": "",
+      "explanation": "",
+      "show_line_numbers": true
+    },
+    "image": {
+      "url": "",
+      "caption": "",
+      "alt": "",
+      "width": null,
+      "height": null
+    },
+    "example": {
+      "title": "",
+      "description": "",
+      "problem": "",
+      "solution": "",
+      "explanation": ""
+    }
+  },
+
+  "text_block_example": {
+    "block_type": "text",
+    "content": {
+      "text": "# Introduction to Python\n\nPython is a high-level programming language known for its simplicity and readability. It's widely used in various fields including web development, data science, and artificial intelligence.\n\n## Key Features\n\n- Easy to learn and use\n- Extensive standard library\n- Cross-platform compatibility\n- Strong community support",
+      "format": "markdown"
+    },
+    "order": 1
+  },
+
+  "code_block_example": {
+    "block_type": "code",
+    "content": {
+      "language": "python",
+      "code": "def greet(name):\n    \"\"\"\n    A simple function that greets a person by name.\n    \n    Args:\n        name (str): The name of the person to greet\n    \n    Returns:\n        str: A greeting message\n    \"\"\"\n    return f\"Hello, {name}! Welcome to Python programming.\"\n\n# Example usage\nprint(greet(\"Alice\"))",
+      "explanation": "This example demonstrates a basic Python function with docstring documentation. The function takes a name as input and returns a personalized greeting message.",
+      "show_line_numbers": true
+    },
+    "order": 2
+  },
+
+  "image_block_example": {
+    "block_type": "image",
+    "content": {
+      "url": "https://example.com/images/python-logo.png",
+      "caption": "The official Python logo",
+      "alt": "Python programming language logo featuring a blue and yellow snake",
+      "width": 400,
+      "height": 400
+    },
+    "order": 3
+  },
+
+  "example_block_example": {
+    "block_type": "example",
+    "content": {
+      "title": "Function with Default Parameters",
+      "description": "This example demonstrates how to use default parameters in Python functions",
+      "problem": "Create a function that greets a user with a customizable message and default greeting",
+      "solution": "def greet(name, message=\"Hello\"):\n    return f\"{message}, {name}!\"\n\n# Usage examples\nprint(greet(\"Alice\"))  # Output: Hello, Alice!\nprint(greet(\"Bob\", \"Hi\"))  # Output: Hi, Bob!",
+      "explanation": "Default parameters allow functions to be called with fewer arguments than they are defined to allow. If no value is provided for a parameter, the default value is used."
+    },
+    "order": 4
+  }
+}

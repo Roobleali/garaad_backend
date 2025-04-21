@@ -36,12 +36,49 @@ class ProblemSerializer(serializers.ModelSerializer):
 class LessonContentBlockSerializer(serializers.ModelSerializer):
     class Meta:
         model = LessonContentBlock
-        fields = ['id', 'block_type', 'content', 'order']
+        fields = ['id', 'lesson', 'block_type', 'content', 'order', 'problem']
 
-    def validate_content(self, value):
-        block_type = self.initial_data.get('block_type')
-        
-        # Define content schemas for each block type
+    def to_internal_value(self, data):
+        """
+        Handle the case where content is empty or not provided
+        """
+        if 'content' not in data or not data['content']:
+            data['content'] = {}
+        return super().to_internal_value(data)
+
+    def validate(self, data):
+        """
+        Validate the complete object
+        """
+        block_type = data.get('block_type')
+        content = data.get('content', {})
+        problem = data.get('problem')
+
+        # Handle problem block type
+        if block_type == 'problem':
+            if not problem:
+                raise serializers.ValidationError({
+                    'problem': 'Problem reference is required for problem blocks'
+                })
+            
+            # Ensure minimum content structure for problem blocks
+            default_content = {
+                "introduction": "",
+                "show_hints": True,
+                "show_solution": False,
+                "attempts_allowed": 3,
+                "points": 10
+            }
+            
+            # Update content with defaults for missing fields
+            for key, value in default_content.items():
+                if key not in content:
+                    content[key] = value
+            
+            data['content'] = content
+            return data
+
+        # Validate other block types
         content_schemas = {
             'text': {
                 'text': serializers.CharField(),
@@ -67,25 +104,6 @@ class LessonContentBlockSerializer(serializers.ModelSerializer):
                 'width': serializers.IntegerField(required=False, allow_null=True),
                 'height': serializers.IntegerField(required=False, allow_null=True)
             },
-            'problem': {
-                'introduction': serializers.CharField(required=False),
-                'show_hints': serializers.BooleanField(default=True),
-                'show_solution': serializers.BooleanField(default=False),
-                'attempts_allowed': serializers.IntegerField(default=3),
-                'points': serializers.IntegerField(default=10)
-            },
-            'practice': {
-                'title': serializers.CharField(),
-                'problems': serializers.ListField(
-                    child=serializers.DictField(
-                        child={
-                            'question': serializers.CharField(),
-                            'options': serializers.ListField(child=serializers.CharField()),
-                            'correct_answer': serializers.CharField()
-                        }
-                    )
-                )
-            },
             'video': {
                 'url': serializers.URLField(),
                 'title': serializers.CharField(),
@@ -96,28 +114,36 @@ class LessonContentBlockSerializer(serializers.ModelSerializer):
             'quiz': {
                 'title': serializers.CharField(),
                 'questions': serializers.ListField(
-                    child=serializers.DictField(
-                        child={
-                            'question': serializers.CharField(),
-                            'type': serializers.ChoiceField(choices=['multiple_choice', 'true_false', 'short_answer']),
-                            'options': serializers.ListField(child=serializers.CharField(), required=False),
-                            'correct_answer': serializers.CharField(),
-                            'explanation': serializers.CharField(required=False)
-                        }
-                    )
+                    child=serializers.DictField()
                 )
             }
         }
 
-        if block_type not in content_schemas:
-            raise serializers.ValidationError(f"Invalid block type: {block_type}")
+        if block_type in content_schemas:
+            schema = content_schemas[block_type]
+            default_content = {}
+            for field, field_type in schema.items():
+                if field not in content:
+                    default_content[field] = field_type.default if hasattr(field_type, 'default') else None
+            data['content'] = {**default_content, **content}
 
-        schema = content_schemas[block_type]
-        for field, field_type in schema.items():
-            if field not in value and not field_type.required:
-                value[field] = field_type.default if hasattr(field_type, 'default') else None
+        return data
 
-        return value
+    def create(self, validated_data):
+        """
+        Create a new LessonContentBlock instance
+        """
+        instance = super().create(validated_data)
+        instance.validate_content()  # Run model validation
+        return instance
+
+    def update(self, instance, validated_data):
+        """
+        Update a LessonContentBlock instance
+        """
+        instance = super().update(instance, validated_data)
+        instance.validate_content()  # Run model validation
+        return instance
 
 
 class LessonSerializer(serializers.ModelSerializer):

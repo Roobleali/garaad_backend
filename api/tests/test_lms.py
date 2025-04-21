@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
-from courses.models import Course, Lesson, Category
+from courses.models import Course, Lesson, Category, LessonContentBlock, Problem
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -12,28 +12,32 @@ class LMSTestCase(TestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(
             username='testuser',
+            email='test@example.com',
             password='testpass123'
         )
         self.client.force_authenticate(user=self.user)
 
-        # Create a test category
+        # Create test data
         self.category = Category.objects.create(
-            name='Programming',
-            description='Programming courses'
+            id='test-category',
+            title='Test Category',
+            description='Test category description',
+            image='test.jpg',
+            in_progress=False
         )
 
-        # Create a Python course
         self.course = Course.objects.create(
-            title='Python Programming',
-            description='Learn Python from scratch',
             category=self.category,
+            title='Test Course',
+            description='Test course description',
+            thumbnail='test.jpg',
+            author_id='test-author',
             is_published=True
         )
 
-        # Create a lesson
         self.lesson = Lesson.objects.create(
-            title='Python Data Types',
             course=self.course,
+            title='Test Lesson',
             lesson_number=1,
             estimated_time=30,
             is_published=True
@@ -325,4 +329,95 @@ class LMSTestCase(TestCase):
             'order': 2
         }
         response = self.client.post(url, invalid_practice_block, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST) 
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_lesson_content_navigation(self):
+        """Test navigation between lesson content blocks and problems"""
+        # Create a lesson with mixed content
+        lesson = Lesson.objects.create(
+            course=self.course,
+            title='Test Navigation',
+            lesson_number=1,
+            estimated_time=30,
+            is_published=True
+        )
+
+        # Create content blocks
+        block1 = LessonContentBlock.objects.create(
+            lesson=lesson,
+            block_type='text',
+            content={
+                'text': 'First content block',
+                'format': 'markdown'
+            },
+            order=1
+        )
+
+        block2 = LessonContentBlock.objects.create(
+            lesson=lesson,
+            block_type='code',
+            content={
+                'code': 'print("Hello")',
+                'language': 'python',
+                'explanation': 'A simple print statement'
+            },
+            order=3
+        )
+
+        # Create problems
+        problem1 = Problem.objects.create(
+            lesson=lesson,
+            question_text='What is 2 + 2?',
+            question_type='single_choice',
+            options=['3', '4', '5'],
+            correct_answer='4',
+            explanation='Basic addition',
+            difficulty='beginner',
+            order=2
+        )
+
+        problem2 = Problem.objects.create(
+            lesson=lesson,
+            question_text='What is 3 * 3?',
+            question_type='single_choice',
+            options=['6', '9', '12'],
+            correct_answer='9',
+            explanation='Basic multiplication',
+            difficulty='beginner',
+            order=4
+        )
+
+        # Test getting all content in order
+        url = reverse('lesson-content', kwargs={'pk': lesson.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        content = response.data
+        self.assertEqual(len(content), 4)
+        self.assertEqual(content[0]['order'], 1)
+        self.assertEqual(content[1]['order'], 2)
+        self.assertEqual(content[2]['order'], 3)
+        self.assertEqual(content[3]['order'], 4)
+
+        # Test getting next content
+        url = reverse('lesson-next-content', kwargs={'pk': lesson.id})
+        response = self.client.get(f"{url}?order=1")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['type'], 'problem')
+        self.assertEqual(response.data['order'], 2)
+
+        # Test getting previous content
+        url = reverse('lesson-previous-content', kwargs={'pk': lesson.id})
+        response = self.client.get(f"{url}?order=3")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['type'], 'problem')
+        self.assertEqual(response.data['order'], 2)
+
+        # Test end of content
+        url = reverse('lesson-next-content', kwargs={'pk': lesson.id})
+        response = self.client.get(f"{url}?order=4")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Test beginning of content
+        url = reverse('lesson-previous-content', kwargs={'pk': lesson.id})
+        response = self.client.get(f"{url}?order=1")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND) 

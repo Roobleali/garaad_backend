@@ -138,33 +138,70 @@ Response:
 
 #### Get Lesson Content
 ```http
-GET /lessons/{id}/
+GET /lessons/{id}/content/
 ```
-**Purpose**: Similar to Brilliant.org's lesson pages, this endpoint provides the core learning content. It delivers:
-- Structured lesson content
-- Interactive elements
-- Progress tracking
-- Estimated completion time
-- Content blocks for different types of learning materials
+**Purpose**: Get all content (blocks and problems) for a lesson in sequential order.
+
+Response:
+```json
+[
+    {
+        "type": "block",
+        "id": "string",
+        "order": number,
+        "block_type": "string",
+        "content": {}
+    },
+    {
+        "type": "problem",
+        "id": "string",
+        "order": number,
+        "question_type": "string",
+        "question_text": "string",
+        "content": {}
+    }
+]
+```
+
+#### Get Next Content
+```http
+GET /lessons/{id}/next_content/?order={current_order}
+```
+**Purpose**: Get the next content item (block or problem) after the specified order.
+
+Query Parameters:
+- `order`: The current order number (default: 0)
 
 Response:
 ```json
 {
+    "type": "block|problem",
     "id": "string",
-    "title": "string",
-    "slug": "string",
-    "module": "string",
-    "lesson_number": number,
-    "estimated_time": number,
-    "is_published": boolean,
-    "content_blocks": [
-        {
-            "id": "string",
-            "block_type": "string",
-            "content": {},
-            "order": number
-        }
-    ]
+    "order": number,
+    "block_type|question_type": "string",
+    "content": {},
+    "question_text": "string"  // Only for problems
+}
+```
+
+#### Get Previous Content
+```http
+GET /lessons/{id}/previous_content/?order={current_order}
+```
+**Purpose**: Get the previous content item (block or problem) before the specified order.
+
+Query Parameters:
+- `order`: The current order number (default: 0)
+
+Response:
+```json
+{
+    "type": "block|problem",
+    "id": "string",
+    "order": number,
+    "block_type|question_type": "string",
+    "content": {},
+    "question_text": "string"  // Only for problems
 }
 ```
 

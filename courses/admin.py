@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Category, Course, Lesson, LessonContentBlock,
-    Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem,
+    Problem, Hint, SolutionStep,
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
 )
 
@@ -111,30 +111,6 @@ class ProblemAdmin(admin.ModelAdmin):
     question_text_short.short_description = "Question"
 
 
-class PracticeSetProblemInline(admin.TabularInline):
-    model = PracticeSetProblem
-    extra = 1
-    fields = ['problem', 'order']
-
-
-class PracticeSetAdmin(admin.ModelAdmin):
-    list_display = ['title', 'practice_type', 'related_to',
-                    'difficulty_level', 'is_published', 'created_at']
-    list_filter = ['practice_type', 'difficulty_level', 'is_published']
-    search_fields = ['title']
-    inlines = [PracticeSetProblemInline]
-
-    def related_to(self, obj):
-        return obj.lesson.title if obj.lesson else obj.course.title
-    related_to.short_description = "Related To"
-
-
-class PracticeSetProblemAdmin(admin.ModelAdmin):
-    list_display = ['id', 'practice_set', 'problem', 'order']
-    list_filter = ['practice_set']
-    search_fields = ['practice_set__title', 'problem__question_text']
-
-
 # New admin classes for progress and rewards models
 
 class UserProgressAdmin(admin.ModelAdmin):
@@ -172,8 +148,6 @@ admin.site.register(Course, CourseAdmin)
 admin.site.register(Lesson, LessonAdmin)
 admin.site.register(LessonContentBlock, LessonContentBlockAdmin)
 admin.site.register(Problem, ProblemAdmin)
-admin.site.register(PracticeSet, PracticeSetAdmin)
-admin.site.register(PracticeSetProblem, PracticeSetProblemAdmin)
 
 # Register new models
 admin.site.register(UserProgress, UserProgressAdmin)

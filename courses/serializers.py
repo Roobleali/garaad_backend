@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     Category, Course, Lesson, LessonContentBlock,
-    Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem,
+    Problem, Hint, SolutionStep,
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
 )
 from django.db import models
@@ -127,38 +127,15 @@ class LessonSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
 
-class PracticeSetProblemSerializer(serializers.ModelSerializer):
-    problem_details = ProblemSerializer(source='problem', read_only=True)
-
-    class Meta:
-        model = PracticeSetProblem
-        fields = ['id', 'practice_set', 'problem', 'problem_details', 'order']
-
-
-class PracticeSetSerializer(serializers.ModelSerializer):
-    practice_set_problems = PracticeSetProblemSerializer(
-        many=True, read_only=True)
-
-    class Meta:
-        model = PracticeSet
-        fields = [
-            'id', 'title', 'lesson', 'module', 'practice_type',
-            'difficulty_level', 'is_randomized', 'is_published',
-            'practice_set_problems', 'created_at', 'updated_at'
-        ]
-        read_only_fields = ['created_at', 'updated_at']
-
-
 class CourseSerializer(serializers.ModelSerializer):
     lessons = LessonSerializer(many=True, read_only=True)
-    practice_sets = PracticeSetSerializer(many=True, read_only=True)
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
 
     class Meta:
         model = Course
         fields = [
             'id', 'title', 'slug', 'description', 'thumbnail',
-            'is_new', 'progress', 'lessons', 'practice_sets',
+            'is_new', 'progress', 'lessons',
             'category', 'author_id', 'is_published',
             'created_at', 'updated_at'
         ]

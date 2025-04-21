@@ -7,14 +7,13 @@ from django.http import Http404
 from django.utils import timezone
 from .models import (
     Category, Course, Lesson, LessonContentBlock,
-    Problem, Hint, SolutionStep, PracticeSet, PracticeSetProblem,
+    Problem, Hint, SolutionStep,
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
 )
 from .serializers import (
     CategorySerializer, CourseSerializer, CourseListSerializer,
     LessonSerializer, LessonContentBlockSerializer,
     ProblemSerializer, HintSerializer, SolutionStepSerializer,
-    PracticeSetSerializer, PracticeSetProblemSerializer,
     UserProgressSerializer, UserProgressUpdateSerializer,
     CourseEnrollmentSerializer, UserRewardSerializer,
     LeaderboardEntrySerializer, LessonWithNextSerializer,
@@ -96,6 +95,7 @@ class LessonViewSet(viewsets.ModelViewSet):
     API endpoint for lessons.
     """
     queryset = Lesson.objects.all()
+    serializer_class = LessonSerializer
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -176,6 +176,131 @@ class LessonViewSet(viewsets.ModelViewSet):
             lesson, context={'request': request})
         return Response(serializer.data)
 
+    @action(detail=True, methods=['get'])
+    def content(self, request, pk=None):
+        """
+        Get all content (blocks and problems) for a lesson in order.
+        """
+        lesson = self.get_object()
+        
+        # Get all content blocks and problems
+        blocks = LessonContentBlock.objects.filter(lesson=lesson).order_by('order')
+        problems = Problem.objects.filter(lesson=lesson).order_by('order')
+        
+        # Combine and sort by order
+        content = []
+        for block in blocks:
+            content.append({
+                'type': 'block',
+                'id': block.id,
+                'order': block.order,
+                'block_type': block.block_type,
+                'content': block.content
+            })
+        
+        for problem in problems:
+            content.append({
+                'type': 'problem',
+                'id': problem.id,
+                'order': problem.order,
+                'question_type': problem.question_type,
+                'question_text': problem.question_text,
+                'content': problem.content
+            })
+        
+        # Sort by order
+        content.sort(key=lambda x: x['order'])
+        
+        return Response(content)
+
+    @action(detail=True, methods=['get'])
+    def next_content(self, request, pk=None):
+        """
+        Get the next content item after the specified order.
+        """
+        lesson = self.get_object()
+        current_order = request.query_params.get('order', 0)
+        
+        # Get next block or problem
+        next_block = LessonContentBlock.objects.filter(
+            lesson=lesson, order__gt=current_order
+        ).order_by('order').first()
+        
+        next_problem = Problem.objects.filter(
+            lesson=lesson, order__gt=current_order
+        ).order_by('order').first()
+        
+        # Determine which is next
+        if next_block and next_problem:
+            next_item = next_block if next_block.order < next_problem.order else next_problem
+        else:
+            next_item = next_block or next_problem
+        
+        if not next_item:
+            return Response({'detail': 'No more content'}, status=status.HTTP_404_NOT_FOUND)
+        
+        if isinstance(next_item, LessonContentBlock):
+            return Response({
+                'type': 'block',
+                'id': next_item.id,
+                'order': next_item.order,
+                'block_type': next_item.block_type,
+                'content': next_item.content
+            })
+        else:
+            return Response({
+                'type': 'problem',
+                'id': next_item.id,
+                'order': next_item.order,
+                'question_type': next_item.question_type,
+                'question_text': next_item.question_text,
+                'content': next_item.content
+            })
+
+    @action(detail=True, methods=['get'])
+    def previous_content(self, request, pk=None):
+        """
+        Get the previous content item before the specified order.
+        """
+        lesson = self.get_object()
+        current_order = request.query_params.get('order', 0)
+        
+        # Get previous block or problem
+        prev_block = LessonContentBlock.objects.filter(
+            lesson=lesson, order__lt=current_order
+        ).order_by('-order').first()
+        
+        prev_problem = Problem.objects.filter(
+            lesson=lesson, order__lt=current_order
+        ).order_by('-order').first()
+        
+        # Determine which is previous
+        if prev_block and prev_problem:
+            prev_item = prev_block if prev_block.order > prev_problem.order else prev_problem
+        else:
+            prev_item = prev_block or prev_problem
+        
+        if not prev_item:
+            return Response({'detail': 'No previous content'}, status=status.HTTP_404_NOT_FOUND)
+        
+        if isinstance(prev_item, LessonContentBlock):
+            return Response({
+                'type': 'block',
+                'id': prev_item.id,
+                'order': prev_item.order,
+                'block_type': prev_item.block_type,
+                'content': prev_item.content
+            })
+        else:
+            return Response({
+                'type': 'problem',
+                'id': prev_item.id,
+                'order': prev_item.order,
+                'question_type': prev_item.question_type,
+                'question_text': prev_item.question_text,
+                'content': prev_item.content
+            })
+
 
 class LessonContentBlockViewSet(viewsets.ModelViewSet):
     """
@@ -250,144 +375,6 @@ class ProblemViewSet(viewsets.ModelViewSet):
     search_fields = ['question_text']
     ordering_fields = ['created_at', 'difficulty']
 
-
-class PracticeSetViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint for practice sets.
-    """
-    queryset = PracticeSet.objects.all()
-    serializer_class = PracticeSetSerializer
-
-    def get_queryset(self):
-        """
-        Optionally restricts the returned practice sets by filtering
-        against query parameters in the URL.
-        """
-        queryset = PracticeSet.objects.all()
-
-        lesson_id = self.request.query_params.get('lesson', None)
-        if lesson_id is not None:
-            queryset = queryset.filter(lesson_id=lesson_id)
-
-        module_id = self.request.query_params.get('module', None)
-        if module_id is not None:
-            queryset = queryset.filter(module_id=module_id)
-
-        practice_type = self.request.query_params.get('practice_type', None)
-        if practice_type is not None:
-            queryset = queryset.filter(practice_type=practice_type)
-
-        difficulty = self.request.query_params.get('difficulty', None)
-        if difficulty is not None:
-            queryset = queryset.filter(difficulty_level=difficulty)
-
-        return queryset
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def complete(self, request, pk=None):
-        """
-        Mark a practice set as completed and award points if score is perfect.
-        """
-        practice_set = self.get_object()
-        score = request.data.get('score', 0)
-
-        # Award points for perfect score
-        reward = None
-        if score == 100:
-            reward = UserReward.award_practice_completion(
-                user=request.user,
-                practice_set=practice_set,
-                score=score
-            )
-
-        # If practice set is associated with a lesson, mark lesson as completed
-        if practice_set.lesson:
-            progress, created = UserProgress.objects.get_or_create(
-                user=request.user,
-                lesson=practice_set.lesson
-            )
-            progress.mark_as_completed(score=score)
-
-        response_data = {
-            'practice_set': practice_set.id,
-            'score': score,
-            'completed': True
-        }
-
-        if reward:
-            response_data['reward'] = {
-                'points': reward.value,
-                'name': reward.reward_name
-            }
-
-        return Response(response_data)
-
-
-class PracticeSetProblemViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint for practice set problems.
-    """
-    queryset = PracticeSetProblem.objects.all()
-    serializer_class = PracticeSetProblemSerializer
-
-    def get_queryset(self):
-        """
-        Optionally restricts the returned practice set problems by filtering
-        against query parameters in the URL.
-        """
-        queryset = PracticeSetProblem.objects.all()
-        practice_set_id = self.request.query_params.get('practice_set', None)
-        if practice_set_id is not None:
-            queryset = queryset.filter(practice_set_id=practice_set_id)
-        return queryset
-
-    @action(detail=False, methods=['post'])
-    def reorder(self, request):
-        """
-        Reorder problems within a practice set.
-        """
-        practice_set_id = request.data.get('practice_set_id')
-        problem_order = request.data.get('problem_order', [])
-
-        if not practice_set_id or not isinstance(problem_order, list):
-            return Response(
-                {'error': 'practice_set_id and problem_order list are required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            practice_set = PracticeSet.objects.get(id=practice_set_id)
-        except PracticeSet.DoesNotExist:
-            return Response(
-                {'error': 'Practice set not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        # Validate that all problem IDs exist and belong to this practice set
-        set_problems = PracticeSetProblem.objects.filter(
-            practice_set=practice_set)
-        problem_ids = set(set_problems.values_list('id', flat=True))
-
-        if not all(problem_id in problem_ids for problem_id in problem_order):
-            return Response(
-                {'error': 'One or more problem IDs do not belong to this practice set'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Update the order of problems
-        for index, problem_id in enumerate(problem_order):
-            set_problem = set_problems.get(id=problem_id)
-            set_problem.order = index
-            set_problem.save()
-
-        updated_problems = PracticeSetProblem.objects.filter(
-            practice_set=practice_set).order_by('order')
-        serializer = PracticeSetProblemSerializer(updated_problems, many=True)
-
-        return Response(serializer.data)
-
-
-# New viewsets for user progress and rewards
 
 class UserProgressViewSet(viewsets.ModelViewSet):
     """

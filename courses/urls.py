@@ -4,7 +4,7 @@ from .views import (
     CategoryViewSet, CourseViewSet, LessonViewSet,
     LessonContentBlockViewSet, ProblemViewSet,
     UserProgressViewSet, CourseEnrollmentViewSet,
-    LeaderboardViewSet
+    LeaderboardViewSet, UserRewardViewSet
 )
 
 router = DefaultRouter()
@@ -16,6 +16,7 @@ router.register(r'problems', ProblemViewSet, basename='problem')
 router.register(r'user-progress', UserProgressViewSet, basename='user-progress')
 router.register(r'enrollments', CourseEnrollmentViewSet, basename='enrollment')
 router.register(r'leaderboard', LeaderboardViewSet, basename='leaderboard')
+router.register(r'rewards', UserRewardViewSet, basename='reward')
 
 urlpatterns = [
     path('', include(router.urls)),

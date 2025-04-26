@@ -2,7 +2,7 @@
 
 ## Base URL
 ```
-https://api.garaad.org/api/lms/
+https://api.garaad.org/api/
 ```
 
 ## Authentication
@@ -11,510 +11,341 @@ All endpoints require JWT authentication. Include the token in the Authorization
 Authorization: Bearer <your_jwt_token>
 ```
 
-## Endpoints
+## API Endpoints
 
-### Categories
+### Authentication
 
-#### List Categories
+#### Sign Up with Onboarding
 ```http
-GET /categories/
+POST /api/auth/signup/
 ```
-**Purpose**: Similar to Brilliant.org's topic browsing, this endpoint allows users to explore different subject areas and find courses that interest them. It provides a hierarchical view of learning paths, helping users discover content based on their interests.
+**Purpose**: Register a new user and create onboarding information in a single request.
 
-Response:
+Request Body:
 ```json
 {
-    "count": 1,
-    "next": null,
-    "previous": null,
-    "results": [
-        {
-            "id": "string",
-            "title": "string",
-            "description": "string",
-            "image": "string",
-            "in_progress": boolean,
-            "courses": [
-                {
-                    "id": "string",
-                    "title": "string",
-                    "description": "string",
-                    "thumbnail": "string",
-                    "is_new": boolean,
-                    "progress": number,
-                    "is_published": boolean
-                }
-            ]
-        }
-    ]
+  "name": "User Full Name",
+  "email": "user@example.com",
+  "password": "securepassword123",
+  "age": 25,
+  "goal": "Horumarinta xirfadaha",
+  "learning_approach": "Waxbarasho shaqsiyeed",
+  "topic": "Xisaab",
+  "math_level": "Bilowga",
+  "minutes_per_day": 30
 }
 ```
 
-### Courses
-
-#### List Courses
+#### Sign In
 ```http
-GET /courses/
+POST /api/auth/signin/
 ```
-**Purpose**: Like Brilliant.org's course catalog, this endpoint provides a comprehensive view of available courses. It includes course details, progress tracking, and module structure, enabling users to:
-- Browse available courses
-- Track their progress
-- See course structure before enrolling
-- Discover new content
+**Purpose**: Authenticate user and get access tokens.
 
-Response:
+Request Body:
 ```json
 {
-    "count": 1,
-    "next": null,
-    "previous": null,
-    "results": [
-        {
-            "id": "string",
-            "title": "string",
-            "slug": "string",
-            "description": "string",
-            "thumbnail": "string",
-            "is_new": boolean,
-            "progress": number,
-            "author_id": "string",
-            "is_published": boolean,
-            "category": "string",
-            "modules": [
-                {
-                    "id": "string",
-                    "title": "string",
-                    "description": "string",
-                    "lessons": [
-                        {
-                            "id": "string",
-                            "title": "string",
-                            "slug": "string",
-                            "lesson_number": number,
-                            "estimated_time": number,
-                            "is_published": boolean
-                        }
-                    ]
-                }
-            ]
-        }
-    ]
+  "email": "user@example.com",
+  "password": "securepassword123"
 }
 ```
 
-### Modules
-
-#### Get Module
-```http
-GET /modules/{id}/
-```
-**Purpose**: Similar to Brilliant.org's module structure, this endpoint provides:
-- Module overview
-- Lesson organization
-- Learning path structure
-- Progress tracking within the module
-
 Response:
 ```json
 {
+  "user": {
     "id": "string",
-    "title": "string",
-    "description": "string",
-    "course": "string",
-    "lessons": [
-        {
-            "id": "string",
-            "title": "string",
-            "slug": "string",
-            "lesson_number": number,
-            "estimated_time": number,
-            "is_published": boolean
-        }
-    ]
+    "email": "string",
+    "name": "string",
+    "age": number
+  },
+  "onboarding": {
+    "goal": "string",
+    "learning_approach": "string",
+    "topic": "string",
+    "math_level": "string",
+    "minutes_per_day": number
+  },
+  "tokens": {
+    "refresh": "string",
+    "access": "string"
+  }
 }
 ```
 
-### Lessons
-
-#### Get Lesson Content
+#### Token Refresh
 ```http
-GET /lessons/{id}/content/
+POST /api/auth/refresh/
 ```
-**Purpose**: Get all content (blocks and problems) for a lesson in sequential order.
+**Purpose**: Get a new access token using a refresh token.
+
+Request Body:
+```json
+{
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5..."
+}
+```
+
+### User Profile
+
+#### Get User Profile
+```http
+GET /api/auth/profile/
+```
+**Purpose**: Retrieve the authenticated user's profile information.
+
+Response:
+```json
+{
+  "id": "string",
+  "email": "string",
+  "name": "string",
+  "age": number
+}
+```
+
+#### Update User Profile
+```http
+PUT /api/auth/profile/
+```
+**Purpose**: Update user profile information including qabiil and laan.
+
+Request Body:
+```json
+{
+  "qabiil": "string",
+  "laan": "string"
+}
+```
+
+ 
+
+### Learning Management System (LMS)
+
+#### Categories
+
+##### List Categories
+```http
+GET /api/lms/categories/
+```
+**Purpose**: Get all available course categories.
+
+Response:
+```json
+{
+  "count": number,
+  "next": "string",
+  "previous": "string",
+  "results": [
+    {
+      "id": "string",
+      "title": "string",
+      "description": "string",
+      "image": "string",
+      "in_progress": boolean,
+      "courses": [
+        {
+          "id": "string",
+          "title": "string",
+          "description": "string",
+          "thumbnail": "string",
+          "is_new": boolean,
+          "progress": number,
+          "is_published": boolean
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Courses
+
+##### List Courses
+```http
+GET /api/lms/courses/
+```
+**Purpose**: Get all available courses.
+
+Response:
+```json
+{
+  "count": number,
+  "next": "string",
+  "previous": "string",
+  "results": [
+    {
+      "id": "string",
+      "title": "string",
+      "slug": "string",
+      "description": "string",
+      "thumbnail": "string",
+      "is_new": boolean,
+      "progress": number,
+      "author_id": "string",
+      "is_published": boolean,
+      "category": "string",
+      "modules": [
+        {
+          "id": "string",
+          "title": "string",
+          "description": "string",
+          "lessons": [
+            {
+              "id": "string",
+              "title": "string",
+              "slug": "string",
+              "lesson_number": number,
+              "estimated_time": number,
+              "is_published": boolean
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Lessons
+
+##### Get Lesson Content
+```http
+GET /api/lms/lessons/{id}/content/
+```
+**Purpose**: Get all content (blocks and problems) for a lesson.
 
 Response:
 ```json
 [
-    {
-        "type": "block",
-        "id": "string",
-        "order": number,
-        "block_type": "string",
-        "content": {}
-    },
-    {
-        "type": "problem",
-        "id": "string",
-        "order": number,
-        "question_type": "string",
-        "question_text": "string",
-        "content": {}
-    }
+  {
+    "type": "block",
+    "id": "string",
+    "order": number,
+    "block_type": "string",
+    "content": {}
+  },
+  {
+    "type": "problem",
+    "id": "string",
+    "order": number,
+    "question_type": "string",
+    "question_text": "string",
+    "content": {}
+  }
 ]
 ```
 
-#### Get Next Content
+##### Get Next Content
 ```http
-GET /lessons/{id}/next_content/?order={current_order}
+GET /api/lms/lessons/{id}/next_content/?order={current_order}
 ```
-**Purpose**: Get the next content item (block or problem) after the specified order.
-
-Query Parameters:
-- `order`: The current order number (default: 0)
+**Purpose**: Get the next content item after the specified order.
 
 Response:
 ```json
 {
-    "type": "block|problem",
-    "id": "string",
-    "order": number,
-    "block_type|question_type": "string",
-    "content": {},
-    "question_text": "string"  // Only for problems
+  "type": "block|problem",
+  "id": "string",
+  "order": number,
+  "block_type|question_type": "string",
+  "content": {},
+  "question_text": "string"
 }
 ```
 
-#### Get Previous Content
-```http
-GET /lessons/{id}/previous_content/?order={current_order}
-```
-**Purpose**: Get the previous content item (block or problem) before the specified order.
+#### User Progress
 
-Query Parameters:
-- `order`: The current order number (default: 0)
+##### Get User Progress
+```http
+GET /api/lms/progress/
+```
+**Purpose**: Get progress for all lessons.
 
 Response:
 ```json
 {
-    "type": "block|problem",
-    "id": "string",
-    "order": number,
-    "block_type|question_type": "string",
-    "content": {},
-    "question_text": "string"  // Only for problems
-}
-```
-
-### Content Blocks
-
-#### Get Content Block
-```http
-GET /content-blocks/{id}/
-```
-**Purpose**: Similar to Brilliant.org's interactive content elements, this endpoint provides:
-- Different types of content (text, video, interactive)
-- Structured learning materials
-- Ordered content presentation
-- Rich media support
-
-Response:
-```json
-{
-    "id": "string",
-    "block_type": "string",
-    "content": {},
-    "order": number,
-    "lesson": "string"
-}
-```
-
-### Problems
-
-#### Get Problem
-```http
-GET /problems/{id}/
-```
-**Purpose**: Like Brilliant.org's practice problems, this endpoint provides:
-- Interactive problem content
-- Multiple question types
-- Hints and solutions
-- Difficulty levels
-- Immediate feedback
-
-Response:
-```json
-{
-    "id": "string",
-    "question_text": "string",
-    "image": "string",
-    "question_type": "string",
-    "options": {},
-    "correct_answer": {},
-    "explanation": "string",
-    "difficulty": "string",
-    "hints": [
-        {
-            "id": "string",
-            "content": "string",
-            "order": number
-        }
-    ],
-    "solution_steps": [
-        {
-            "id": "string",
-            "explanation": "string",
-            "order": number
-        }
-    ]
-}
-```
-
-### Practice Sets
-
-#### Get Practice Set
-```http
-GET /practice-sets/{id}/
-```
-**Purpose**: Like Brilliant.org's practice problem sets, this endpoint provides:
-- Interactive problem sets
-- Immediate feedback
-- Difficulty levels
-- Randomized questions
-- Progress tracking
-- Problem explanations
-
-Response:
-```json
-{
-    "id": "string",
-    "title": "string",
-    "practice_type": "string",
-    "difficulty_level": "string",
-    "is_randomized": boolean,
-    "practice_set_problems": [
-        {
-            "id": "string",
-            "problem": "string",
-            "order": number,
-            "problem_details": {
-                "id": "string",
-                "question_text": "string",
-                "question_type": "string",
-                "options": {},
-                "correct_answer": {},
-                "explanation": "string",
-                "difficulty": "string"
-            }
-        }
-    ]
-}
-```
-
-### Practice Set Problems
-
-#### Get Practice Set Problem
-```http
-GET /practice-set-problems/{id}/
-```
-**Purpose**: Similar to Brilliant.org's problem organization, this endpoint:
-- Links problems to practice sets
-- Maintains problem order
-- Provides problem details
-- Enables problem navigation
-
-Response:
-```json
-{
-    "id": "string",
-    "problem": "string",
-    "order": number,
-    "practice_set": "string",
-    "problem_details": {
-        "id": "string",
-        "question_text": "string",
-        "question_type": "string",
-        "options": {},
-        "correct_answer": {},
-        "explanation": "string",
-        "difficulty": "string"
+  "count": number,
+  "next": "string",
+  "previous": "string",
+  "results": [
+    {
+      "id": "string",
+      "user": "string",
+      "lesson": "string",
+      "lesson_title": "string",
+      "module_title": "string",
+      "status": "string",
+      "score": number,
+      "last_visited_at": "datetime",
+      "completed_at": "datetime"
     }
+  ]
 }
 ```
 
-### User Progress
-
-#### Get User Progress
+##### Update Progress
 ```http
-GET /progress/
+PATCH /api/lms/progress/{id}/
 ```
-**Purpose**: Similar to Brilliant.org's progress tracking, this endpoint:
-- Tracks completion status
-- Records scores
-- Shows learning history
-- Provides motivation through progress visualization
-- Enables personalized learning paths
-
-Response:
-```json
-{
-    "count": 1,
-    "next": null,
-    "previous": null,
-    "results": [
-        {
-            "id": "string",
-            "user": "string",
-            "lesson": "string",
-            "lesson_title": "string",
-            "module_title": "string",
-            "status": "string",
-            "score": number,
-            "last_visited_at": "datetime",
-            "completed_at": "datetime"
-        }
-    ]
-}
-```
-
-#### Update Progress
-```http
-PATCH /progress/{id}/
-```
-**Purpose**: Enables real-time progress tracking and achievement recording, similar to Brilliant.org's progress system.
+**Purpose**: Update progress for a specific lesson.
 
 Request Body:
 ```json
 {
-    "status": "string",
-    "score": number
+  "status": "string",
+  "score": number
 }
 ```
 
-### Course Enrollments
+#### Leaderboard
 
-#### List User Enrollments
+##### Get Leaderboard
 ```http
-GET /enrollments/
+GET /api/lms/leaderboard/
 ```
-**Purpose**: Like Brilliant.org's "My Courses" section, this endpoint:
-- Shows enrolled courses
-- Displays progress
-- Enables quick access to ongoing learning
-- Provides course completion tracking
+**Purpose**: Get the current leaderboard rankings.
+
+Query Parameters:
+- `time_period`: "all_time" | "weekly" | "monthly" (default: "all_time")
+- `limit`: number (default: 10)
 
 Response:
 ```json
 {
-    "count": 1,
-    "next": null,
-    "previous": null,
-    "results": [
-        {
+  "count": number,
+  "next": "string",
+  "previous": "string",
+  "results": [
+    {
+      "id": "string",
+      "user": "string",
+      "username": "string",
+      "points": number,
+      "time_period": "string",
+      "last_updated": "datetime",
+      "user_info": {
+        "email": "string",
+        "first_name": "string",
+        "last_name": "string",
+        "stats": {
+          "total_points": number,
+          "completed_lessons": number,
+          "enrolled_courses": number,
+          "current_streak": number,
+          "badges_count": number
+        },
+        "badges": [
+          {
             "id": "string",
-            "user": "string",
-            "course": "string",
-            "course_title": "string",
-            "progress_percent": number,
-            "enrolled_at": "datetime"
-        }
-    ]
-}
-```
-
-#### Enroll in Course
-```http
-POST /enrollments/
-```
-**Purpose**: Enables users to start new courses, similar to Brilliant.org's course enrollment system.
-
-Request Body:
-```json
-{
-    "course": "string"
-}
-```
-
-### User Rewards
-
-#### Get User Rewards
-```http
-GET /rewards/
-```
-**Purpose**: Similar to Brilliant.org's achievement system, this endpoint:
-- Tracks earned badges
-- Shows points
-- Displays achievements
-- Provides motivation through gamification
-- Rewards learning milestones
-
-Response:
-```json
-{
-    "count": 1,
-    "next": null,
-    "previous": null,
-    "results": [
-        {
-            "id": "string",
-            "user": "string",
-            "reward_type": "string",
             "reward_name": "string",
             "value": number,
             "awarded_at": "datetime"
-        }
-    ]
-}
-```
-
-### Leaderboard
-
-#### Get Leaderboard
-```http
-GET /leaderboard/
-```
-**Purpose**: Similar to Brilliant.org's community features, this endpoint:
-- Fosters healthy competition
-- Shows community engagement
-- Displays user achievements
-- Encourages consistent learning
-- Builds learning community
-
-Response:
-```json
-{
-    "count": 1,
-    "next": null,
-    "previous": null,
-    "results": [
-        {
-            "id": "string",
-            "user": "string",
-            "username": "string",
-            "points": number,
-            "time_period": "string",
-            "last_updated": "datetime",
-            "user_info": {
-                "email": "string",
-                "first_name": "string",
-                "last_name": "string",
-                "stats": {
-                    "total_points": number,
-                    "completed_lessons": number,
-                    "enrolled_courses": number,
-                    "current_streak": number,
-                    "badges_count": number
-                },
-                "badges": [
-                    {
-                        "id": "string",
-                        "reward_name": "string",
-                        "value": number,
-                        "awarded_at": "datetime"
-                    }
-                ]
-            }
-        }
-    ]
+          }
+        ]
+      }
+    }
+  ]
 }
 ```
 
@@ -543,16 +374,8 @@ Response:
 All error responses follow this format:
 ```json
 {
-    "detail": "Error message here",
-    "code": "error_code"
-}
-```
-
-For validation errors:
-```json
-{
-    "field_name": ["Error message"],
-    "field_name2": ["Error message"]
+  "error": "string",
+  "detail": "string"
 }
 ```
 

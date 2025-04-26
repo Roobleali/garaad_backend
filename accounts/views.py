@@ -5,8 +5,15 @@ from rest_framework import status
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
-from .models import StudentProfile, UserOnboarding
-from .serializers import StudentProfileSerializer, UserSerializer, SignupSerializer, EmailTokenObtainPairSerializer, UserOnboardingSerializer
+from .models import StudentProfile, UserOnboarding, UserProfile
+from .serializers import (
+    StudentProfileSerializer, 
+    UserSerializer, 
+    SignupSerializer, 
+    EmailTokenObtainPairSerializer, 
+    UserOnboardingSerializer,
+    UserProfileSerializer
+)
 from django.db import transaction
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -15,10 +22,15 @@ User = get_user_model()
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def custom_login(request):
-    username = request.data.get('username')
+    email = request.data.get('email')
     password = request.data.get('password')
 
-    user = authenticate(username=username, password=password)
+    if not email or not password:
+        return Response({
+            'error': 'Please provide both email and password'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    user = authenticate(request=request, email=email, password=password)
 
     if user is not None:
         refresh = RefreshToken.for_user(user)
@@ -29,6 +41,11 @@ def custom_login(request):
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'is_premium': user.is_premium,
+                'age': user.age,
+                'has_completed_onboarding': user.useronboarding.has_completed_onboarding if hasattr(user, 'useronboarding') else False
             }
         })
     else:
@@ -38,7 +55,7 @@ def custom_login(request):
 @permission_classes([AllowAny])
 def signup_view(request):
     # Check for required fields
-    required_fields = ['username', 'email', 'password']
+    required_fields = ['username', 'email', 'password', 'age']
     missing_fields = [field for field in required_fields if not request.data.get(field)]
     
     if missing_fields:
@@ -154,10 +171,11 @@ def register_user(request):
         username = request.data.get('username')
         email = request.data.get('email')
         password = request.data.get('password')
+        age = request.data.get('age')
 
-        if not all([username, email, password]):
+        if not all([username, email, password, age]):
             return Response({
-                'error': 'Please provide username, email and password'
+                'error': 'Please provide username, email, password and age'
             }, status=status.HTTP_400_BAD_REQUEST)
 
         if User.objects.filter(username=username).exists():
@@ -173,7 +191,8 @@ def register_user(request):
         user = User.objects.create_user(
             username=username,
             email=email,
-            password=password
+            password=password,
+            age=age
         )
 
         refresh = RefreshToken.for_user(user)
@@ -192,3 +211,27 @@ def register_user(request):
 def get_user_profile(request):
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def user_profile(request):
+    """Get or update user profile including qabiil and laan"""
+    try:
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        
+        if request.method == 'GET':
+            serializer = UserProfileSerializer(profile)
+            return Response(serializer.data)
+            
+        elif request.method == 'PUT':
+            serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

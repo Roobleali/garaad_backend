@@ -2,7 +2,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
-from .models import User as CustomUser, StudentProfile, UserOnboarding
+from .models import User as CustomUser, StudentProfile, UserOnboarding, UserProfile
 import json
 
 User = get_user_model()
@@ -41,23 +41,40 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             internal_value['subjects'] = json.dumps(internal_value['subjects'])
         return internal_value
 
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ['created_at', 'updated_at']
+
 class UserSerializer(serializers.ModelSerializer):
+    has_completed_onboarding = serializers.SerializerMethodField()
+    profile = UserProfileSerializer(source='user_profile', required=False)
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'is_premium')
+        fields = ['id', 'username', 'email', 'first_name',
+                  'last_name', 'is_premium', 'has_completed_onboarding', 'profile', 'age']
+
+    def get_has_completed_onboarding(self, obj):
+        try:
+            return obj.useronboarding.has_completed_onboarding
+        except UserOnboarding.DoesNotExist:
+            return False
 
 class SignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    age = serializers.IntegerField(required=True, min_value=1, max_value=120)
     
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password')
+        fields = ('id', 'username', 'email', 'password', 'age')
     
     def create(self, validated_data):
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
-            password=validated_data['password']
+            password=validated_data['password'],
+            age=validated_data['age']
         )
         return user
 

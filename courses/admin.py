@@ -117,8 +117,8 @@ class ProblemInline(admin.TabularInline):
 
 class ProblemAdmin(admin.ModelAdmin):
     list_display = ['id', 'question_text_short', 'lesson', 'question_type', 
-                   'difficulty', 'order', 'created_at']
-    list_filter = ['question_type', 'difficulty', 'lesson__course']
+                   'order', 'created_at']
+    list_filter = ['question_type', 'lesson__course']
     search_fields = ['question_text', 'explanation']
     inlines = [HintInline, SolutionStepInline]
     

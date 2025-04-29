@@ -9,38 +9,49 @@ User = get_user_model()
 
 class LMSTestCase(TestCase):
     def setUp(self):
+        """Set up test data"""
         self.client = APIClient()
         self.user = User.objects.create_user(
             username='testuser',
-            email='test@example.com',
             password='testpass123'
         )
         self.client.force_authenticate(user=self.user)
 
-        # Create test data
+        # Create test category
         self.category = Category.objects.create(
-            id='test-category',
-            title='Test Category',
-            description='Test category description',
-            image='test.jpg',
-            in_progress=False
+            id='programming',
+            title='Programming',
+            description='Learn programming languages',
+            image='programming.jpg'
         )
 
+        # Create test course
         self.course = Course.objects.create(
             category=self.category,
-            title='Test Course',
-            description='Test course description',
-            thumbnail='test.jpg',
-            author_id='test-author',
+            title='Python Programming',
+            description='Learn Python from scratch',
+            author_id=str(self.user.id),
             is_published=True
         )
 
+        # Create test lesson
         self.lesson = Lesson.objects.create(
             course=self.course,
-            title='Test Lesson',
+            title='Python Data Types',
             lesson_number=1,
             estimated_time=30,
             is_published=True
+        )
+
+        # Create test problem
+        self.problem = Problem.objects.create(
+            lesson=self.lesson,
+            question_text='What is the data type of the value 42?',
+            question_type='single_choice',
+            options=['string', 'integer', 'float', 'boolean'],
+            correct_answer='integer',
+            explanation='42 is a whole number, which is represented as an integer in Python.',
+            order=1
         )
 
     def test_list_lessons(self):
@@ -194,8 +205,8 @@ class LMSTestCase(TestCase):
         url = reverse('lesson-detail', args=[self.lesson.id])
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['problem']['question'], 'What is the data type of the value 42?')
-        self.assertEqual(response.data['problem']['solution'], 'integer')
+        self.assertEqual(response.data['problem_data']['question_text'], 'What is the data type of the value 42?')
+        self.assertEqual(response.data['problem_data']['correct_answer'], 'integer')
 
     def test_get_course_through_api(self):
         """Test retrieving course through API endpoint"""
@@ -420,4 +431,34 @@ class LMSTestCase(TestCase):
         # Test beginning of content
         url = reverse('lesson-previous-content', kwargs={'pk': lesson.id})
         response = self.client.get(f"{url}?order=1")
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND) 
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_create_problem_block(self):
+        """Test creating a problem block with valid content"""
+        problem = Problem.objects.create(
+            lesson=self.lesson,
+            question_text='What is 2 + 2?',
+            question_type='single_choice',
+            options=['3', '4', '5'],
+            correct_answer='4',
+            explanation='Basic addition',
+            order=1
+        )
+
+        block = LessonContentBlock.objects.create(
+            lesson=self.lesson,
+            block_type='problem',
+            content={
+                'introduction': 'Solve this simple math problem',
+                'show_hints': True,
+                'show_solution': False,
+                'attempts_allowed': 3,
+                'points': 10
+            },
+            problem=problem,
+            order=1
+        )
+
+        self.assertEqual(block.content['introduction'], 'Solve this simple math problem')
+        self.assertTrue(block.content['show_hints'])
+        self.assertEqual(block.problem, problem) 

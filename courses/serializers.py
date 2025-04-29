@@ -20,15 +20,12 @@ class SolutionStepSerializer(serializers.ModelSerializer):
 
 
 class ProblemSerializer(serializers.ModelSerializer):
-    hints = HintSerializer(many=True, read_only=True)
-    solution_steps = SolutionStepSerializer(many=True, read_only=True)
-
     class Meta:
         model = Problem
         fields = [
-            'id', 'question_text', 'image', 'question_type', 'options',
-            'correct_answer', 'explanation', 'difficulty',
-            'hints', 'solution_steps', 'created_at', 'updated_at'
+            'id', 'question_text', 'question_type', 'options',
+            'correct_answer', 'explanation', 'content',
+            'diagram_config', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
 

@@ -122,6 +122,98 @@ class LessonContentBlock(models.Model):
         verbose_name = "Lesson Content Block"
         verbose_name_plural = "Lesson Content Blocks"
 
+    # Default content for different block types
+    default_content = {
+        'text': {
+            'text': '',
+            'format': 'markdown'
+        },
+        'example': {
+            'title': '',
+            'description': '',
+            'code': '',
+            'language': 'python',
+            'explanation': None
+        },
+        'code': {
+            'code': '',
+            'language': 'python',
+            'explanation': None
+        },
+        'image': {
+            'url': '',
+            'caption': None,
+            'width': None,
+            'height': None,
+            'alt_text': None
+        },
+        'video': {
+            'url': '',
+            'title': '',
+            'description': None,
+            'duration': None
+        },
+        'quiz': {
+            'question': '',
+            'options': [],
+            'correct_answer': 0,
+            'explanation': None
+        },
+        'problem': {
+            'introduction': '',
+            'show_hints': True,
+            'show_solution': False,
+            'attempts_allowed': 3,
+            'points': 10
+        }
+    }
+
+    # Content validators for each block type
+    type_validators = {
+        'text': {
+            'text': str,
+            'format': str
+        },
+        'example': {
+            'title': str,
+            'description': str,
+            'code': str,
+            'language': str,
+            'explanation': (str, type(None))
+        },
+        'code': {
+            'code': str,
+            'language': str,
+            'explanation': (str, type(None))
+        },
+        'image': {
+            'url': str,
+            'caption': (str, type(None)),
+            'width': (int, type(None)),
+            'height': (int, type(None)),
+            'alt_text': (str, type(None))
+        },
+        'video': {
+            'url': str,
+            'title': str,
+            'description': (str, type(None)),
+            'duration': (int, type(None))
+        },
+        'quiz': {
+            'question': str,
+            'options': list,
+            'correct_answer': int,
+            'explanation': (str, type(None))
+        },
+        'problem': {
+            'introduction': str,
+            'show_hints': bool,
+            'show_solution': bool,
+            'attempts_allowed': int,
+            'points': int
+        }
+    }
+
     @property
     def default_problem_content(self):
         """Default content structure for problem blocks"""
@@ -151,7 +243,6 @@ class LessonContentBlock(models.Model):
                     "question_text": self.problem.question_text,
                     "question_type": self.problem.question_type,
                     "options": self.problem.options,
-                    "difficulty": self.problem.difficulty,
                     "content": self.problem.content,
                     "diagram_config": self.problem.diagram_config if self.problem.question_type == 'diagram' else None
                 }
@@ -159,112 +250,78 @@ class LessonContentBlock(models.Model):
         return self.content
 
     def clean(self):
-        """Validate content based on block_type"""
+        """Validate the model before saving"""
         super().clean()
         
         # Ensure content is a dictionary
         if not isinstance(self.content, dict):
-            self.content = {}
-        
-        # Validate problem block requirements
-        if self.block_type == 'problem':
-            if not self.problem:
-                raise ValidationError({
-                    'problem': 'A Problem reference is required for problem blocks'
-                })
+            raise ValidationError({
+                'content': 'Content must be a dictionary'
+            })
             
-            # Initialize with default content
-            default_content = self.default_problem_content
-            for key, value in default_content.items():
-                if key not in self.content:
-                    self.content[key] = value
-            return
-
-        # Validation for other block types...
+        # Initialize content if empty
+        if not self.content:
+            self.content = {}
+            
+        # Validate content structure
         self.validate_content()
+        
+        return self.content
 
     def validate_content(self):
-        """Ensure content matches the required structure for the block_type"""
+        """Validate content structure based on block_type"""
         if not isinstance(self.content, dict):
-            self.content = {}
+            raise ValidationError({
+                'content': 'Content must be a dictionary'
+            })
 
-        # Default content structures for different block types
-        default_content = {
-            'text': {
-                'text': '',
-                'format': 'markdown'
-            },
-            'example': {
-                'title': '',
-                'description': '',
-                'problem': '',
-                'solution': '',
-                'explanation': ''
-            },
-            'code': {
-                'language': 'python',
-                'code': '',
-                'explanation': '',
-                'show_line_numbers': True
-            },
-            'image': {
-                'url': '',
-                'caption': '',
-                'alt': '',
-                'width': None,
-                'height': None
-            },
-            'video': {
-                'url': '',
-                'title': '',
-                'description': '',
-                'thumbnail': '',
-                'duration': None
-            },
-            'quiz': {
-                'title': '',
-                'questions': []
-            }
-        }
+        # Get validators for this block type
+        validators = self.type_validators.get(self.block_type)
+        if not validators:
+            return  # No specific validation for this block type
 
-        # Get the default structure for this block type
-        default_structure = default_content.get(self.block_type, {})
-        
-        # If content is empty, use default structure
-        if not self.content:
-            self.content = default_structure.copy()
-            return
-
-        # Merge default values for missing fields
-        for key, value in default_structure.items():
+        # Merge with default content
+        default_content = self.default_content.get(self.block_type, {})
+        for key, value in default_content.items():
             if key not in self.content:
                 self.content[key] = value
 
+        # Validate types for each field
+        for field, expected_type in validators.items():
+            if field not in self.content:
+                raise ValidationError({
+                    'content': f'Missing required field: {field}'
+                })
+
+            value = self.content[field]
+            
+            # Handle fields that can accept multiple types
+            if isinstance(expected_type, tuple):
+                if not any(isinstance(value, t) for t in expected_type if t is not type(None) or value is None):
+                    type_names = ' or '.join(t.__name__ for t in expected_type)
+                    raise ValidationError({
+                        'content': f'Field {field} must be of type {type_names}'
+                    })
+            else:
+                if not isinstance(value, expected_type):
+                    raise ValidationError({
+                        'content': f'Field {field} must be of type {expected_type.__name__}'
+                    })
+
     def save(self, *args, **kwargs):
         """
-        Custom save method to ensure content is properly initialized and validated
+        Override save method to validate content before saving
         """
-        # Ensure content is a dictionary
-        if not isinstance(self.content, dict):
-            self.content = {}
-
-        # Handle problem blocks
-        if self.block_type == 'problem':
-            if not self.problem:
-                raise ValidationError({
-                    'problem': 'A Problem reference is required for problem blocks'
-                })
-            
-            # Initialize with default content
-            default_content = self.default_problem_content
-            self.content = {
-                **default_content,
-                **self.content
-            }
+        if not self.content:
+            # Initialize with default content for the block type
+            self.content = self.default_content.get(self.block_type, {})
         else:
-            # For other block types
+            # Validate content
             self.validate_content()
-
+            # Merge with default content
+            default = self.default_content.get(self.block_type, {})
+            self.content = {**default, **self.content}
+            
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -374,17 +431,9 @@ class Problem(models.Model):
         ('diagram', 'Diagram Problem'),
     )
 
-    DIFFICULTY_LEVELS = (
-        ('beginner', 'Beginner'),
-        ('intermediate', 'Intermediate'),
-        ('advanced', 'Advanced'),
-        ('expert', 'Expert'),
-    )
-
     lesson = models.ForeignKey(
         Lesson, related_name='problems', on_delete=models.CASCADE, null=True, blank=True)
     question_text = models.TextField()
-    image = models.URLField(blank=True, null=True, help_text="URL to an image associated with the question")
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
     options = models.JSONField(
         null=True, blank=True, help_text="Answer options for applicable question types")
@@ -392,8 +441,6 @@ class Problem(models.Model):
         help_text="Correct answer(s) in format appropriate for question_type")
     explanation = models.TextField(
         blank=True, help_text="Explanation of the answer")
-    difficulty = models.CharField(
-        max_length=12, choices=DIFFICULTY_LEVELS, default='intermediate')
     order = models.PositiveIntegerField(default=0)
     content = models.JSONField(default=get_default_content)
     diagram_config = models.JSONField(default=get_default_diagram_config, blank=True)
@@ -707,3 +754,121 @@ class LeaderboardEntry(models.Model):
             time_period='monthly',
             defaults={'points': monthly_points}
         )
+
+# Default content structures for different block types
+default_content = {
+    'text': {
+        'text': '',
+        'style': None
+    },
+    'example': {
+        'title': '',
+        'description': '',
+        'code': '',
+        'language': 'python',
+        'explanation': None
+    },
+    'code': {
+        'code': '',
+        'language': 'python',
+        'explanation': None
+    },
+    'image': {
+        'url': '',
+        'caption': None,
+        'width': None,
+        'height': None,
+        'alt_text': None
+    },
+    'video': {
+        'url': '',
+        'title': '',
+        'description': None,
+        'duration': None
+    },
+    'quiz': {
+        'question': '',
+        'options': [],
+        'correct_answer': 0,
+        'explanation': None
+    }
+}
+
+# Block type specific content validators
+content_validators = {
+    'text': {
+        'text': str,
+        'style': (str, type(None))
+    },
+    'example': {
+        'title': str,
+        'description': str,
+        'code': str,
+        'language': str,
+        'explanation': (str, type(None))
+    },
+    'code': {
+        'code': str,
+        'language': str,
+        'explanation': (str, type(None))
+    },
+    'image': {
+        'url': str,
+        'caption': (str, type(None)),
+        'width': (int, type(None)),
+        'height': (int, type(None)),
+        'alt_text': (str, type(None))
+    },
+    'video': {
+        'url': str,
+        'title': str,
+        'description': (str, type(None)),
+        'duration': (int, type(None))
+    },
+    'quiz': {
+        'question': str,
+        'options': list,
+        'correct_answer': int,
+        'explanation': (str, type(None))
+    }
+}
+
+def validate_content(self, content):
+    """
+    Validates the content structure based on block type.
+    """
+    if not isinstance(content, dict):
+        raise ValidationError('Content must be a dictionary')
+
+    block_type = content.get('block_type')
+    if not block_type:
+        raise ValidationError('block_type is required')
+
+    if block_type not in self.default_content:
+        raise ValidationError(f'Invalid block_type: {block_type}')
+
+    # Get validators for this block type
+    validators = self.content_validators[block_type]
+    default = self.default_content[block_type]
+
+    # Merge with defaults for any missing fields
+    content_data = {**default, **content}
+
+    # Validate each field's type
+    for field, expected_type in validators.items():
+        value = content_data.get(field)
+        
+        if isinstance(expected_type, tuple):
+            # Handle fields that can accept multiple types
+            if value is not None and not isinstance(value, expected_type):
+                raise ValidationError(
+                    f'Field {field} must be one of types {expected_type}, got {type(value)}'
+                )
+        else:
+            # Handle fields with a single expected type
+            if not isinstance(value, expected_type):
+                raise ValidationError(
+                    f'Field {field} must be of type {expected_type}, got {type(value)}'
+                )
+
+    return content_data

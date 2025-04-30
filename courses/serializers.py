@@ -29,6 +29,80 @@ class ProblemSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['created_at', 'updated_at']
 
+    def to_internal_value(self, data):
+        """
+        Handle the case where content is empty or not provided
+        """
+        if 'content' not in data or data['content'] == []:
+            data['content'] = {}
+        return super().to_internal_value(data)
+
+    def validate(self, data):
+        """
+        Validate the complete object
+        """
+        # Ensure content is a dictionary
+        if data.get('content') == []:
+            data['content'] = {}
+            
+        # Validate options for multiple choice questions
+        if data.get('question_type') in ['multiple_choice', 'single_choice']:
+            options = data.get('options', [])
+            if not options:
+                raise serializers.ValidationError({
+                    'options': 'Options are required for multiple choice questions'
+                })
+            
+            # Validate each option has required fields
+            for option in options:
+                if not isinstance(option, dict):
+                    raise serializers.ValidationError({
+                        'options': 'Each option must be a dictionary'
+                    })
+                if 'id' not in option or 'text' not in option:
+                    raise serializers.ValidationError({
+                        'options': 'Each option must have an id and text field'
+                    })
+            
+            # Validate correct_answer
+            correct_answer = data.get('correct_answer', [])
+            if not correct_answer:
+                raise serializers.ValidationError({
+                    'correct_answer': 'Correct answer is required for multiple choice questions'
+                })
+            
+            # For single choice, ensure only one correct answer
+            if data.get('question_type') == 'single_choice' and len(correct_answer) > 1:
+                raise serializers.ValidationError({
+                    'correct_answer': 'Single choice questions can only have one correct answer'
+                })
+            
+            # Validate correct_answer IDs exist in options
+            option_ids = {opt['id'] for opt in options}
+            for answer in correct_answer:
+                if answer['id'] not in option_ids:
+                    raise serializers.ValidationError({
+                        'correct_answer': f"Answer ID '{answer['id']}' not found in options"
+                    })
+        
+        return data
+
+    def create(self, validated_data):
+        """
+        Create a new LessonContentBlock instance
+        """
+        instance = super().create(validated_data)
+        instance.validate_content()  # Run model validation
+        return instance
+
+    def update(self, instance, validated_data):
+        """
+        Update a LessonContentBlock instance
+        """
+        instance = super().update(instance, validated_data)
+        instance.validate_content()  # Run model validation
+        return instance
+
 
 class LessonContentBlockSerializer(serializers.ModelSerializer):
     class Meta:

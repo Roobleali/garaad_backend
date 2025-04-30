@@ -442,7 +442,7 @@ class Problem(models.Model):
     explanation = models.TextField(
         blank=True, help_text="Explanation of the answer")
     order = models.PositiveIntegerField(default=0)
-    content = models.JSONField(default=get_default_content)
+    content = models.JSONField(default=dict, blank=True, null=True)
     diagram_config = models.JSONField(default=get_default_diagram_config, blank=True)
     img = models.URLField(blank=True, null=True, help_text="URL of an image associated with the problem")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -463,9 +463,9 @@ class Problem(models.Model):
             # Set order to the next available number
             self.order = max(last_order, last_content_order) + 1
         
-        # Initialize content if empty
-        if not self.content:
-            self.content = get_default_content()
+        # Initialize content if empty or None
+        if self.content is None or self.content == []:
+            self.content = {}
         
         # Initialize diagram_config if it's a diagram problem
         if self.question_type == 'diagram' and not self.diagram_config:

@@ -458,31 +458,62 @@ class Problem(models.Model):
         """
         super().clean()
         
+        # Initialize empty fields if needed
+        if not self.content or self.content == []:
+            self.content = {}
+        
         # Validate multiple choice questions
         if self.question_type in ['multiple_choice', 'single_choice']:
+            # Initialize options and correct_answer if empty
+            if not self.options:
+                self.options = []
+            if not self.correct_answer:
+                self.correct_answer = []
+            
+            # Validate options
             if not self.options:
                 raise ValidationError({
                     'options': 'Options are required for multiple choice questions'
                 })
             
+            # Validate each option
+            for option in self.options:
+                if not isinstance(option, dict):
+                    raise ValidationError({
+                        'options': 'Each option must be a dictionary'
+                    })
+                if 'id' not in option or 'text' not in option:
+                    raise ValidationError({
+                        'options': 'Each option must have an id and text field'
+                    })
+            
+            # Validate correct_answer
             if not self.correct_answer:
                 raise ValidationError({
                     'correct_answer': 'Correct answer is required for multiple choice questions'
                 })
-            
-            # Validate option IDs
-            option_ids = {opt.get('id') for opt in self.options}
-            for answer in self.correct_answer:
-                if answer.get('id') not in option_ids:
-                    raise ValidationError({
-                        'correct_answer': f"Answer ID '{answer.get('id')}' not found in options"
-                    })
             
             # For single choice, ensure only one correct answer
             if self.question_type == 'single_choice' and len(self.correct_answer) > 1:
                 raise ValidationError({
                     'correct_answer': 'Single choice questions can only have one correct answer'
                 })
+            
+            # Validate correct_answer IDs exist in options
+            option_ids = {opt.get('id') for opt in self.options}
+            for answer in self.correct_answer:
+                if not isinstance(answer, dict):
+                    raise ValidationError({
+                        'correct_answer': 'Each answer must be a dictionary'
+                    })
+                if 'id' not in answer:
+                    raise ValidationError({
+                        'correct_answer': 'Each answer must have an id field'
+                    })
+                if answer.get('id') not in option_ids:
+                    raise ValidationError({
+                        'correct_answer': f"Answer ID '{answer.get('id')}' not found in options"
+                    })
 
     def save(self, *args, **kwargs):
         if not self.order and self.lesson:

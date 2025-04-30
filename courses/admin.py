@@ -126,12 +126,35 @@ class ProblemAdmin(admin.ModelAdmin):
         form = super().get_form(request, obj, **kwargs)
         if obj is None:  # Only for new objects
             form.base_fields['content'].initial = {}
+            form.base_fields['options'].initial = []
+            form.base_fields['correct_answer'].initial = []
         return form
     
     def save_model(self, request, obj, form, change):
-        if not change:  # Only for new objects
-            obj.content = {}
-        super().save_model(request, obj, form, change)
+        try:
+            # Initialize content if empty
+            if not obj.content or obj.content == []:
+                obj.content = {}
+            
+            # Initialize options and correct_answer for multiple choice questions
+            if obj.question_type in ['multiple_choice', 'single_choice']:
+                if not obj.options:
+                    obj.options = []
+                if not obj.correct_answer:
+                    obj.correct_answer = []
+            
+            # Run validation
+            obj.clean()
+            
+            super().save_model(request, obj, form, change)
+        except ValidationError as e:
+            from django.contrib import messages
+            messages.error(request, str(e))
+            raise
+        except Exception as e:
+            from django.contrib import messages
+            messages.error(request, f"An error occurred: {str(e)}")
+            raise
 
     def question_text_short(self, obj):
         return obj.question_text[:50] + "..." if len(obj.question_text) > 50 else obj.question_text

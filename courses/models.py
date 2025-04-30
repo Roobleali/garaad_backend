@@ -452,6 +452,38 @@ class Problem(models.Model):
         ordering = ['lesson', 'order']
         unique_together = ['lesson', 'order']
 
+    def clean(self):
+        """
+        Validate the problem data before saving
+        """
+        super().clean()
+        
+        # Validate multiple choice questions
+        if self.question_type in ['multiple_choice', 'single_choice']:
+            if not self.options:
+                raise ValidationError({
+                    'options': 'Options are required for multiple choice questions'
+                })
+            
+            if not self.correct_answer:
+                raise ValidationError({
+                    'correct_answer': 'Correct answer is required for multiple choice questions'
+                })
+            
+            # Validate option IDs
+            option_ids = {opt.get('id') for opt in self.options}
+            for answer in self.correct_answer:
+                if answer.get('id') not in option_ids:
+                    raise ValidationError({
+                        'correct_answer': f"Answer ID '{answer.get('id')}' not found in options"
+                    })
+            
+            # For single choice, ensure only one correct answer
+            if self.question_type == 'single_choice' and len(self.correct_answer) > 1:
+                raise ValidationError({
+                    'correct_answer': 'Single choice questions can only have one correct answer'
+                })
+
     def save(self, *args, **kwargs):
         if not self.order and self.lesson:
             # Get the highest order number for this lesson
@@ -470,6 +502,9 @@ class Problem(models.Model):
         # Initialize diagram_config if it's a diagram problem
         if self.question_type == 'diagram' and not self.diagram_config:
             self.diagram_config = get_default_diagram_config()
+        
+        # Run validation
+        self.clean()
         
         super().save(*args, **kwargs)
 

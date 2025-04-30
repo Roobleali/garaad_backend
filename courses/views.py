@@ -375,6 +375,50 @@ class ProblemViewSet(viewsets.ModelViewSet):
     search_fields = ['question_text']
     ordering_fields = ['created_at', 'difficulty']
 
+    def create(self, request, *args, **kwargs):
+        try:
+            # Ensure content is a dictionary if empty array is provided
+            if 'content' in request.data and request.data['content'] == []:
+                request.data['content'] = {}
+            
+            # Validate options and correct_answer for multiple choice questions
+            if request.data.get('question_type') in ['multiple_choice', 'single_choice']:
+                options = request.data.get('options', [])
+                correct_answer = request.data.get('correct_answer', [])
+                
+                if not options:
+                    return Response(
+                        {'error': 'Options are required for multiple choice questions'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                if not correct_answer:
+                    return Response(
+                        {'error': 'Correct answer is required for multiple choice questions'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Validate option IDs
+                option_ids = {opt.get('id') for opt in options}
+                for answer in correct_answer:
+                    if answer.get('id') not in option_ids:
+                        return Response(
+                            {'error': f"Answer ID '{answer.get('id')}' not found in options"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+            
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class UserProgressViewSet(viewsets.ModelViewSet):
     """

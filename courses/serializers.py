@@ -25,7 +25,7 @@ class ProblemSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'question_text', 'question_type', 'options',
             'correct_answer', 'explanation', 'content',
-            'diagram_config', 'created_at', 'updated_at'
+            'diagram_config', 'img', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
 
@@ -39,8 +39,8 @@ class LessonContentBlockSerializer(serializers.ModelSerializer):
         """
         Handle the case where content is empty or not provided
         """
-        if 'content' not in data or not data['content']:
-            data['content'] = {}
+        if 'content' not in data:
+            data['content'] = None
         return super().to_internal_value(data)
 
     def validate(self, data):
@@ -48,7 +48,7 @@ class LessonContentBlockSerializer(serializers.ModelSerializer):
         Validate the complete object
         """
         block_type = data.get('block_type')
-        content = data.get('content', {})
+        content = data.get('content')
         problem = data.get('problem')
 
         # Handle problem block type
@@ -68,9 +68,12 @@ class LessonContentBlockSerializer(serializers.ModelSerializer):
             }
             
             # Update content with defaults for missing fields
-            for key, value in default_content.items():
-                if key not in content:
-                    content[key] = value
+            if content is None:
+                content = default_content
+            else:
+                for key, value in default_content.items():
+                    if key not in content:
+                        content[key] = value
             
             data['content'] = content
             return data
@@ -120,9 +123,11 @@ class LessonContentBlockSerializer(serializers.ModelSerializer):
             schema = content_schemas[block_type]
             default_content = {}
             for field, field_type in schema.items():
-                if field not in content:
+                if content is None:
                     default_content[field] = field_type.default if hasattr(field_type, 'default') else None
-            data['content'] = {**default_content, **content}
+                elif field not in content:
+                    default_content[field] = field_type.default if hasattr(field_type, 'default') else None
+            data['content'] = {**default_content, **content} if content is not None else default_content
 
         return data
 

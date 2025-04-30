@@ -108,7 +108,7 @@ class LessonContentBlock(models.Model):
         Lesson, related_name='content_blocks', on_delete=models.CASCADE)
     block_type = models.CharField(max_length=20, choices=BLOCK_TYPES)
     order = models.PositiveIntegerField(default=0)
-    content = models.JSONField(default=dict)
+    content = models.JSONField(default=dict, blank=True, null=True)
     problem = models.ForeignKey(
         'Problem', 
         null=True, 
@@ -444,6 +444,7 @@ class Problem(models.Model):
     order = models.PositiveIntegerField(default=0)
     content = models.JSONField(default=get_default_content)
     diagram_config = models.JSONField(default=get_default_diagram_config, blank=True)
+    img = models.URLField(blank=True, null=True, help_text="URL of an image associated with the problem")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

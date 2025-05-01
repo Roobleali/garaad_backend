@@ -1,29 +1,161 @@
 from rest_framework import serializers
 from .models import (
     Category, Course, Lesson, LessonContentBlock,
-    Problem, Hint, SolutionStep,
-    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
+    Problem, UserProgress, UserReward
 )
 from django.db import models
 
-
-class HintSerializer(serializers.ModelSerializer):
+class CategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Hint
-        fields = ['id', 'content', 'order']
+        model = Category
+        fields = ['id', 'title', 'description', 'image']
 
-
-class SolutionStepSerializer(serializers.ModelSerializer):
+class LessonContentBlockSerializer(serializers.ModelSerializer):
     class Meta:
-        model = SolutionStep
-        fields = ['id', 'explanation', 'order']
+        model = LessonContentBlock
+        fields = ['id', 'lesson', 'block_type', 'content', 'order', 'problem']
 
+    def to_internal_value(self, data):
+        """
+        Handle the case where content is empty or not provided
+        """
+        if 'content' not in data:
+            data['content'] = None
+        return super().to_internal_value(data)
+
+    def validate(self, data):
+        """
+        Validate the complete object
+        """
+        block_type = data.get('block_type')
+        content = data.get('content')
+        problem = data.get('problem')
+
+        # Handle problem block type
+        if block_type == 'problem':
+            if not problem:
+                raise serializers.ValidationError({
+                    'problem': 'Problem reference is required for problem blocks'
+                })
+            
+            # Ensure minimum content structure for problem blocks
+            default_content = {
+                "introduction": "",
+                "attempts_allowed": 3,
+                "points": 10
+            }
+            
+            # Update content with defaults for missing fields
+            if content is None:
+                content = default_content
+            else:
+                for key, value in default_content.items():
+                    if key not in content:
+                        content[key] = value
+            
+            data['content'] = content
+            return data
+
+        # Validate other block types
+        content_schemas = {
+            'text': {
+                'text': serializers.CharField(),
+                'format': serializers.ChoiceField(choices=['markdown', 'html'])
+            },
+            'example': {
+                'title': serializers.CharField(),
+                'description': serializers.CharField(),
+                'problem': serializers.CharField(),
+                'explanation': serializers.CharField()
+            },
+            'code': {
+                'language': serializers.CharField(),
+                'code': serializers.CharField(),
+                'explanation': serializers.CharField(required=False),
+                'show_line_numbers': serializers.BooleanField(default=True)
+            },
+            'image': {
+                'url': serializers.URLField(),
+                'caption': serializers.CharField(required=False),
+                'alt': serializers.CharField(),
+                'width': serializers.IntegerField(required=False, allow_null=True),
+                'height': serializers.IntegerField(required=False, allow_null=True)
+            },
+            'video': {
+                'url': serializers.URLField(),
+                'title': serializers.CharField(),
+                'description': serializers.CharField(required=False),
+                'thumbnail': serializers.URLField(required=False),
+                'duration': serializers.IntegerField(required=False, allow_null=True)
+            },
+            'quiz': {
+                'title': serializers.CharField(),
+                'questions': serializers.ListField(
+                    child=serializers.DictField()
+                )
+            }
+        }
+
+        if block_type in content_schemas:
+            schema = content_schemas[block_type]
+            default_content = {}
+            for field, field_type in schema.items():
+                if content is None:
+                    default_content[field] = field_type.default if hasattr(field_type, 'default') else None
+                elif field not in content:
+                    default_content[field] = field_type.default if hasattr(field_type, 'default') else None
+            data['content'] = {**default_content, **content} if content is not None else default_content
+
+        return data
+
+    def create(self, validated_data):
+        """
+        Create a new LessonContentBlock instance
+        """
+        instance = super().create(validated_data)
+        instance.validate_content()  # Run model validation
+        return instance
+
+    def update(self, instance, validated_data):
+        """
+        Update a LessonContentBlock instance
+        """
+        instance = super().update(instance, validated_data)
+        instance.validate_content()  # Run model validation
+        return instance
+
+class LessonSerializer(serializers.ModelSerializer):
+    content_blocks = LessonContentBlockSerializer(many=True, read_only=True)
+    course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all())
+
+    class Meta:
+        model = Lesson
+        fields = [
+            'id', 'title', 'slug', 'course', 'lesson_number',
+            'estimated_time', 'is_published', 'content_blocks',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+class CourseSerializer(serializers.ModelSerializer):
+    lessons = LessonSerializer(many=True, read_only=True)
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+
+    class Meta:
+        model = Course
+        fields = [
+            'id', 'title', 'slug', 'description', 'thumbnail',
+            'is_new', 'progress', 'lessons',
+            'category', 'author_id', 'is_published',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
 
 class ProblemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Problem
         fields = [
-            'id', 'question_text', 'question_type', 'options',
+            'id', 'introduction_text', 'question_text', 'question_type', 'options',
             'correct_answer', 'explanation', 'content',
             'diagram_config', 'img', 'created_at', 'updated_at'
         ]
@@ -87,383 +219,12 @@ class ProblemSerializer(serializers.ModelSerializer):
         
         return data
 
-    def create(self, validated_data):
-        """
-        Create a new LessonContentBlock instance
-        """
-        instance = super().create(validated_data)
-        instance.validate_content()  # Run model validation
-        return instance
-
-    def update(self, instance, validated_data):
-        """
-        Update a LessonContentBlock instance
-        """
-        instance = super().update(instance, validated_data)
-        instance.validate_content()  # Run model validation
-        return instance
-
-
-class LessonContentBlockSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = LessonContentBlock
-        fields = ['id', 'lesson', 'block_type', 'content', 'order', 'problem']
-
-    def to_internal_value(self, data):
-        """
-        Handle the case where content is empty or not provided
-        """
-        if 'content' not in data:
-            data['content'] = None
-        return super().to_internal_value(data)
-
-    def validate(self, data):
-        """
-        Validate the complete object
-        """
-        block_type = data.get('block_type')
-        content = data.get('content')
-        problem = data.get('problem')
-
-        # Handle problem block type
-        if block_type == 'problem':
-            if not problem:
-                raise serializers.ValidationError({
-                    'problem': 'Problem reference is required for problem blocks'
-                })
-            
-            # Ensure minimum content structure for problem blocks
-            default_content = {
-                "introduction": "",
-                "show_hints": True,
-                "show_solution": False,
-                "attempts_allowed": 3,
-                "points": 10
-            }
-            
-            # Update content with defaults for missing fields
-            if content is None:
-                content = default_content
-            else:
-                for key, value in default_content.items():
-                    if key not in content:
-                        content[key] = value
-            
-            data['content'] = content
-            return data
-
-        # Validate other block types
-        content_schemas = {
-            'text': {
-                'text': serializers.CharField(),
-                'format': serializers.ChoiceField(choices=['markdown', 'html'])
-            },
-            'example': {
-                'title': serializers.CharField(),
-                'description': serializers.CharField(),
-                'problem': serializers.CharField(),
-                'solution': serializers.CharField(),
-                'explanation': serializers.CharField()
-            },
-            'code': {
-                'language': serializers.CharField(),
-                'code': serializers.CharField(),
-                'explanation': serializers.CharField(required=False),
-                'show_line_numbers': serializers.BooleanField(default=True)
-            },
-            'image': {
-                'url': serializers.URLField(),
-                'caption': serializers.CharField(required=False),
-                'alt': serializers.CharField(),
-                'width': serializers.IntegerField(required=False, allow_null=True),
-                'height': serializers.IntegerField(required=False, allow_null=True)
-            },
-            'video': {
-                'url': serializers.URLField(),
-                'title': serializers.CharField(),
-                'description': serializers.CharField(required=False),
-                'thumbnail': serializers.URLField(required=False),
-                'duration': serializers.IntegerField(required=False, allow_null=True)
-            },
-            'quiz': {
-                'title': serializers.CharField(),
-                'questions': serializers.ListField(
-                    child=serializers.DictField()
-                )
-            }
-        }
-
-        if block_type in content_schemas:
-            schema = content_schemas[block_type]
-            default_content = {}
-            for field, field_type in schema.items():
-                if content is None:
-                    default_content[field] = field_type.default if hasattr(field_type, 'default') else None
-                elif field not in content:
-                    default_content[field] = field_type.default if hasattr(field_type, 'default') else None
-            data['content'] = {**default_content, **content} if content is not None else default_content
-
-        return data
-
-    def create(self, validated_data):
-        """
-        Create a new LessonContentBlock instance
-        """
-        instance = super().create(validated_data)
-        instance.validate_content()  # Run model validation
-        return instance
-
-    def update(self, instance, validated_data):
-        """
-        Update a LessonContentBlock instance
-        """
-        instance = super().update(instance, validated_data)
-        instance.validate_content()  # Run model validation
-        return instance
-
-
-class LessonSerializer(serializers.ModelSerializer):
-    content_blocks = LessonContentBlockSerializer(many=True, read_only=True)
-    course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all())
-
-    class Meta:
-        model = Lesson
-        fields = [
-            'id', 'title', 'slug', 'course', 'lesson_number',
-            'estimated_time', 'is_published', 'content_blocks',
-            'created_at', 'updated_at'
-        ]
-        read_only_fields = ['created_at', 'updated_at']
-
-
-class CourseSerializer(serializers.ModelSerializer):
-    lessons = LessonSerializer(many=True, read_only=True)
-    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
-
-    class Meta:
-        model = Course
-        fields = [
-            'id', 'title', 'slug', 'description', 'thumbnail',
-            'is_new', 'progress', 'lessons',
-            'category', 'author_id', 'is_published',
-            'created_at', 'updated_at'
-        ]
-        read_only_fields = ['created_at', 'updated_at']
-
-
-class CourseListSerializer(serializers.ModelSerializer):
-    """
-    Serializer for listing courses without including all related lessons.
-    """
-    category = serializers.StringRelatedField()
-    lesson_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Course
-        fields = [
-            'id', 'title', 'slug', 'description', 'thumbnail',
-            'is_new', 'progress', 'category', 'author_id',
-            'is_published', 'lesson_count', 'created_at', 'updated_at'
-        ]
-        read_only_fields = ['created_at', 'updated_at']
-
-    def get_lesson_count(self, obj):
-        return obj.lessons.count()
-
-
-class CategorySerializer(serializers.ModelSerializer):
-    courses = CourseSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Category
-        fields = [
-            'id', 'title', 'description', 'image',
-            'in_progress', 'course_ids', 'courses'
-        ]
-
-
-# New serializers for progress and rewards
-
 class UserProgressSerializer(serializers.ModelSerializer):
-    lesson_title = serializers.StringRelatedField(
-        source='lesson.title', read_only=True)
-    module_title = serializers.StringRelatedField(
-        source='lesson.module.title', read_only=True)
-
     class Meta:
         model = UserProgress
-        fields = [
-            'id', 'user', 'lesson', 'lesson_title', 'module_title',
-            'status', 'score', 'last_visited_at', 'completed_at'
-        ]
-        read_only_fields = ['last_visited_at', 'completed_at']
-
-
-class UserProgressUpdateSerializer(serializers.ModelSerializer):
-    """
-    Serializer for updating user progress (used for marking lessons as in progress or completed).
-    """
-    class Meta:
-        model = UserProgress
-        fields = ['status', 'score']
-
-
-class CourseEnrollmentSerializer(serializers.ModelSerializer):
-    course_title = serializers.StringRelatedField(
-        source='course.title', read_only=True)
-
-    class Meta:
-        model = CourseEnrollment
-        fields = [
-            'id', 'user', 'course', 'course_title',
-            'progress_percent', 'enrolled_at'
-        ]
-        read_only_fields = ['progress_percent', 'enrolled_at']
-
+        fields = ['id', 'user', 'lesson', 'completed', 'last_visited_at']
 
 class UserRewardSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserReward
-        fields = [
-            'id', 'user', 'reward_type', 'reward_name',
-            'value', 'awarded_at'
-        ]
-        read_only_fields = ['awarded_at']
-
-
-class LeaderboardEntrySerializer(serializers.ModelSerializer):
-    username = serializers.StringRelatedField(
-        source='user.username', read_only=True)
-    user_info = serializers.SerializerMethodField()
-
-    class Meta:
-        model = LeaderboardEntry
-        fields = [
-            'id', 'user', 'username', 'points',
-            'time_period', 'last_updated', 'user_info'
-        ]
-        read_only_fields = ['points', 'last_updated']
-
-    def get_user_info(self, obj):
-        """
-        Get additional user information including profile, badges, 
-        total rewards, and stats.
-        """
-        user = obj.user
-
-        # Get user's badges
-        badges = UserReward.objects.filter(
-            user=user,
-            reward_type='badge'
-        ).values('id', 'reward_name', 'value', 'awarded_at')
-
-        # Get user's streak information
-        streak = UserReward.objects.filter(
-            user=user,
-            reward_type='streak'
-        ).order_by('-awarded_at').first()
-
-        # Get total points
-        total_points = UserReward.objects.filter(
-            user=user,
-            reward_type='points'
-        ).aggregate(total=models.Sum('value'))['total'] or 0
-
-        # Get progress data
-        completed_lessons = UserProgress.objects.filter(
-            user=user,
-            status='completed'
-        ).count()
-
-        enrolled_courses = CourseEnrollment.objects.filter(
-            user=user
-        ).count()
-
-        # Return compiled user information
-        return {
-            # Basic user info
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-
-            # User stats
-            'stats': {
-                'total_points': total_points,
-                'completed_lessons': completed_lessons,
-                'enrolled_courses': enrolled_courses,
-                'current_streak': streak.value if streak else 0,
-                'badges_count': len(badges)
-            },
-
-            # Badges collection
-            'badges': list(badges)
-        }
-
-
-class LessonWithNextSerializer(LessonSerializer):
-    """
-    Extended Lesson serializer that includes information about the next lesson.
-    """
-    next_lesson = serializers.SerializerMethodField()
-    user_progress = serializers.SerializerMethodField()
-
-    class Meta(LessonSerializer.Meta):
-        fields = LessonSerializer.Meta.fields + \
-            ['next_lesson', 'user_progress']
-
-    def get_next_lesson(self, obj):
-        next_lesson = obj.get_next_lesson()
-        if next_lesson:
-            return {
-                'id': next_lesson.id,
-                'title': next_lesson.title,
-                'slug': next_lesson.slug
-            }
-        return None
-
-    def get_user_progress(self, obj):
-        # Get user from context if provided
-        request = self.context.get('request')
-        if not request or not request.user.is_authenticated:
-            return None
-
-        user = request.user
-        try:
-            progress = UserProgress.objects.get(user=user, lesson=obj)
-            return {
-                'status': progress.status,
-                'score': progress.score,
-                'completed_at': progress.completed_at
-            }
-        except UserProgress.DoesNotExist:
-            return {
-                'status': 'not_started',
-                'score': None,
-                'completed_at': None
-            }
-
-
-class CourseWithProgressSerializer(CourseSerializer):
-    """
-    Extended Course serializer that includes user's progress in the course.
-    """
-    user_progress = serializers.SerializerMethodField()
-
-    class Meta(CourseSerializer.Meta):
-        fields = CourseSerializer.Meta.fields + ['user_progress']
-
-    def get_user_progress(self, obj):
-        # Get user from context if provided
-        request = self.context.get('request')
-        if not request or not request.user.is_authenticated:
-            return None
-
-        user = request.user
-        try:
-            enrollment = CourseEnrollment.objects.get(user=user, course=obj)
-            return {
-                'enrolled_at': enrollment.enrolled_at,
-                'progress_percent': enrollment.progress_percent
-            }
-        except CourseEnrollment.DoesNotExist:
-            return None
+        fields = ['id', 'user', 'reward_type', 'points', 'awarded_at'] 

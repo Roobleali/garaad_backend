@@ -161,8 +161,6 @@ class LessonContentBlock(models.Model):
         },
         'problem': {
             'introduction': '',
-            'show_hints': True,
-            'show_solution': False,
             'attempts_allowed': 3,
             'points': 10
         }
@@ -207,8 +205,6 @@ class LessonContentBlock(models.Model):
         },
         'problem': {
             'introduction': str,
-            'show_hints': bool,
-            'show_solution': bool,
             'attempts_allowed': int,
             'points': int
         }
@@ -219,8 +215,6 @@ class LessonContentBlock(models.Model):
         """Default content structure for problem blocks"""
         return {
             "introduction": "",  # Optional text to show before the problem
-            "show_hints": True,  # Whether to show hints button
-            "show_solution": False,  # Whether to show solution button
             "attempts_allowed": 3,  # Number of attempts allowed
             "points": 10  # Points awarded for correct solution
         }
@@ -233,8 +227,6 @@ class LessonContentBlock(models.Model):
             return {
                 # Include the display settings from content
                 "introduction": self.content.get('introduction', ''),
-                "show_hints": self.content.get('show_hints', True),
-                "show_solution": self.content.get('show_solution', False),
                 "attempts_allowed": self.content.get('attempts_allowed', 3),
                 "points": self.content.get('points', 10),
                 # Include the actual problem data
@@ -433,6 +425,7 @@ class Problem(models.Model):
 
     lesson = models.ForeignKey(
         Lesson, related_name='problems', on_delete=models.CASCADE, null=True, blank=True)
+    introduction_text = models.TextField(blank=True, help_text="Text to show before the question")
     question_text = models.TextField()
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
     options = models.JSONField(
@@ -545,43 +538,6 @@ class Problem(models.Model):
     class Meta:
         ordering = ['created_at']
 
-
-class Hint(models.Model):
-    """
-    Gradual hints for a problem.
-    """
-    problem = models.ForeignKey(
-        Problem, related_name='hints', on_delete=models.CASCADE)
-    content = models.TextField()
-    order = models.PositiveIntegerField(
-        default=0, help_text="Order in which hints are revealed")
-
-    def __str__(self):
-        return f"Hint #{self.order} for Problem {self.problem.id}"
-
-    class Meta:
-        ordering = ['problem', 'order']
-        unique_together = ['problem', 'order']
-
-
-class SolutionStep(models.Model):
-    """
-    Step-by-step solution to a problem.
-    """
-    problem = models.ForeignKey(
-        Problem, related_name='solution_steps', on_delete=models.CASCADE)
-    explanation = models.TextField()
-    order = models.PositiveIntegerField(default=0)
-
-    def __str__(self):
-        return f"Solution Step #{self.order} for Problem {self.problem.id}"
-
-    class Meta:
-        ordering = ['problem', 'order']
-        unique_together = ['problem', 'order']
-
-
-# New User Progress and Rewards Models
 
 class UserProgress(models.Model):
     """

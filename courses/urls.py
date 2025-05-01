@@ -3,20 +3,17 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryViewSet, CourseViewSet, LessonViewSet,
     LessonContentBlockViewSet, ProblemViewSet,
-    UserProgressViewSet, CourseEnrollmentViewSet,
-    LeaderboardViewSet, UserRewardViewSet
+    UserProgressViewSet, UserRewardViewSet
 )
 
 router = DefaultRouter()
-router.register(r'categories', CategoryViewSet, basename='category')
-router.register(r'courses', CourseViewSet, basename='course')
-router.register(r'lessons', LessonViewSet, basename='lesson')
-router.register(r'lesson-content-blocks', LessonContentBlockViewSet, basename='lesson-content-block')
-router.register(r'problems', ProblemViewSet, basename='problem')
-router.register(r'user-progress', UserProgressViewSet, basename='user-progress')
-router.register(r'enrollments', CourseEnrollmentViewSet, basename='enrollment')
-router.register(r'leaderboard', LeaderboardViewSet, basename='leaderboard')
-router.register(r'rewards', UserRewardViewSet, basename='reward')
+router.register(r'categories', CategoryViewSet)
+router.register(r'courses', CourseViewSet)
+router.register(r'lessons', LessonViewSet)
+router.register(r'content-blocks', LessonContentBlockViewSet)
+router.register(r'problems', ProblemViewSet)
+router.register(r'progress', UserProgressViewSet)
+router.register(r'rewards', UserRewardViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

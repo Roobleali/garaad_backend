@@ -1,10 +1,9 @@
 from django.contrib import admin
-from .models import (
-    Category, Course, Lesson, LessonContentBlock,
-    Problem, Hint, SolutionStep,
-    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
-)
 from django.core.exceptions import ValidationError
+from .models import (
+    Category, Course, Lesson, LessonContentBlock, Problem,
+    UserProgress, UserReward
+)
 
 
 class CategoryAdmin(admin.ModelAdmin):
@@ -74,8 +73,6 @@ class LessonContentBlockAdmin(admin.ModelAdmin):
                 # Initialize problem block content
                 obj.content = {
                     "introduction": obj.content.get('introduction', ''),
-                    "show_hints": obj.content.get('show_hints', True),
-                    "show_solution": obj.content.get('show_solution', False),
                     "attempts_allowed": obj.content.get('attempts_allowed', 3),
                     "points": obj.content.get('points', 10)
                 }
@@ -90,18 +87,6 @@ class LessonContentBlockAdmin(admin.ModelAdmin):
             if 'content' in str(e):
                 raise ValidationError(f"Content validation error: {str(e)}")
             raise
-
-
-class HintInline(admin.TabularInline):
-    model = Hint
-    extra = 1
-    fields = ['content', 'order']
-
-
-class SolutionStepInline(admin.TabularInline):
-    model = SolutionStep
-    extra = 1
-    fields = ['explanation', 'order']
 
 
 class ProblemInline(admin.TabularInline):
@@ -120,7 +105,6 @@ class ProblemAdmin(admin.ModelAdmin):
                    'order', 'created_at']
     list_filter = ['question_type', 'lesson__course']
     search_fields = ['question_text', 'explanation']
-    inlines = [HintInline, SolutionStepInline]
     
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
@@ -171,13 +155,6 @@ class UserProgressAdmin(admin.ModelAdmin):
     date_hierarchy = 'last_visited_at'
 
 
-class CourseEnrollmentAdmin(admin.ModelAdmin):
-    list_display = ['user', 'course', 'progress_percent', 'enrolled_at']
-    list_filter = ['course', 'enrolled_at']
-    search_fields = ['user__username', 'course__title']
-    date_hierarchy = 'enrolled_at'
-
-
 class UserRewardAdmin(admin.ModelAdmin):
     list_display = ['user', 'reward_type',
                     'reward_name', 'value', 'awarded_at']
@@ -186,21 +163,11 @@ class UserRewardAdmin(admin.ModelAdmin):
     date_hierarchy = 'awarded_at'
 
 
-class LeaderboardEntryAdmin(admin.ModelAdmin):
-    list_display = ['user', 'time_period', 'points', 'last_updated']
-    list_filter = ['time_period']
-    search_fields = ['user__username']
-    ordering = ['-points']
-
-
-admin.site.register(Category, CategoryAdmin)
-admin.site.register(Course, CourseAdmin)
-admin.site.register(Lesson, LessonAdmin)
+# Register your models here
+admin.site.register(Category)
+admin.site.register(Course)
+admin.site.register(Lesson)
 admin.site.register(LessonContentBlock, LessonContentBlockAdmin)
 admin.site.register(Problem, ProblemAdmin)
-
-# Register new models
 admin.site.register(UserProgress, UserProgressAdmin)
-admin.site.register(CourseEnrollment, CourseEnrollmentAdmin)
 admin.site.register(UserReward, UserRewardAdmin)
-admin.site.register(LeaderboardEntry, LeaderboardEntryAdmin)

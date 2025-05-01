@@ -534,12 +534,28 @@ class UserRewardViewSet(viewsets.ReadOnlyModelViewSet):
     """
     permission_classes = [IsAuthenticated]
     serializer_class = UserRewardSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['reward_name', 'lesson__title', 'course__title']
+    ordering_fields = ['awarded_at', 'value']
 
     def get_queryset(self):
         """
         Ensure users can only see their own rewards.
+        Optionally filter by lesson or course.
         """
-        return UserReward.objects.filter(user=self.request.user)
+        queryset = UserReward.objects.filter(user=self.request.user)
+        
+        # Filter by lesson
+        lesson_id = self.request.query_params.get('lesson_id')
+        if lesson_id:
+            queryset = queryset.filter(lesson_id=lesson_id)
+            
+        # Filter by course
+        course_id = self.request.query_params.get('course_id')
+        if course_id:
+            queryset = queryset.filter(course_id=course_id)
+            
+        return queryset
 
 
 class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):

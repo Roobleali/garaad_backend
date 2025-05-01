@@ -633,7 +633,9 @@ class UserProgress(models.Model):
                 user=self.user,
                 reward_type='points',
                 reward_name='Lesson Completion',
-                value=10
+                value=10,
+                lesson=self.lesson,
+                course=self.lesson.course
             )
 
             # Update leaderboard
@@ -692,7 +694,8 @@ class CourseEnrollment(models.Model):
                     user=user,
                     reward_type='badge',
                     reward_name=f'Course Completed: {course.title}',
-                    value=1
+                    value=1,
+                    course=course
                 )
                 # Update leaderboard
                 LeaderboardEntry.update_points(user)
@@ -725,6 +728,11 @@ class UserReward(models.Model):
     reward_name = models.CharField(max_length=255)
     value = models.PositiveIntegerField(default=0)
     awarded_at = models.DateTimeField(auto_now_add=True)
+    # Add references to lesson and course
+    lesson = models.ForeignKey(
+        'Lesson', related_name='rewards', on_delete=models.SET_NULL, null=True, blank=True)
+    course = models.ForeignKey(
+        'Course', related_name='rewards', on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         ordering = ['-awarded_at']
@@ -740,7 +748,9 @@ class UserReward(models.Model):
                 user=user,
                 reward_type='points',
                 reward_name='Perfect Score on Practice',
-                value=15
+                value=15,
+                lesson=practice_set.lesson if hasattr(practice_set, 'lesson') else None,
+                course=practice_set.lesson.course if hasattr(practice_set, 'lesson') else None
             )
             # Update leaderboard
             LeaderboardEntry.update_points(user)

@@ -322,11 +322,15 @@ class CourseEnrollmentSerializer(serializers.ModelSerializer):
 
 
 class UserRewardSerializer(serializers.ModelSerializer):
+    lesson_title = serializers.StringRelatedField(source='lesson.title', read_only=True)
+    course_title = serializers.StringRelatedField(source='course.title', read_only=True)
+
     class Meta:
         model = UserReward
         fields = [
             'id', 'user', 'reward_type', 'reward_name',
-            'value', 'awarded_at'
+            'value', 'awarded_at', 'lesson', 'lesson_title',
+            'course', 'course_title'
         ]
         read_only_fields = ['awarded_at']
 

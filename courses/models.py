@@ -442,7 +442,7 @@ class Problem(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['lesson', 'order']
+        ordering = ['created_at']
         unique_together = ['lesson', 'order']
 
     def clean(self):
@@ -534,9 +534,6 @@ class Problem(models.Model):
 
     def __str__(self):
         return f"{self.question_text[:50]}..."
-
-    class Meta:
-        ordering = ['created_at']
 
 
 class UserProgress(models.Model):

@@ -156,8 +156,8 @@ class ProblemSerializer(serializers.ModelSerializer):
         model = Problem
         fields = [
             'id', 'introduction_text', 'question_text', 'question_type', 'options',
-            'correct_answer', 'explanation', 'content',
-            'diagram_config', 'img', 'created_at', 'updated_at'
+            'correct_answer', 'explanation', 'content', 'diagram_config', 'img',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
 

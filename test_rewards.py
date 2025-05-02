@@ -1,23 +1,11 @@
 import requests
 import json
 
-BASE_URL = 'http://localhost:8000'
+BASE_URL = 'https://api.garaad.org'
+TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ2MTA4Njg5LCJpYXQiOjE3NDYxMDc3ODksImp0aSI6IjFhNmZhNmI4NmY4OTQ1MzViYjE3OTk1OTZmMmNkNWVkIiwidXNlcl9pZCI6MTB9.D_fpTWSsolu_sqffb7sE3HmHfD6DnrFoTaKL2wlLxhA'
 
 def test_rewards_api():
-    # First, get a token (you'll need to replace these with actual credentials)
-    auth_data = {
-        'email': 'test@example.com',
-        'password': 'test_password'
-    }
-    
-    # Get token
-    response = requests.post(f'{BASE_URL}/api/auth/signin/', json=auth_data)
-    if response.status_code != 200:
-        print("Failed to get token:", response.text)
-        return
-    
-    token = response.json()['tokens']['access']
-    headers = {'Authorization': f'Bearer {token}'}
+    headers = {'Authorization': f'Bearer {TOKEN}'}
     
     # Test getting all rewards
     response = requests.get(f'{BASE_URL}/api/lms/rewards/', headers=headers)

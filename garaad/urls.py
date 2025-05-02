@@ -12,16 +12,44 @@ def hello_world(request):
 
 # Health check view
 def health_check(request):
-    """Health check endpoint for App Runner"""
-    response_data = {
-        "status": "healthy",
-        "version": "1.0.0"
-    }
-    return HttpResponse(
-        json.dumps(response_data),
-        status=200,
-        content_type="application/json"
-    )
+    """Health check endpoint for Railway"""
+    try:
+        # Check database connection
+        db_conn = connections['default']
+        db_conn.cursor()
+        
+        response_data = {
+            "status": "healthy",
+            "version": "1.0.0",
+            "database": "connected"
+        }
+        return HttpResponse(
+            json.dumps(response_data),
+            status=200,
+            content_type="application/json"
+        )
+    except OperationalError:
+        response_data = {
+            "status": "unhealthy",
+            "version": "1.0.0",
+            "database": "disconnected"
+        }
+        return HttpResponse(
+            json.dumps(response_data),
+            status=503,
+            content_type="application/json"
+        )
+    except Exception as e:
+        response_data = {
+            "status": "unhealthy",
+            "version": "1.0.0",
+            "error": str(e)
+        }
+        return HttpResponse(
+            json.dumps(response_data),
+            status=500,
+            content_type="application/json"
+        )
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -35,6 +63,6 @@ urlpatterns = [
 
     # Add hello-world endpoint
     path('hello-world/', hello_world, name='hello_world'),
-    path('', health_check, name='health_check'),
-    path('health/', health_check, name='health_check_alt'),
+    path('health/', health_check, name='health_check'),
+    path('', health_check, name='health_check_root'),
 ]

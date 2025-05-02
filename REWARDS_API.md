@@ -1,106 +1,149 @@
 # Rewards API Documentation
 
 ## Overview
-The Rewards API provides endpoints for managing user rewards, points, and badges in the learning management system. All endpoints require authentication using JWT tokens.
+The Rewards API allows you to retrieve and manage user rewards earned through course completion, lesson completion, and other achievements in the learning platform.
 
 ## Base URL
 ```
-/api/lms/rewards/
+https://api.garaad.org/api/lms
+```
+
+## Authentication
+All endpoints require Bearer token authentication. Include the following header with your requests:
+```
+Authorization: Bearer <your_access_token>
 ```
 
 ## Endpoints
 
 ### List User Rewards
-```http
-GET /api/lms/rewards/
+```
+GET /rewards/
 ```
 
-**Purpose**: Retrieves all rewards earned by the authenticated user.
+Retrieves all rewards for the authenticated user.
 
-**Authentication**: Required (Bearer Token)
+#### Query Parameters
+- `lesson_id` (optional): Filter rewards by specific lesson ID
+- `course_id` (optional): Filter rewards by specific course ID
+- `search` (optional): Search rewards by name (e.g., "completion", "badge")
 
-**Query Parameters**:
-- `lesson_id`: Filter rewards by specific lesson
-- `course_id`: Filter rewards by specific course
-- `search`: Search in reward names, lesson titles, and course titles
-- `ordering`: Order by `awarded_at` or `value` (e.g., `ordering=-awarded_at` for newest first)
-
-**Response**:
+#### Response Format
 ```json
-{
-  "count": number,
-  "next": "string",
-  "previous": "string",
-  "results": [
-    {
-      "id": "string",
-      "user": "string",
-      "reward_type": "string",  // "points", "badge", or "streak"
-      "reward_name": "string",
-      "value": number,
-      "awarded_at": "datetime",
-      "lesson": "string",  // lesson ID
-      "lesson_title": "string",
-      "course": "string",  // course ID
-      "course_title": "string"
+[
+  {
+    "id": integer,
+    "user": integer,
+    "reward_type": string,      // "points", "badge", or "streak"
+    "reward_name": string,      // Description of the reward
+    "value": integer,           // Points value or badge count
+    "awarded_at": string,       // ISO 8601 datetime
+    "lesson": {                 // null if not associated with a lesson
+      "id": integer,
+      "title": string
+    },
+    "course": {                 // null if not associated with a course
+      "id": integer,
+      "title": string
     }
-  ]
-}
+  }
+]
+```
+
+#### Example Responses
+
+1. All Rewards
+```json
+GET /rewards/
+[
+  {
+    "id": 18,
+    "user": 10,
+    "reward_type": "badge",
+    "reward_name": "Course Completed: Lacagta loo yaqaan 'Cryptocurrency'",
+    "value": 1,
+    "awarded_at": "2025-04-30T13:51:59.763227Z",
+    "lesson": null,
+    "course": null
+  }
+]
+```
+
+2. Filtered by Lesson
+```json
+GET /rewards/?lesson_id=1
+[
+  {
+    "id": 17,
+    "user": 10,
+    "reward_type": "points",
+    "reward_name": "Lesson Completion",
+    "value": 10,
+    "awarded_at": "2025-04-30T13:51:57.826828Z",
+    "lesson": {
+      "id": 1,
+      "title": "Introduction to Cryptocurrency"
+    },
+    "course": null
+  }
+]
 ```
 
 ## Reward Types
 
-The system supports three types of rewards:
+### Points
+- Awarded for completing lessons
+- Default value: 10 points per lesson completion
+- Can be awarded for perfect scores on practice sets
 
-1. **Points**
-   - Awarded for completing lessons (10 points)
-   - Awarded for perfect scores on practice sets (15 points)
+### Badges
+- Awarded for completing courses
+- Special achievements (course completion, streak milestones)
+- Value is typically 1 for achievement unlocked
 
-2. **Badges**
-   - Awarded for completing courses
-   - Custom achievement badges
+### Streaks
+- Awarded for consistent daily learning
+- Value represents the number of consecutive days
 
-3. **Streaks**
-   - Tracks user's learning streak
+## Management Commands
 
-## Reward Triggers
+### Reset User Rewards and Progress
+To reset all rewards and progress for a specific user, use the following management command:
 
-Rewards are automatically awarded in the following scenarios:
+```bash
+python manage.py reset_rewards <user_id>
+```
 
-1. **Lesson Completion**
-   - 10 points awarded when a lesson is marked as completed
-   - Includes reference to the specific lesson and its course
+This command will:
+1. Delete all rewards for the specified user
+2. Remove all lesson progress records
+3. Reset progress in course enrollments to 0
 
-2. **Course Completion**
-   - Badge awarded when a course is 100% completed
-   - Badge name format: "Course Completed: {course_title}"
-   - Includes reference to the specific course
+## Error Responses
 
-3. **Perfect Practice Score**
-   - 15 points awarded for achieving 100% on practice sets
-   - Includes reference to the specific lesson and its course
+### Authentication Error
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
 
-## Integration with Leaderboard
+### Invalid Token
+```json
+{
+  "detail": "Given token not valid for any token type"
+}
+```
 
-All points earned through rewards are automatically reflected in the leaderboard system, which tracks:
-- All-time points
-- Weekly points
-- Monthly points
+### Resource Not Found
+```json
+{
+  "detail": "Not found."
+}
+```
 
-## Common Response Status Codes
-
-- 200: Success
-- 401: Unauthorized
-- 403: Forbidden
-- 404: Not Found
-- 500: Server Error
-
-## Notes
-
-1. All endpoints require authentication using JWT tokens
-2. Rewards are read-only - they are automatically awarded by the system
-3. Points are automatically aggregated for leaderboard calculations
-4. All dates are returned in ISO 8601 format
-5. Pagination is supported on list endpoints
-6. You can filter rewards by lesson or course using query parameters
-7. Search functionality is available for reward names, lesson titles, and course titles 
+## Best Practices
+1. Always include authentication token in requests
+2. Use filtering parameters to reduce payload size
+3. Monitor the `awarded_at` field for reward tracking
+4. Use search functionality for specific reward types 

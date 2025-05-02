@@ -23,7 +23,7 @@ class ProblemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Problem
         fields = [
-            'id', 'question_text', 'question_type', 'options',
+            'id', 'which', 'question_text', 'question_type', 'options',
             'correct_answer', 'explanation', 'content',
             'diagram_config', 'img', 'created_at', 'updated_at'
         ]

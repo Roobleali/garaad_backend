@@ -433,6 +433,7 @@ class Problem(models.Model):
 
     lesson = models.ForeignKey(
         Lesson, related_name='problems', on_delete=models.CASCADE, null=True, blank=True)
+    which = models.TextField(blank=True, null=True, help_text="Additional text field before question")
     question_text = models.TextField()
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
     options = models.JSONField(

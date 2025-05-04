@@ -68,30 +68,13 @@ class SignupSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'password', 'age')
-        extra_kwargs = {
-            'username': {'required': True},
-            'email': {'required': True},
-            'password': {'required': True},
-            'age': {'required': True}
-        }
-    
-    def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Email already exists")
-        return value
-
-    def validate_username(self, value):
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("Username already exists")
-        return value
     
     def create(self, validated_data):
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
-            age=validated_data['age'],
-            is_active=False
+            age=validated_data['age']
         )
         return user
 

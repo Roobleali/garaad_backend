@@ -4,12 +4,12 @@ from django.http import HttpResponse, JsonResponse
 from django.db import connections
 from django.db.utils import OperationalError
 from django.contrib.auth import get_user_model
-from django.views.decorators.csrf import csrf_exempt
 import json
 
 User = get_user_model()
 
 # Simple hello world view
+
 def hello_world(request):
     return HttpResponse("Hello, World!")
 
@@ -77,8 +77,15 @@ def reset_admin_password(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Comment out or remove conflicting lines
+    # path('accounts/', include('allauth.urls')),
+    # Updated path to match frontend API calls
+    path('api/', include('api.urls')),
     path('api/auth/', include('accounts.urls')),
+    # Learning Management System API
     path('api/lms/', include('courses.urls')),
+
+    # Add hello-world endpoint
     path('hello-world/', hello_world, name='hello_world'),
     path('health/', health_check, name='health_check'),
     path('reset-password/', reset_admin_password, name='reset_admin_password'),

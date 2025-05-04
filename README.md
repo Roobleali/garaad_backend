@@ -17,6 +17,40 @@ This backend provides a comprehensive API for the Garaad learning platform, incl
 - [Postman Collection](./garaad_api_postman_collection.json) - Ready-to-use collection for API testing
 - [Docker Guide](./DOCKER.md) - Detailed instructions for Docker setup and deployment
 
+## Email Verification
+
+The system includes a robust email verification system using Resend API. This helps prevent fraud and ensures that users provide valid email addresses.
+
+### Quick Start
+
+1. Set up environment variables:
+   ```env
+   RESEND_API_KEY=your_resend_api_key
+   FROM_EMAIL=onboarding@resend.dev  # For development
+   RESEND_TEST_MODE=True  # Set to False in production
+   ```
+
+2. For detailed documentation, see [EMAIL_VERIFICATION.md](EMAIL_VERIFICATION.md)
+
+### Key Features
+
+- Email verification on signup
+- Resend verification email option
+- 24-hour code expiration
+- One-time use verification codes
+- Rate limiting for security
+- Comprehensive error handling
+- Detailed logging
+
+### Production Setup
+
+For production deployment:
+1. Get a production API key from [Resend Dashboard](https://resend.com/api-keys)
+2. Verify your domain at [Resend Domains](https://resend.com/domains)
+3. Update environment variables with production values
+
+For more details, refer to the [Email Verification Documentation](EMAIL_VERIFICATION.md).
+
 ## Quick Start
 
 ### Local Development

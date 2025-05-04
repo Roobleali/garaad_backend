@@ -1,4 +1,4 @@
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
@@ -16,6 +16,13 @@ from .serializers import (
 )
 from django.db import transaction
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .email_verification import generate_verification_token, send_verification_email, store_verification_token
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.parsers import JSONParser
+import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -51,57 +58,118 @@ def custom_login(request):
     else:
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@parser_classes([JSONParser])
 def signup_view(request):
-    # Check for required fields
-    required_fields = ['username', 'email', 'password', 'age']
-    missing_fields = [field for field in required_fields if not request.data.get(field)]
-    
-    if missing_fields:
-        return Response({
-            'error': f'Missing required fields: {", ".join(missing_fields)}'
-        }, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        # Parse JSON data manually if needed
+        if isinstance(request.body, bytes):
+            try:
+                data = json.loads(request.body.decode('utf-8'))
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON decode error: {str(e)}")
+                return Response({
+                    'error': 'Invalid JSON data'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            data = request.data
 
-    # Check if username or email already exists
-    if User.objects.filter(username=request.data['username']).exists():
-        return Response({
-            'username': ['Username already exists']
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    if User.objects.filter(email=request.data['email']).exists():
-        return Response({
-            'email': ['Email already exists']
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    serializer = SignupSerializer(data=request.data)
-    if serializer.is_valid():
-        with transaction.atomic():
-            # Create the user
-            user = serializer.save()
-            
-            # Create onboarding record if onboarding data is provided
-            onboarding_data = request.data.get('onboarding_data')
-            if onboarding_data:
-                onboarding_serializer = UserOnboardingSerializer(data=onboarding_data)
-                if onboarding_serializer.is_valid():
-                    onboarding = onboarding_serializer.save(user=user, has_completed_onboarding=True)
-                else:
-                    return Response({
-                        'onboarding_data': onboarding_serializer.errors
-                    }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Generate tokens
-            refresh = RefreshToken.for_user(user)
+        logger.info("Raw request body: %s", request.body.decode('utf-8'))
+        logger.info("Request content type: %s", request.content_type)
+        logger.info("Request headers: %s", request.headers)
+        logger.info("Request data: %s", data)
+        
+        # Check for required fields
+        required_fields = ['username', 'email', 'password', 'age']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        
+        if missing_fields:
+            error_msg = f'Missing required fields: {", ".join(missing_fields)}'
+            logger.error("Validation error: %s", error_msg)
             return Response({
-                'user': UserSerializer(user).data,
-                'tokens': {
-                    'access': str(refresh.access_token),
-                    'refresh': str(refresh)
-                }
-            }, status=status.HTTP_201_CREATED)
+                'error': error_msg
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if username or email already exists
+        if User.objects.filter(username=data['username']).exists():
+            error_msg = 'Username already exists'
+            logger.error("Validation error: %s", error_msg)
+            return Response({
+                'username': [error_msg]
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if User.objects.filter(email=data['email']).exists():
+            error_msg = 'Email already exists'
+            logger.error("Validation error: %s", error_msg)
+            return Response({
+                'email': [error_msg]
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = SignupSerializer(data=data)
+        if serializer.is_valid():
+            with transaction.atomic():
+                # Create the user with is_active=False initially
+                user = serializer.save(is_active=False)
+                
+                # Generate verification token and send email
+                token = generate_verification_token()
+                email_sent = send_verification_email(user.email, token)
+                
+                if not email_sent:
+                    user.delete()  # Rollback user creation if email fails
+                    error_msg = 'Failed to send verification email'
+                    logger.error("Email error: %s", error_msg)
+                    return Response({
+                        'error': error_msg
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+                # Store verification token
+                store_verification_token(user.email, token)
+                
+                # Create onboarding record if onboarding data is provided
+                onboarding_data = data.get('onboarding_data')
+                if onboarding_data:
+                    onboarding_serializer = UserOnboardingSerializer(data=onboarding_data)
+                    if onboarding_serializer.is_valid():
+                        onboarding = onboarding_serializer.save(user=user, has_completed_onboarding=True)
+                    else:
+                        error_msg = onboarding_serializer.errors
+                        logger.error("Onboarding error: %s", error_msg)
+                        return Response({
+                            'onboarding_data': error_msg
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                
+                logger.info("User registered successfully: %s", user.email)
+                return Response({
+                    'message': 'Registration successful. Please check your email to verify your account.',
+                    'user': UserSerializer(user).data
+                }, status=status.HTTP_201_CREATED)
+        
+        logger.error("Serializer errors: %s", serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.error("Exception in signup_view: %s", str(e), exc_info=True)
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_email(request, token):
+    """Verify user's email using the token"""
+    from .email_verification import verify_email_token
     
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    success, message = verify_email_token(token)
+    if success:
+        return Response({
+            'message': message
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({
+            'error': message
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

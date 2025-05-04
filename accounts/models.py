@@ -4,6 +4,8 @@ from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.core.serializers.json import DjangoJSONEncoder
 from django.conf import settings
+import random
+import string
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
@@ -11,6 +13,7 @@ class User(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     age = models.PositiveIntegerField(null=True, blank=True)
+    is_email_verified = models.BooleanField(default=False)
     
     # Additional fields
     profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
@@ -120,3 +123,17 @@ class UserProfile(models.Model):
         
     def __str__(self):
         return f"{self.user.username}'s Profile"
+
+class EmailVerification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+
+    @classmethod
+    def generate_code(cls):
+        """Generate a random 6-digit code"""
+        return ''.join(random.choices(string.digits, k=6))
+
+    def __str__(self):
+        return f"Verification code for {self.user.email}"

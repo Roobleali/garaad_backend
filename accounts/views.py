@@ -5,7 +5,7 @@ from rest_framework import status
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
-from .models import StudentProfile, UserOnboarding, UserProfile
+from .models import StudentProfile, UserOnboarding, UserProfile, EmailVerification
 from .serializers import (
     StudentProfileSerializer, 
     UserSerializer, 
@@ -16,6 +16,9 @@ from .serializers import (
 )
 from django.db import transaction
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .utils import send_verification_email
+from datetime import timedelta
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -50,6 +53,97 @@ def custom_login(request):
         })
     else:
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_email(request):
+    """
+    Verify user's email using the verification code
+    """
+    email = request.data.get('email')
+    code = request.data.get('code')
+
+    if not email or not code:
+        return Response({
+            'error': 'Please provide both email and verification code'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({
+            'error': 'User not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    # Check if email is already verified
+    if user.is_email_verified:
+        return Response({
+            'error': 'Email is already verified'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get the most recent verification code
+    try:
+        verification = EmailVerification.objects.filter(
+            user=user,
+            is_used=False,
+            created_at__gte=timezone.now() - timedelta(hours=24)
+        ).latest('created_at')
+    except EmailVerification.DoesNotExist:
+        return Response({
+            'error': 'Invalid or expired verification code'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Verify the code
+    if verification.code != code:
+        return Response({
+            'error': 'Invalid verification code'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Mark the code as used and verify the email
+    verification.is_used = True
+    verification.save()
+    user.is_email_verified = True
+    user.save()
+
+    return Response({
+        'message': 'Email verified successfully'
+    }, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def resend_verification_email(request):
+    """
+    Resend verification email to user
+    """
+    email = request.data.get('email')
+
+    if not email:
+        return Response({
+            'error': 'Please provide email'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({
+            'error': 'User not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    # Check if email is already verified
+    if user.is_email_verified:
+        return Response({
+            'error': 'Email is already verified'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        send_verification_email(user)
+        return Response({
+            'message': 'Verification email sent successfully'
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({
+            'error': f'Failed to send verification email: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -91,6 +185,14 @@ def signup_view(request):
                         'onboarding_data': onboarding_serializer.errors
                     }, status=status.HTTP_400_BAD_REQUEST)
             
+            # Send verification email
+            try:
+                send_verification_email(user)
+            except Exception as e:
+                return Response({
+                    'error': f'Failed to send verification email: {str(e)}'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
             # Generate tokens
             refresh = RefreshToken.for_user(user)
             return Response({
@@ -98,7 +200,8 @@ def signup_view(request):
                 'tokens': {
                     'access': str(refresh.access_token),
                     'refresh': str(refresh)
-                }
+                },
+                'message': 'User registered successfully. Please check your email for verification.'
             }, status=status.HTTP_201_CREATED)
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -188,18 +291,27 @@ def register_user(request):
                 'error': 'Email already exists'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.create_user(
-            username=username,
-            email=email,
-            password=password,
-            age=age
-        )
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                age=age
+            )
 
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'token': str(refresh.access_token),
-            'user': UserSerializer(user).data
-        }, status=status.HTTP_201_CREATED)
+            # Send verification email
+            try:
+                send_verification_email(user)
+            except Exception as e:
+                return Response({
+                    'error': f'Failed to send verification email: {str(e)}'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'token': str(refresh.access_token),
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         return Response({

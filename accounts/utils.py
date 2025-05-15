@@ -43,17 +43,39 @@ def send_verification_email(user):
         data = {
             "from": FROM_EMAIL,
             "to": to_email,
-            "subject": "Verify Your Email - Garaad",
+            "subject": "Xaqiiji Emailkaaga - Garaad",
             "html": f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">Welcome to Garaad!</h2>
-                <p>Thank you for signing up. Please use the following code to verify your email address:</p>
-                <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
-                    <h1 style="color: #007bff; margin: 0;">{code}</h1>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <img src="https://garaad.org/static/images/logo.png" alt="Garaad Logo" style="max-width: 150px; height: auto;">
                 </div>
-                <p>This code will expire in 24 hours.</p>
-                <p>If you didn't create an account, you can safely ignore this email.</p>
-                <p>Best regards,<br>The Garaad Team</p>
+                
+                <h2 style="color: #2C3E50; text-align: center; margin-bottom: 25px; font-size: 24px;">Ku soo dhowow Garaad!</h2>
+                
+                <p style="color: #34495E; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                    Waad ku mahadsantahay inaad is diiwaangelisay. Fadlan isticmaal koodka soo socda si aad u xaqiijiso cinwaanka emailkaaga:
+                </p>
+                
+                <div style="background-color: #F8F9FA; padding: 25px; border-radius: 8px; text-align: center; margin: 25px 0; border: 2px dashed #3498DB;">
+                    <h1 style="color: #3498DB; margin: 0; font-size: 32px; letter-spacing: 5px;">{code}</h1>
+                </div>
+                
+                <div style="background-color: #F1F8FF; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                    <p style="color: #2C3E50; margin: 0; font-size: 14px;">
+                        <strong>Xasuuso:</strong> Number sireedkan wuxuu dhacayaa 24 saac gudahood.
+                    </p>
+                </div>
+                
+                <p style="color: #7F8C8D; font-size: 14px; line-height: 1.5; margin: 25px 0;">
+                    Haddii aadan codsanin xaqiijintan, fadlan iska dhaaf emailkaan.
+                </p>
+                
+                <div style="border-top: 1px solid #ECF0F1; margin-top: 30px; padding-top: 20px; text-align: center;">
+                    <p style="color: #7F8C8D; margin: 0; font-size: 14px;">
+                        Mahadsanid,<br>
+                        <strong style="color: #2C3E50;">Kooxda Garaad</strong>
+                    </p>
+                </div>
             </div>
             """
         }

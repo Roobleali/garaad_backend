@@ -51,12 +51,29 @@ class User(AbstractUser):
 
 
 class StudentProfile(models.Model):
+    STUDY_TIME_CHOICES = [
+        ('morning', 'Aroorti Subaxda inta aan quraacaynayo'),
+        ('afternoon', 'Waqtiga Nasashasha intaan Khadaynayo'),
+        ('evening', 'Habeenki ah ka dib cashada ama Kahor intan seexanin'),
+        ('flexible', 'Waqti kale oo maalintayda ah')
+    ]
+
     user = models.OneToOneField(
         User, 
         on_delete=models.CASCADE,
         related_name='student_profile'
     )
-    preferred_study_time = models.TextField(default='[]', blank=True)
+    preferred_study_time = models.CharField(
+        max_length=20,
+        choices=STUDY_TIME_CHOICES,
+        default='flexible'
+    )
+    daily_goal_minutes = models.IntegerField(default=15)
+    streak_charges = models.IntegerField(default=2)
+    notification_preferences = models.JSONField(
+        default=dict,
+        help_text="User's notification preferences"
+    )
     subjects = models.TextField(default='[]', blank=True)
     proficiency_level = models.CharField(
         max_length=20,
@@ -76,13 +93,36 @@ class StudentProfile(models.Model):
     def __str__(self):
         return f"{self.user.email}'s Profile"
 
-    def get_preferred_study_time(self):
-        import json
-        return json.loads(self.preferred_study_time)
+    def get_reminder_time(self):
+        """Get the optimal reminder time based on preferred study time"""
+        reminder_times = {
+            'morning': 7,  # 7 AM for morning study
+            'afternoon': 11,  # 11 AM for afternoon study
+            'evening': 19,  # 7 PM for evening study
+            'flexible': 12,  # Noon for flexible schedule
+        }
+        return reminder_times.get(self.preferred_study_time, 12)
 
-    def set_preferred_study_time(self, times):
-        import json
-        self.preferred_study_time = json.dumps(times)
+    def get_study_time_badge(self):
+        """Get the motivational badge for study time"""
+        badges = {
+            'morning': "قُلْ هَلْ يَسْتَوِي الَّذِينَ يَعْلَمُونَ وَالَّذِينَ لَا يَعْلَمُونَ",
+            'afternoon': "وَقُل رَّبِّ زِدْنِي عِلْمًا",
+            'evening': "يَرْفَعِ اللَّهُ الَّذِينَ آمَنُوا مِنْكُمْ وَالَّذِينَ أُوتُوا الْعِلْمَ دَرَجَاتٍ",
+            'flexible': "فَاسْأَلُوا أَهْلَ الذِّكْرِ إِن كُنْتُمْ لَا تَعْلَمُونَ"
+        }
+        return badges.get(self.preferred_study_time, '')
+
+    def get_goal_badge(self):
+        """Get the motivational badge based on daily goal"""
+        if self.daily_goal_minutes <= 5:
+            return "Talaabo yar, guul weyn"
+        elif self.daily_goal_minutes <= 10:
+            return "Waqtigaaga si fiican u isticmaal"
+        elif self.daily_goal_minutes <= 15:
+            return "Adkaysi iyo dadaal"
+        else:
+            return "Waxbarasho joogto ah"
 
     def get_subjects(self):
         import json
@@ -91,6 +131,36 @@ class StudentProfile(models.Model):
     def set_subjects(self, subjects):
         import json
         self.subjects = json.dumps(subjects)
+
+    def get_notification_preferences(self):
+        """Get user's notification preferences with defaults"""
+        defaults = {
+            'email_notifications': True,
+            'streak_reminders': True,
+            'achievement_notifications': True,
+            'daily_goal_reminders': True,
+            'league_updates': True,
+        }
+        return {**defaults, **self.notification_preferences}
+
+    def set_notification_preferences(self, preferences):
+        """Update user's notification preferences"""
+        current = self.get_notification_preferences()
+        self.notification_preferences = {**current, **preferences}
+        self.save()
+
+    def use_streak_charge(self):
+        """Use a streak charge to maintain streak"""
+        if self.streak_charges > 0:
+            self.streak_charges -= 1
+            self.save()
+            return True
+        return False
+
+    def add_streak_charge(self, amount=1):
+        """Add streak charges to user's account"""
+        self.streak_charges += amount
+        self.save()
 
 class UserOnboarding(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

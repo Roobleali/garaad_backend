@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.text import slugify
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 
 class Category(models.Model):
@@ -721,6 +722,8 @@ class UserReward(models.Model):
         ('points', 'Points'),
         ('badge', 'Badge'),
         ('streak', 'Streak'),
+        ('achievement', 'Achievement'),
+        ('challenge', 'Challenge'),
     )
 
     user = models.ForeignKey(
@@ -729,17 +732,20 @@ class UserReward(models.Model):
     reward_name = models.CharField(max_length=255)
     value = models.PositiveIntegerField(default=0)
     awarded_at = models.DateTimeField(auto_now_add=True)
-    # Add references to lesson and course
     lesson = models.ForeignKey(
         'Lesson', related_name='rewards', on_delete=models.SET_NULL, null=True, blank=True)
     course = models.ForeignKey(
         'Course', related_name='rewards', on_delete=models.SET_NULL, null=True, blank=True)
+    challenge = models.ForeignKey(
+        'DailyChallenge', related_name='rewards', on_delete=models.SET_NULL, null=True, blank=True)
+    achievement = models.ForeignKey(
+        'Achievement', related_name='rewards', on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         ordering = ['-awarded_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.reward_name} ({self.value})"
+        return f"{self.user.username} - {self.reward_name}"
 
     @classmethod
     def award_practice_completion(cls, user, practice_set, score):
@@ -757,6 +763,21 @@ class UserReward(models.Model):
             LeaderboardEntry.update_points(user)
             return reward
         return None
+
+    @classmethod
+    def award_challenge_completion(cls, user, challenge, score):
+        """Award points for completing a daily challenge"""
+        reward = cls.objects.create(
+            user=user,
+            reward_type='challenge',
+            reward_name=f"Daily Challenge: {challenge.title}",
+            value=challenge.points_reward,
+            challenge=challenge
+        )
+        # Update user level experience
+        user_level, _ = UserLevel.objects.get_or_create(user=user)
+        user_level.add_experience(challenge.points_reward)
+        return reward
 
 
 class LeaderboardEntry(models.Model):
@@ -950,3 +971,323 @@ def validate_content(self, content):
                 )
 
     return content_data
+
+class DailyChallenge(models.Model):
+    """
+    Daily challenges that users can complete for extra points and rewards.
+    """
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    challenge_date = models.DateField(unique=True)
+    points_reward = models.PositiveIntegerField(default=50)
+    problem = models.ForeignKey(
+        Problem, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        help_text="Optional problem to solve for the challenge"
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Optional course to complete for the challenge"
+    )
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Optional lesson to complete for the challenge"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-challenge_date']
+        verbose_name = "Daily Challenge"
+        verbose_name_plural = "Daily Challenges"
+
+    def __str__(self):
+        return f"{self.title} - {self.challenge_date}"
+
+class UserChallengeProgress(models.Model):
+    """
+    Tracks user progress on daily challenges.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        related_name='challenge_progress', 
+        on_delete=models.CASCADE
+    )
+    challenge = models.ForeignKey(
+        DailyChallenge, 
+        related_name='user_progress', 
+        on_delete=models.CASCADE
+    )
+    completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    score = models.PositiveIntegerField(default=0)
+    attempts = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ['user', 'challenge']
+        verbose_name = "User Challenge Progress"
+        verbose_name_plural = "User Challenge Progress"
+
+    def __str__(self):
+        return f"{self.user.username} - {self.challenge.title}"
+
+class UserLevel(models.Model):
+    """
+    Tracks user levels and experience points.
+    """
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        related_name='level',
+        on_delete=models.CASCADE
+    )
+    level = models.PositiveIntegerField(default=1)
+    experience_points = models.PositiveIntegerField(default=0)
+    experience_to_next_level = models.PositiveIntegerField(default=100)
+    last_level_up = models.DateTimeField(auto_now=True)
+    clan = models.CharField(max_length=100, blank=True, null=True, help_text="User's clan affiliation")
+    region = models.CharField(max_length=100, blank=True, null=True, help_text="User's region in Somalia")
+    language_preference = models.CharField(
+        max_length=10,
+        choices=[('so', 'Somali'), ('en', 'English')],
+        default='so'
+    )
+
+    def __str__(self):
+        return f"{self.user.username} - Level {self.level}"
+
+    def add_experience(self, points):
+        """Add experience points and handle level ups"""
+        self.experience_points += points
+        while self.experience_points >= self.experience_to_next_level:
+            self.level_up()
+        self.save()
+
+    def level_up(self):
+        """Handle level up logic"""
+        self.level += 1
+        self.experience_points -= self.experience_to_next_level
+        self.experience_to_next_level = int(self.experience_to_next_level * 1.5)
+        self.last_level_up = timezone.now()
+
+class CommunityContribution(models.Model):
+    """
+    Tracks user contributions to the community.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='contributions',
+        on_delete=models.CASCADE
+    )
+    contribution_type = models.CharField(
+        max_length=50,
+        choices=[
+            ('content', 'Educational Content'),
+            ('translation', 'Translation'),
+            ('help', 'Helping Others'),
+            ('feedback', 'Platform Feedback'),
+            ('cultural', 'Cultural Content')
+        ]
+    )
+    description = models.TextField()
+    points_awarded = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    verified = models.BooleanField(default=False)
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='verified_contributions'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.contribution_type}"
+
+class CulturalEvent(models.Model):
+    """
+    Tracks cultural events and celebrations.
+    """
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    event_date = models.DateField()
+    event_type = models.CharField(
+        max_length=50,
+        choices=[
+            ('holiday', 'Holiday'),
+            ('celebration', 'Celebration'),
+            ('competition', 'Competition'),
+            ('workshop', 'Workshop')
+        ]
+    )
+    points_reward = models.PositiveIntegerField(default=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-event_date']
+
+    def __str__(self):
+        return f"{self.name} - {self.event_date}"
+
+class UserCulturalProgress(models.Model):
+    """
+    Tracks user progress in cultural activities.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='cultural_progress',
+        on_delete=models.CASCADE
+    )
+    event = models.ForeignKey(
+        CulturalEvent,
+        related_name='participants',
+        on_delete=models.CASCADE
+    )
+    completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    points_earned = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ['user', 'event']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.event.name}"
+
+class Achievement(models.Model):
+    """
+    Defines achievements that users can earn.
+    """
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    icon = models.CharField(max_length=255, help_text="Icon identifier for the achievement")
+    points_reward = models.PositiveIntegerField(default=100)
+    level_required = models.PositiveIntegerField(default=1)
+    achievement_type = models.CharField(
+        max_length=50,
+        choices=[
+            ('course_completion', 'Course Completion'),
+            ('streak_milestone', 'Streak Milestone'),
+            ('challenge_completion', 'Challenge Completion'),
+            ('level_milestone', 'Level Milestone'),
+            ('perfect_score', 'Perfect Score'),
+            ('early_adopter', 'Early Adopter'),
+        ]
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['level_required', 'points_reward']
+
+    def __str__(self):
+        return self.name
+
+class UserAchievement(models.Model):
+    """
+    Tracks which achievements users have earned.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='achievements',
+        on_delete=models.CASCADE
+    )
+    achievement = models.ForeignKey(
+        Achievement,
+        related_name='user_achievements',
+        on_delete=models.CASCADE
+    )
+    earned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'achievement']
+        ordering = ['-earned_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.achievement.name}"
+
+class UserNotification(models.Model):
+    """
+    Handles user notifications for streaks, achievements, and learning reminders
+    """
+    NOTIFICATION_TYPES = (
+        ('streak_reminder', 'Streak Reminder'),
+        ('achievement_earned', 'Achievement Earned'),
+        ('daily_goal', 'Daily Goal Reminder'),
+        ('league_update', 'League Update'),
+        ('challenge_available', 'Challenge Available'),
+    )
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='notifications', on_delete=models.CASCADE)
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    is_sent = models.BooleanField(default=False)  # For email notifications
+    created_at = models.DateTimeField(auto_now_add=True)
+    scheduled_for = models.DateTimeField(null=True, blank=True)  # For scheduled notifications
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.notification_type} - {self.created_at}"
+
+    @classmethod
+    def create_streak_reminder(cls, user, streak_count):
+        """Create a streak reminder notification"""
+        from django.utils import timezone
+        
+        # Calculate user's local midnight
+        user_profile = user.student_profile
+        preferred_times = user_profile.get_preferred_study_time()
+        
+        # Default to evening if no preference set
+        reminder_hour = 20  # 8 PM default
+        if preferred_times:
+            # Use the last preferred time slot as reminder
+            reminder_hour = int(preferred_times[-1].split(':')[0])
+        
+        # Schedule notification 2 hours before preferred time
+        scheduled_time = timezone.now().replace(
+            hour=max(0, reminder_hour - 2),
+            minute=0,
+            second=0,
+            microsecond=0
+        )
+        
+        return cls.objects.create(
+            user=user,
+            notification_type='streak_reminder',
+            title='Ilaaligaaga Waxbarashada!',
+            message=f'Waxaa kuu hadhay {streak_count} maalmood oo aad ilaalisid. Soo gal maanta oo dhammaystir casharkaaga!',
+            scheduled_for=scheduled_time
+        )
+
+    @classmethod
+    def create_achievement_notification(cls, user, achievement):
+        """Create an achievement earned notification"""
+        return cls.objects.create(
+            user=user,
+            notification_type='achievement_earned',
+            title=f'Hambalyo! {achievement.name}',
+            message=f'Waad dhammaystirtay "{achievement.description}". Waad heshay {achievement.points_reward} dhibcood!',
+        )
+
+    @classmethod
+    def create_league_update(cls, user, league_position, league_name):
+        """Create a league update notification"""
+        return cls.objects.create(
+            user=user,
+            notification_type='league_update',
+            title='Warbixin Tartanka!',
+            message=f'Waad ku guulaysatay booska {league_position} tartanka {league_name}!',
+        )

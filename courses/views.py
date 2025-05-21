@@ -5,10 +5,14 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django.utils import timezone
+from datetime import timedelta
 from .models import (
     Category, Course, Lesson, LessonContentBlock,
     Problem, Hint, SolutionStep,
-    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
+    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry,
+    DailyChallenge, UserChallengeProgress, UserLevel,
+    Achievement, UserAchievement,
+    CulturalEvent, UserCulturalProgress, CommunityContribution
 )
 from .serializers import (
     CategorySerializer, CourseSerializer, CourseListSerializer,
@@ -17,7 +21,10 @@ from .serializers import (
     UserProgressSerializer, UserProgressUpdateSerializer,
     CourseEnrollmentSerializer, UserRewardSerializer,
     LeaderboardEntrySerializer, LessonWithNextSerializer,
-    CourseWithProgressSerializer
+    CourseWithProgressSerializer,
+    DailyChallengeSerializer, UserChallengeProgressSerializer,
+    UserLevelSerializer, AchievementSerializer, UserAchievementSerializer,
+    CulturalEventSerializer, UserCulturalProgressSerializer, CommunityContributionSerializer
 )
 from django.core.exceptions import ValidationError
 
@@ -631,3 +638,214 @@ class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
                 'rank': 0,
                 'points': 0
             })
+
+
+class DailyChallengeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing daily challenges.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = DailyChallengeSerializer
+
+    def get_queryset(self):
+        """Get today's challenge and past challenges"""
+        today = timezone.now().date()
+        return DailyChallenge.objects.filter(challenge_date__lte=today)
+
+    @action(detail=True, methods=['post'])
+    def submit_attempt(self, request, pk=None):
+        """Submit an attempt for a daily challenge"""
+        challenge = self.get_object()
+        progress, created = UserChallengeProgress.objects.get_or_create(
+            user=request.user,
+            challenge=challenge
+        )
+        
+        if progress.completed:
+            return Response(
+                {"detail": "Challenge already completed"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Increment attempts
+        progress.attempts += 1
+        
+        # Check if the attempt is correct (implement your logic here)
+        is_correct = True  # Replace with actual validation
+        
+        if is_correct:
+            progress.completed = True
+            progress.completed_at = timezone.now()
+            progress.score = challenge.points_reward
+            
+            # Award points and update level
+            UserReward.award_challenge_completion(
+                request.user, challenge, progress.score
+            )
+            
+            # Check for achievements
+            self._check_challenge_achievements(request.user)
+        
+        progress.save()
+        return Response(UserChallengeProgressSerializer(progress).data)
+
+    def _check_challenge_achievements(self, user):
+        """Check and award achievements related to challenges"""
+        completed_challenges = UserChallengeProgress.objects.filter(
+            user=user, completed=True
+        ).count()
+        
+        # Award achievements based on number of completed challenges
+        if completed_challenges == 1:
+            self._award_achievement(user, 'first_challenge')
+        elif completed_challenges == 7:
+            self._award_achievement(user, 'weekly_challenge_master')
+        elif completed_challenges == 30:
+            self._award_achievement(user, 'monthly_challenge_master')
+
+    def _award_achievement(self, user, achievement_type):
+        """Award an achievement to a user"""
+        try:
+            achievement = Achievement.objects.get(
+                achievement_type=achievement_type
+            )
+            UserAchievement.objects.get_or_create(
+                user=user,
+                achievement=achievement
+            )
+        except Achievement.DoesNotExist:
+            pass
+
+
+class UserLevelViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for viewing user levels and experience.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserLevelSerializer
+
+    def get_queryset(self):
+        return UserLevel.objects.filter(user=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def leaderboard(self, request):
+        """Get the top users by level"""
+        top_users = UserLevel.objects.order_by('-level', '-experience_points')[:10]
+        return Response(UserLevelSerializer(top_users, many=True).data)
+
+
+class AchievementViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for viewing achievements.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = AchievementSerializer
+
+    def get_queryset(self):
+        user_level = UserLevel.objects.get(user=self.request.user)
+        return Achievement.objects.filter(level_required__lte=user_level.level)
+
+    @action(detail=False, methods=['get'])
+    def user_achievements(self, request):
+        """Get achievements earned by the current user"""
+        achievements = UserAchievement.objects.filter(user=request.user)
+        return Response(UserAchievementSerializer(achievements, many=True).data)
+
+
+class CulturalEventViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing cultural events.
+    """
+    serializer_class = CulturalEventSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Get active cultural events"""
+        return CulturalEvent.objects.filter(
+            is_active=True,
+            event_date__gte=timezone.now().date()
+        )
+
+    @action(detail=True, methods=['post'])
+    def participate(self, request, pk=None):
+        """Participate in a cultural event"""
+        event = self.get_object()
+        progress, created = UserCulturalProgress.objects.get_or_create(
+            user=request.user,
+            event=event
+        )
+        
+        if progress.completed:
+            return Response(
+                {"detail": "Already participated in this event"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Mark as completed and award points
+        progress.completed = True
+        progress.completed_at = timezone.now()
+        progress.points_earned = event.points_reward
+        progress.save()
+        
+        # Update user level
+        user_level = UserLevel.objects.get(user=request.user)
+        user_level.add_experience(event.points_reward)
+        
+        return Response(UserCulturalProgressSerializer(progress).data)
+
+
+class CommunityContributionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing community contributions.
+    """
+    serializer_class = CommunityContributionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Get user's contributions"""
+        return CommunityContribution.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        """Create a new contribution"""
+        contribution = serializer.save(user=self.request.user)
+        
+        # Award points based on contribution type
+        points = {
+            'content': 50,
+            'translation': 75,
+            'help': 100,
+            'feedback': 25,
+            'cultural': 150
+        }.get(contribution.contribution_type, 0)
+        
+        contribution.points_awarded = points
+        contribution.save()
+        
+        # Update user level
+        user_level = UserLevel.objects.get(user=self.request.user)
+        user_level.add_experience(points)
+
+    @action(detail=True, methods=['post'])
+    def verify(self, request, pk=None):
+        """Verify a contribution (admin only)"""
+        if not request.user.is_staff:
+            return Response(
+                {"detail": "Only staff can verify contributions"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        contribution = self.get_object()
+        contribution.verified = True
+        contribution.verified_by = request.user
+        contribution.save()
+        
+        # Award bonus points for verification
+        bonus_points = 50
+        contribution.points_awarded += bonus_points
+        contribution.save()
+        
+        # Update user level
+        user_level = UserLevel.objects.get(user=contribution.user)
+        user_level.add_experience(bonus_points)
+        
+        return Response(CommunityContributionSerializer(contribution).data)

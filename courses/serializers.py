@@ -2,7 +2,10 @@ from rest_framework import serializers
 from .models import (
     Category, Course, Lesson, LessonContentBlock,
     Problem, Hint, SolutionStep,
-    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry
+    UserProgress, CourseEnrollment, UserReward, LeaderboardEntry,
+    DailyChallenge, UserChallengeProgress, UserLevel,
+    Achievement, UserAchievement, CulturalEvent,
+    UserCulturalProgress, CommunityContribution
 )
 from django.db import models
 
@@ -471,3 +474,91 @@ class CourseWithProgressSerializer(CourseSerializer):
             }
         except CourseEnrollment.DoesNotExist:
             return None
+
+
+class DailyChallengeSerializer(serializers.ModelSerializer):
+    """Serializer for daily challenges"""
+    class Meta:
+        model = DailyChallenge
+        fields = [
+            'id', 'title', 'description', 'challenge_date',
+            'points_reward', 'problem', 'course', 'lesson'
+        ]
+
+
+class UserChallengeProgressSerializer(serializers.ModelSerializer):
+    """Serializer for user challenge progress"""
+    challenge = DailyChallengeSerializer(read_only=True)
+    
+    class Meta:
+        model = UserChallengeProgress
+        fields = [
+            'id', 'challenge', 'completed', 'completed_at',
+            'score', 'attempts'
+        ]
+        read_only_fields = ['completed', 'completed_at', 'score']
+
+
+class UserLevelSerializer(serializers.ModelSerializer):
+    """Serializer for user levels"""
+    username = serializers.CharField(source='user.username', read_only=True)
+    progress_to_next_level = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = UserLevel
+        fields = [
+            'id', 'username', 'level', 'experience_points',
+            'experience_to_next_level', 'progress_to_next_level',
+            'last_level_up'
+        ]
+    
+    def get_progress_to_next_level(self, obj):
+        """Calculate progress percentage to next level"""
+        if obj.experience_to_next_level == 0:
+            return 0
+        return (obj.experience_points / obj.experience_to_next_level) * 100
+
+
+class AchievementSerializer(serializers.ModelSerializer):
+    """Serializer for achievements"""
+    class Meta:
+        model = Achievement
+        fields = [
+            'id', 'name', 'description', 'icon',
+            'points_reward', 'level_required', 'achievement_type'
+        ]
+
+
+class UserAchievementSerializer(serializers.ModelSerializer):
+    """Serializer for user achievements"""
+    achievement = AchievementSerializer(read_only=True)
+    
+    class Meta:
+        model = UserAchievement
+        fields = ['id', 'achievement', 'earned_at']
+
+
+class CulturalEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CulturalEvent
+        fields = ['id', 'name', 'description', 'event_date', 'event_type', 
+                 'points_reward', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class UserCulturalProgressSerializer(serializers.ModelSerializer):
+    event = CulturalEventSerializer(read_only=True)
+    
+    class Meta:
+        model = UserCulturalProgress
+        fields = ['id', 'user', 'event', 'completed', 'completed_at', 
+                 'points_earned', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class CommunityContributionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommunityContribution
+        fields = ['id', 'user', 'contribution_type', 'description', 
+                 'points_awarded', 'verified', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']

@@ -1,22 +1,21 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import (
-    CategoryViewSet, CourseViewSet, LessonViewSet,
-    LessonContentBlockViewSet, ProblemViewSet,
-    UserProgressViewSet, CourseEnrollmentViewSet,
-    LeaderboardViewSet, UserRewardViewSet
-)
+from . import views
 
 router = DefaultRouter()
-router.register(r'categories', CategoryViewSet, basename='category')
-router.register(r'courses', CourseViewSet, basename='course')
-router.register(r'lessons', LessonViewSet, basename='lesson')
-router.register(r'lesson-content-blocks', LessonContentBlockViewSet, basename='lesson-content-block')
-router.register(r'problems', ProblemViewSet, basename='problem')
-router.register(r'user-progress', UserProgressViewSet, basename='user-progress')
-router.register(r'enrollments', CourseEnrollmentViewSet, basename='enrollment')
-router.register(r'leaderboard', LeaderboardViewSet, basename='leaderboard')
-router.register(r'rewards', UserRewardViewSet, basename='reward')
+router.register(r'categories', views.CategoryViewSet)
+router.register(r'courses', views.CourseViewSet)
+router.register(r'lessons', views.LessonViewSet)
+router.register(r'problems', views.ProblemViewSet)
+router.register(r'progress', views.UserProgressViewSet, basename='progress')
+router.register(r'enrollments', views.CourseEnrollmentViewSet, basename='enrollment')
+router.register(r'rewards', views.UserRewardViewSet, basename='reward')
+router.register(r'leaderboard', views.LeaderboardViewSet, basename='leaderboard')
+router.register(r'challenges', views.DailyChallengeViewSet, basename='challenge')
+router.register(r'levels', views.UserLevelViewSet, basename='level')
+router.register(r'achievements', views.AchievementViewSet, basename='achievement')
+router.register(r'cultural-events', views.CulturalEventViewSet, basename='cultural-event')
+router.register(r'contributions', views.CommunityContributionViewSet, basename='contribution')
 
 urlpatterns = [
     path('', include(router.urls)),

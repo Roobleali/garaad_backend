@@ -1,262 +1,405 @@
-# Gamification System Documentation
+# Gamification API Documentation
 
-## Overview
+## Base URL
+```
+https://api.garaad.org/api/lms
+```
 
-The gamification system is designed to increase user engagement and motivation through various game-like elements. It includes points, levels, achievements, challenges, leaderboards, and culturally relevant features.
+## Authentication
+All endpoints require Bearer token authentication. Include the following header with your requests:
+```
+Authorization: Bearer <your_access_token>
+```
 
-## API Endpoints
+## Endpoints
 
 ### 1. User Rewards
+
+#### List User Rewards
 ```http
-GET /api/courses/rewards/
+GET /rewards/
 ```
-- Lists all rewards earned by the authenticated user
-- Filterable by lesson, course, or reward type
-- Response includes points, badges, streaks, and achievements
+
+Retrieves all rewards for the authenticated user.
+
+**Query Parameters:**
+- `lesson_id` (optional): Filter rewards by specific lesson
+- `course_id` (optional): Filter rewards by specific course
+- `search` (optional): Search rewards by name
+- `ordering` (optional): Order by 'awarded_at' or 'value'
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "user": 1,
+    "reward_type": "points",  // "points", "badge", "streak", "achievement", "challenge"
+    "reward_name": "Lesson Completion",
+    "value": 10,
+    "awarded_at": "2025-04-30T13:51:57Z",
+    "lesson": {
+      "id": 1,
+      "title": "Introduction"
+    },
+    "course": {
+      "id": 1,
+      "title": "Mathematics"
+    }
+  }
+]
+```
 
 ### 2. Leaderboard
+
+#### Get Leaderboard
 ```http
-GET /api/courses/leaderboard/
+GET /leaderboard/
 ```
-- Shows user rankings based on points
-- Supports time periods: weekly, monthly, all-time
-- Includes user stats and achievements
-- Custom endpoint for user's rank: `/api/courses/leaderboard/my_rank/`
+
+Retrieves the current leaderboard standings.
+
+**Query Parameters:**
+- `time_period`: Filter by time period ("all_time", "weekly", "monthly")
+- `limit`: Number of entries to return (default: 10)
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "username": "user1",
+    "points": 1500,
+    "time_period": "all_time",
+    "last_updated": "2025-04-30T13:51:57Z",
+    "user_info": {
+      "badges": [
+        {
+          "id": 1,
+          "reward_name": "Course Master",
+          "value": 1,
+          "awarded_at": "2025-04-30T13:51:57Z"
+        }
+      ],
+      "streak": {
+        "current": 5,
+        "max": 10
+      },
+      "total_points": 1500,
+      "completed_lessons": 25,
+      "enrolled_courses": 3
+    }
+  }
+]
+```
+
+#### Get User's Rank
+```http
+GET /leaderboard/my_rank/
+```
+
+Retrieves the authenticated user's rank and surrounding entries.
+
+**Query Parameters:**
+- `time_period`: Time period to check rank for ("all_time", "weekly", "monthly")
+
+**Response:**
+```json
+{
+  "rank": 5,
+  "points": 1200,
+  "entries_above": [
+    {
+      "username": "user1",
+      "points": 1500
+    }
+  ],
+  "entries_below": [
+    {
+      "username": "user3",
+      "points": 1000
+    }
+  ],
+  "user_info": {
+    // Same as leaderboard user_info
+  }
+}
+```
 
 ### 3. Daily Challenges
-```http
-GET /api/courses/challenges/
-POST /api/courses/challenges/{id}/submit_attempt/
-```
-- Lists available challenges
-- Allows submitting challenge attempts
-- Tracks completion status and rewards
 
-### 4. User Levels
+#### List Daily Challenges
 ```http
-GET /api/courses/levels/
-GET /api/courses/levels/leaderboard/
+GET /challenges/
 ```
-- Shows user's current level and experience
-- Displays progress to next level
-- Includes level leaderboard
+
+Retrieves today's and past challenges.
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "title": "Daily Math Challenge",
+    "description": "Complete 5 math problems",
+    "challenge_date": "2025-04-30",
+    "points_reward": 50
+  }
+]
+```
+
+#### Submit Challenge Attempt
+```http
+POST /challenges/{challenge_id}/submit_attempt/
+```
+
+Submit an attempt for a daily challenge.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "completed": true,
+  "completed_at": "2025-04-30T13:51:57Z",
+  "score": 100,
+  "attempts": 1
+}
+```
+
+### 4. User Level
+
+#### Get User Level
+```http
+GET /levels/
+```
+
+Retrieves the authenticated user's level information.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "user": 1,
+  "level": 5,
+  "experience_points": 750,
+  "experience_to_next_level": 1000,
+  "clan": "Hawiye",
+  "region": "Mogadishu",
+  "language_preference": "so"
+}
+```
+
+#### Get Level Leaderboard
+```http
+GET /levels/leaderboard/
+```
+
+Retrieves top users by level.
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "user": {
+      "username": "user1"
+    },
+    "level": 10,
+    "experience_points": 2500
+  }
+]
+```
 
 ### 5. Achievements
+
+#### List Available Achievements
 ```http
-GET /api/courses/achievements/
-GET /api/courses/achievements/user_achievements/
+GET /achievements/
 ```
-- Lists all possible achievements
-- Shows user's earned achievements
-- Includes achievement details and rewards
+
+Retrieves all achievements available to the user based on their current level.
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "name": "First Lesson",
+    "description": "Complete your first lesson",
+    "icon": "lesson-1",
+    "points_reward": 100,
+    "level_required": 1,
+    "achievement_type": "course_completion"
+  }
+]
+```
+
+#### Get User Achievements
+```http
+GET /achievements/user_achievements/
+```
+
+Retrieves achievements earned by the authenticated user.
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "achievement": {
+      "id": 1,
+      "name": "First Lesson",
+      "description": "Complete your first lesson",
+      "icon": "lesson-1",
+      "points_reward": 100,
+      "level_required": 1,
+      "achievement_type": "course_completion"
+    },
+    "earned_at": "2025-04-30T13:51:57Z"
+  }
+]
+```
 
 ### 6. Cultural Events
+
+#### List Cultural Events
 ```http
-GET /api/courses/cultural-events/
-POST /api/courses/cultural-events/{id}/participate/
+GET /cultural-events/
 ```
-- Lists cultural events
-- Allows event participation
-- Tracks participation and rewards
+
+Retrieves active cultural events.
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "name": "Eid Celebration",
+    "description": "Join our virtual Eid celebration",
+    "event_date": "2025-05-01",
+    "event_type": "celebration",
+    "points_reward": 100,
+    "is_active": true
+  }
+]
+```
+
+#### Participate in Event
+```http
+POST /cultural-events/{event_id}/participate/
+```
+
+Participate in a cultural event.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "completed": true,
+  "completed_at": "2025-04-30T13:51:57Z",
+  "points_earned": 100
+}
+```
 
 ### 7. Community Contributions
+
+#### List Contributions
 ```http
-GET /api/courses/contributions/
-POST /api/courses/contributions/
-```
-- Lists user's contributions
-- Allows submitting new contributions
-- Tracks verification and rewards
-
-## Data Structures
-
-### User Level
-```json
-{
-  "id": 1,
-  "level": 3,
-  "experience_points": 250,
-  "experience_to_next_level": 500,
-  "progress_to_next_level": 50,
-  "last_level_up": "2024-03-20T10:00:00Z"
-}
+GET /contributions/
 ```
 
-### Achievement
-```json
-{
-  "id": 1,
-  "name": "Dhalasho Cusub",
-  "description": "Complete your first challenge",
-  "icon": "first_challenge.png",
-  "points_reward": 100,
-  "level_required": 1,
-  "achievement_type": "challenge"
-}
-```
+Retrieves the authenticated user's contributions.
 
-### Leaderboard Entry
+**Response:**
 ```json
-{
-  "id": 1,
-  "user": {
-    "username": "user123",
-    "email": "user@example.com",
-    "stats": {
-      "total_points": 1000,
-      "completed_lessons": 15,
-      "enrolled_courses": 3,
-      "current_streak": 5,
-      "badges_count": 8
+[
+  {
+    "id": 1,
+    "contribution_type": "cultural",
+    "description": "Shared traditional Somali poetry",
+    "points_awarded": 150,
+    "created_at": "2025-04-30T13:51:57Z",
+    "verified": true,
+    "verified_by": {
+      "username": "admin"
     }
-  },
-  "points": 1000,
-  "time_period": "all_time",
-  "rank": 1
+  }
+]
+```
+
+#### Create Contribution
+```http
+POST /contributions/
+```
+
+Create a new community contribution.
+
+**Request Body:**
+```json
+{
+  "contribution_type": "cultural",
+  "description": "Shared traditional Somali poetry"
 }
 ```
 
-### Cultural Event
+**Response:**
 ```json
 {
   "id": 1,
-  "name": "Eid al-Fitr Celebration",
-  "description": "Join our Eid celebration and learn about Somali traditions",
-  "event_date": "2024-04-10",
-  "event_type": "celebration",
-  "points_reward": 100,
-  "is_active": true
+  "contribution_type": "cultural",
+  "description": "Shared traditional Somali poetry",
+  "points_awarded": 150,
+  "created_at": "2025-04-30T13:51:57Z",
+  "verified": false
 }
 ```
 
-## UI Components to Implement
-
-### 1. Progress Bar
-- Show progress to next level
-- Display current level and experience points
-- Animate level-up transitions
-
-### 2. Achievement Showcase
-- Grid or list of achievements
-- Visual indicators for locked/unlocked status
-- Achievement details modal
-- Notification system for new achievements
-
-### 3. Leaderboard
-- Tabbed view for different time periods
-- User rank highlight
-- Top 10 users display
-- User stats summary
-
-### 4. Daily Challenge Card
-- Challenge description
-- Points reward
-- Completion status
-- Submit attempt button
-- Progress tracking
-
-### 5. Cultural Event Card
-- Event details
-- Participation status
-- Points reward
-- Join/participate button
-- Event countdown (if applicable)
-
-### 6. Community Contribution Form
-- Contribution type selection
-- Description input
-- Points reward display
-- Verification status
-- Contribution history
-
-## Best Practices
-
-1. **Immediate Feedback**
-   - Show animations for points earned
-   - Display achievement unlock notifications
-   - Animate level-up transitions
-
-2. **Progress Visualization**
-   - Use progress bars for level progress
-   - Show streaks with flame icons
-   - Display points earned in real-time
-
-3. **Cultural Relevance**
-   - Use Somali language for achievement names
-   - Include culturally relevant icons
-   - Celebrate Somali holidays and events
-
-4. **Mobile Responsiveness**
-   - Ensure all components work well on mobile
-   - Use appropriate touch targets
-   - Optimize animations for mobile
-
-5. **Accessibility**
-   - Include alt text for achievement icons
-   - Ensure color contrast meets WCAG standards
-   - Provide keyboard navigation
-
-## Example Implementation
-
-```javascript
-// Example React component for Achievement Card
-const AchievementCard = ({ achievement }) => {
-  return (
-    <div className="achievement-card">
-      <img 
-        src={achievement.icon} 
-        alt={achievement.name}
-        className={`achievement-icon ${achievement.unlocked ? 'unlocked' : 'locked'}`}
-      />
-      <h3>{achievement.name}</h3>
-      <p>{achievement.description}</p>
-      <div className="achievement-reward">
-        <span className="points">+{achievement.points_reward} points</span>
-      </div>
-      {achievement.unlocked && (
-        <div className="achievement-date">
-          Unlocked: {formatDate(achievement.earned_at)}
-        </div>
-      )}
-    </div>
-  );
-};
+#### Verify Contribution (Admin Only)
+```http
+POST /contributions/{contribution_id}/verify/
 ```
 
-## Error Handling
+Verify a community contribution (admin only).
 
-- Handle API errors gracefully
-- Show appropriate error messages
-- Provide retry options for failed requests
-- Maintain state consistency
+**Response:**
+```json
+{
+  "id": 1,
+  "contribution_type": "cultural",
+  "description": "Shared traditional Somali poetry",
+  "points_awarded": 200,  // Including bonus points
+  "created_at": "2025-04-30T13:51:57Z",
+  "verified": true,
+  "verified_by": {
+    "username": "admin"
+  }
+}
+```
 
-## Testing
+## Points System
 
-- Test all API endpoints
-- Verify reward calculations
-- Check achievement triggers
-- Validate leaderboard updates
-- Test cultural event participation
-- Verify contribution system
+### Point Values
+- Lesson Completion: 10 points
+- Perfect Practice Score: 15 points
+- Daily Challenge: 50 points
+- Cultural Event Participation: 100 points
+- Community Contributions:
+  - Content: 50 points
+  - Translation: 75 points
+  - Help: 100 points
+  - Feedback: 25 points
+  - Cultural: 150 points
+  - Verification Bonus: 50 points
 
-## Future Enhancements
+## Achievement Types
+- `course_completion`: Completing courses
+- `streak_milestone`: Reaching streak milestones
+- `challenge_completion`: Completing daily challenges
+- `level_milestone`: Reaching level milestones
+- `perfect_score`: Getting perfect scores
+- `early_adopter`: Early platform adoption
 
-1. **Social Features**
-   - Friend leaderboards
-   - Achievement sharing
-   - Collaborative challenges
-
-2. **Advanced Analytics**
-   - User progress tracking
-   - Engagement metrics
-   - Performance analytics
-
-3. **Personalization**
-   - Custom achievement paths
-   - Personalized challenges
-   - Adaptive difficulty
-
-4. **Cultural Integration**
-   - More cultural events
-   - Community challenges
-   - Cultural content rewards 
+## Time Periods
+- `all_time`: All-time statistics
+- `weekly`: Last 7 days
+- `monthly`: Last 30 days

@@ -4,6 +4,8 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
 import logging
+from .models import Streak, DailyActivity
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -165,3 +167,41 @@ class UserSerializer(serializers.ModelSerializer):
             return obj.useronboarding.has_completed_onboarding
         except UserOnboarding.DoesNotExist:
             return False
+
+
+class DailyActivitySerializer(serializers.ModelSerializer):
+    day = serializers.SerializerMethodField()
+    isToday = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DailyActivity
+        fields = ['date', 'day', 'status', 'problems_solved', 'lesson_ids', 'isToday']
+
+    def get_day(self, obj):
+        return obj.date.strftime('%a')
+
+    def get_isToday(self, obj):
+        return obj.date == timezone.now().date()
+
+
+class StreakSerializer(serializers.ModelSerializer):
+    energy = serializers.SerializerMethodField()
+    dailyActivity = DailyActivitySerializer(source='user.daily_activities', many=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    userId = serializers.CharField(source='user.id', read_only=True)
+
+    class Meta:
+        model = Streak
+        fields = ['userId', 'username', 'current_streak', 'max_streak', 'lessons_completed',
+                 'problems_to_next_streak', 'energy', 'dailyActivity']
+
+    def get_energy(self, obj):
+        return {
+            'current': obj.current_energy,
+            'max': obj.max_energy
+        }
+
+
+class StreakUpdateSerializer(serializers.Serializer):
+    problems_solved = serializers.IntegerField(min_value=0)
+    lesson_ids = serializers.ListField(child=serializers.CharField(), required=False, default=list)

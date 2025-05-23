@@ -1,16 +1,20 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 import logging
 import traceback
 from .serializers import (
     SignupWithOnboardingSerializer,
     SigninSerializer,
-    UserSerializer
+    UserSerializer,
+    StreakSerializer,
+    StreakUpdateSerializer
 )
+from django.utils import timezone
+from .models import Streak, DailyActivity
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -119,3 +123,94 @@ class SigninView(APIView):
             }, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def streak_view(request):
+    if request.method == 'GET':
+        streak, created = Streak.objects.get_or_create(user=request.user)
+        
+        # Update energy before returning response
+        streak.update_energy()
+        
+        # Get the last 7 days of activity
+        today = timezone.now().date()
+        dates = [today - timezone.timedelta(days=i) for i in range(6, -1, -1)]
+        
+        # Get or create daily activities for the last 7 days
+        for date in dates:
+            DailyActivity.objects.get_or_create(
+                user=request.user,
+                date=date,
+                defaults={'status': 'none', 'problems_solved': 0, 'lesson_ids': []}
+            )
+        
+        serializer = StreakSerializer(streak)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = StreakUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                problems_solved = serializer.validated_data['problems_solved']
+                lesson_ids = serializer.validated_data['lesson_ids']
+                
+                streak, created = Streak.objects.get_or_create(user=request.user)
+                
+                try:
+                    streak.update_streak(problems_solved, lesson_ids)
+                except ValueError as e:
+                    return Response({
+                        'error': str(e),
+                        'energy': {
+                            'current': streak.current_energy,
+                            'max': streak.max_energy,
+                            'next_update': streak.last_energy_update + timezone.timedelta(hours=4)
+                        }
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Update or create today's activity
+                today = timezone.now().date()
+                activity, _ = DailyActivity.objects.get_or_create(
+                    user=request.user,
+                    date=today,
+                    defaults={'status': 'none', 'problems_solved': 0, 'lesson_ids': []}
+                )
+                
+                # Update activity status based on problems solved
+                activity.problems_solved = problems_solved
+                activity.lesson_ids = lesson_ids
+                if problems_solved >= 3:
+                    activity.status = 'complete'
+                elif problems_solved > 0:
+                    activity.status = 'partial'
+                activity.save()
+                
+                response_data = {
+                    'message': 'Streak updated',
+                    'currentStreak': streak.current_streak,
+                    'energy': {
+                        'current': streak.current_energy,
+                        'max': streak.max_energy,
+                        'next_update': streak.last_energy_update + timezone.timedelta(hours=4)
+                    },
+                    'dailyActivity': [{
+                        'date': today.isoformat(),
+                        'day': today.strftime('%a'),
+                        'status': activity.status,
+                        'problemsSolved': activity.problems_solved,
+                        'lessonIds': activity.lesson_ids,
+                        'isToday': True
+                    }]
+                }
+                return Response(response_data)
+            except Exception as e:
+                logger.error(f"Error updating streak: {str(e)}")
+                logger.error(traceback.format_exc())
+                return Response({
+                    'error': 'An error occurred while updating streak',
+                    'detail': str(e)
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -189,16 +189,19 @@ class StreakSerializer(serializers.ModelSerializer):
     dailyActivity = DailyActivitySerializer(source='user.daily_activities', many=True)
     username = serializers.CharField(source='user.username', read_only=True)
     userId = serializers.CharField(source='user.id', read_only=True)
+    xp = serializers.IntegerField(read_only=True)
+    daily_xp = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Streak
         fields = ['userId', 'username', 'current_streak', 'max_streak', 'lessons_completed',
-                 'problems_to_next_streak', 'energy', 'dailyActivity']
+                 'problems_to_next_streak', 'energy', 'dailyActivity', 'xp', 'daily_xp']
 
     def get_energy(self, obj):
         return {
             'current': obj.current_energy,
-            'max': obj.max_energy
+            'max': obj.max_energy,
+            'next_update': obj.last_energy_update + timezone.timedelta(hours=4)
         }
 
 

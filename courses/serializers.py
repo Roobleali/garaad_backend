@@ -5,7 +5,7 @@ from .models import (
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry,
     DailyChallenge, UserChallengeProgress, UserLevel,
     Achievement, UserAchievement, CulturalEvent,
-    UserCulturalProgress, CommunityContribution
+    UserCulturalProgress, CommunityContribution, UserLeague, League
 )
 from django.db import models
 
@@ -153,59 +153,6 @@ class LessonContentBlockSerializer(serializers.ModelSerializer):
                         content[key] = value
             
             data['content'] = content
-            return data
-
-        # Validate other block types
-        content_schemas = {
-            'text': {
-                'text': serializers.CharField(),
-                'format': serializers.ChoiceField(choices=['markdown', 'html'])
-            },
-            'example': {
-                'title': serializers.CharField(),
-                'description': serializers.CharField(),
-                'problem': serializers.CharField(),
-                'solution': serializers.CharField(),
-                'explanation': serializers.CharField()
-            },
-            'code': {
-                'language': serializers.CharField(),
-                'code': serializers.CharField(),
-                'explanation': serializers.CharField(required=False),
-                'show_line_numbers': serializers.BooleanField(default=True)
-            },
-            'image': {
-                'url': serializers.URLField(),
-                'caption': serializers.CharField(required=False),
-                'alt': serializers.CharField(),
-                'width': serializers.IntegerField(required=False, allow_null=True),
-                'height': serializers.IntegerField(required=False, allow_null=True)
-            },
-            'video': {
-                'url': serializers.URLField(),
-                'title': serializers.CharField(),
-                'description': serializers.CharField(required=False),
-                'thumbnail': serializers.URLField(required=False),
-                'duration': serializers.IntegerField(required=False, allow_null=True)
-            },
-            'quiz': {
-                'title': serializers.CharField(),
-                'questions': serializers.ListField(
-                    child=serializers.DictField()
-                )
-            }
-        }
-
-        if block_type in content_schemas:
-            schema = content_schemas[block_type]
-            default_content = {}
-            for field, field_type in schema.items():
-                if content is None:
-                    default_content[field] = field_type.default if hasattr(field_type, 'default') else None
-                elif field not in content:
-                    default_content[field] = field_type.default if hasattr(field_type, 'default') else None
-            data['content'] = {**default_content, **content} if content is not None else default_content
-
         return data
 
     def create(self, validated_data):
@@ -562,3 +509,34 @@ class CommunityContributionSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'contribution_type', 'description', 
                  'points_awarded', 'verified', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
+
+
+class LeagueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = League
+        fields = ['id', 'level', 'promotion_threshold', 'stay_threshold', 
+                 'demotion_threshold', 'min_xp_required']
+
+
+class UserLeagueSerializer(serializers.ModelSerializer):
+    league = LeagueSerializer()
+    next_league = serializers.SerializerMethodField()
+    previous_league = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = UserLeague
+        fields = ['id', 'league', 'current_week_points', 'last_week_rank',
+                 'current_streak', 'max_streak', 'streak_charges',
+                 'last_activity_date', 'next_league', 'previous_league']
+    
+    def get_next_league(self, obj):
+        next_league = League.get_next_league(obj.league)
+        if next_league:
+            return LeagueSerializer(next_league).data
+        return None
+    
+    def get_previous_league(self, obj):
+        prev_league = League.get_previous_league(obj.league)
+        if prev_league:
+            return LeagueSerializer(prev_league).data
+        return None

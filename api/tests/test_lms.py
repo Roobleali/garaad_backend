@@ -48,8 +48,13 @@ class LMSTestCase(TestCase):
             lesson=self.lesson,
             question_text='What is the data type of the value 42?',
             question_type='single_choice',
-            options=['string', 'integer', 'float', 'boolean'],
-            correct_answer='integer',
+            options=[
+                {'id': '1', 'text': 'string'},
+                {'id': '2', 'text': 'integer'},
+                {'id': '3', 'text': 'float'},
+                {'id': '4', 'text': 'boolean'}
+            ],
+            correct_answer=[{'id': '2'}],
             explanation='42 is a whole number, which is represented as an integer in Python.',
             order=1
         )
@@ -87,7 +92,7 @@ class LMSTestCase(TestCase):
 
     def test_get_course_through_api(self):
         """Test retrieving course through API endpoint"""
-        url = reverse('course-detail', args=[self.course.id])
+        url = reverse('course-detail', kwargs={'pk': self.course.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Python Programming')
@@ -96,7 +101,7 @@ class LMSTestCase(TestCase):
 
     def test_get_lesson_through_api(self):
         """Test retrieving lesson through API endpoint"""
-        url = reverse('lesson-detail', args=[self.lesson.id])
+        url = reverse('lesson-detail', kwargs={'pk': self.lesson.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Python Data Types')
@@ -129,14 +134,14 @@ class LMSTestCase(TestCase):
 
     def test_retrieve_course(self):
         """Test retrieving a specific course"""
-        url = reverse('course-detail', args=[self.course.id])
+        url = reverse('course-detail', kwargs={'pk': self.course.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Python Programming')
 
     def test_update_course(self):
         """Test updating a course"""
-        url = reverse('course-detail', args=[self.course.id])
+        url = reverse('course-detail', kwargs={'pk': self.course.id})
         data = {
             'category': self.category.id,
             'title': 'Updated Course',
@@ -175,8 +180,8 @@ class LMSTestCase(TestCase):
 
     def test_category_creation(self):
         """Test that the category was created correctly"""
-        self.assertEqual(self.category.name, 'Programming')
-        self.assertEqual(self.category.description, 'Programming courses')
+        self.assertEqual(self.category.title, 'Programming')
+        self.assertEqual(self.category.description, 'Learn programming languages')
 
     def test_course_creation(self):
         """Test that the course was created correctly"""
@@ -186,11 +191,11 @@ class LMSTestCase(TestCase):
 
     def test_get_category_through_api(self):
         """Test retrieving category through API endpoint"""
-        url = reverse('category-detail', args=[self.category.id])
+        url = reverse('category-detail', kwargs={'pk': self.category.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['name'], 'Programming')
-        self.assertEqual(response.data['description'], 'Programming courses')
+        self.assertEqual(response.data['title'], 'Programming')
+        self.assertEqual(response.data['description'], 'Learn programming languages')
 
     def test_get_course_modules(self):
         """Test retrieving all modules for a course"""
@@ -202,7 +207,7 @@ class LMSTestCase(TestCase):
 
     def test_lesson_problem(self):
         """Test retrieving a lesson's problem (exercise)"""
-        url = reverse('lesson-detail', args=[self.lesson.id])
+        url = reverse('lesson-detail', kwargs={'pk': self.lesson.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['problem_data']['question_text'], 'What is the data type of the value 42?')
@@ -210,7 +215,7 @@ class LMSTestCase(TestCase):
 
     def test_get_course_through_api(self):
         """Test retrieving course through API endpoint"""
-        url = reverse('course-detail', args=[self.course.id])
+        url = reverse('course-detail', kwargs={'pk': self.course.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Python Programming')
@@ -219,7 +224,7 @@ class LMSTestCase(TestCase):
 
     def test_get_module_through_api(self):
         """Test retrieving module through API endpoint"""
-        url = reverse('module-detail', args=[self.course.id])
+        url = reverse('module-detail', kwargs={'pk': self.course.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Python Programming')
@@ -228,7 +233,7 @@ class LMSTestCase(TestCase):
 
     def test_get_lesson_through_api(self):
         """Test retrieving lesson through API endpoint"""
-        url = reverse('lesson-detail', args=[self.lesson.id])
+        url = reverse('lesson-detail', kwargs={'pk': self.lesson.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], 'Python Data Types')
@@ -264,7 +269,7 @@ class LMSTestCase(TestCase):
             },
             'order': 1
         }
-        url = reverse('lesson-content-block-list')
+        url = reverse('lessoncontentblock-list')
         response = self.client.post(url, text_block_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['block_type'], 'text')
@@ -295,8 +300,13 @@ class LMSTestCase(TestCase):
                 'problems': [
                     {
                         'question': 'What is 2 + 2?',
-                        'options': ['3', '4', '5', '6'],
-                        'correct_answer': '4'
+                        'options': [
+                            {'id': '1', 'text': '3'},
+                            {'id': '2', 'text': '4'},
+                            {'id': '3', 'text': '5'},
+                            {'id': '4', 'text': '6'}
+                        ],
+                        'correct_answer': [{'id': '2'}]
                     }
                 ]
             },
@@ -309,7 +319,7 @@ class LMSTestCase(TestCase):
 
     def test_invalid_content_block(self):
         """Test validation of invalid content blocks"""
-        url = reverse('lesson-content-block-list')
+        url = reverse('lessoncontentblock-list')
 
         # Test invalid text block (missing format)
         invalid_text_block = {
@@ -380,10 +390,13 @@ class LMSTestCase(TestCase):
             lesson=lesson,
             question_text='What is 2 + 2?',
             question_type='single_choice',
-            options=['3', '4', '5'],
-            correct_answer='4',
+            options=[
+                {'id': '1', 'text': '3'},
+                {'id': '2', 'text': '4'},
+                {'id': '3', 'text': '5'}
+            ],
+            correct_answer=[{'id': '2'}],
             explanation='Basic addition',
-            difficulty='beginner',
             order=2
         )
 
@@ -391,18 +404,21 @@ class LMSTestCase(TestCase):
             lesson=lesson,
             question_text='What is 3 * 3?',
             question_type='single_choice',
-            options=['6', '9', '12'],
-            correct_answer='9',
+            options=[
+                {'id': '1', 'text': '6'},
+                {'id': '2', 'text': '9'},
+                {'id': '3', 'text': '12'}
+            ],
+            correct_answer=[{'id': '2'}],
             explanation='Basic multiplication',
-            difficulty='beginner',
             order=4
         )
 
         # Test getting all content in order
-        url = reverse('lesson-content', kwargs={'pk': lesson.id})
+        url = reverse('lesson-detail', kwargs={'pk': lesson.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        content = response.data
+        content = response.data['content_blocks']
         self.assertEqual(len(content), 4)
         self.assertEqual(content[0]['order'], 1)
         self.assertEqual(content[1]['order'], 2)
@@ -439,8 +455,12 @@ class LMSTestCase(TestCase):
             lesson=self.lesson,
             question_text='What is 2 + 2?',
             question_type='single_choice',
-            options=['3', '4', '5'],
-            correct_answer='4',
+            options=[
+                {'id': '1', 'text': '3'},
+                {'id': '2', 'text': '4'},
+                {'id': '3', 'text': '5'}
+            ],
+            correct_answer=[{'id': '2'}],
             explanation='Basic addition',
             order=1
         )

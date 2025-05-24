@@ -12,7 +12,8 @@ from .models import (
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry,
     DailyChallenge, UserChallengeProgress, UserLevel,
     Achievement, UserAchievement,
-    CulturalEvent, UserCulturalProgress, CommunityContribution
+    CulturalEvent, UserCulturalProgress, CommunityContribution,
+    UserLeague, League
 )
 from .serializers import (
     CategorySerializer, CourseSerializer, CourseListSerializer,
@@ -24,9 +25,11 @@ from .serializers import (
     CourseWithProgressSerializer,
     DailyChallengeSerializer, UserChallengeProgressSerializer,
     UserLevelSerializer, AchievementSerializer, UserAchievementSerializer,
-    CulturalEventSerializer, UserCulturalProgressSerializer, CommunityContributionSerializer
+    CulturalEventSerializer, UserCulturalProgressSerializer, CommunityContributionSerializer,
+    UserLeagueSerializer, LeagueSerializer
 )
 from django.core.exceptions import ValidationError
+from .services import LearningProgressService, LeagueService
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -136,10 +139,23 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """
-        Override retrieve to mark the lesson as in progress for authenticated users
+        Override retrieve to include problem XP information
         """
         lesson = self.get_object()
         response = super().retrieve(request, *args, **kwargs)
+
+        # Add problem XP information
+        problems = Problem.objects.filter(lesson=lesson)
+        problem_xp_info = []
+        for problem in problems:
+            problem_xp_info.append({
+                'id': problem.id,
+                'xp_value': problem.content.get('points', 10),  # Default 10 XP if not specified
+                'question_type': problem.question_type
+            })
+        
+        response.data['problem_xp_info'] = problem_xp_info
+        response.data['total_possible_xp'] = sum(p['xp_value'] for p in problem_xp_info)
 
         # If the user is authenticated, update their lesson progress
         if request.user.is_authenticated:
@@ -162,27 +178,66 @@ class LessonViewSet(viewsets.ModelViewSet):
     def complete(self, request, pk=None):
         """
         Mark a lesson as completed for the authenticated user.
-        Optionally include a score if the lesson has a practice component.
+        Calculate XP based on completed problems and update streak.
         """
         lesson = self.get_object()
-        score = request.data.get('score', None)
+        completed_problems = request.data.get('completed_problems', [])
+        total_score = request.data.get('total_score', 0)
 
         # Ensure the user is enrolled in the course
         CourseEnrollment.enroll_user(request.user, lesson.course)
 
-        # Get or create progress record and mark as completed
-        progress, created = UserProgress.objects.get_or_create(
+        # Calculate XP from completed problems
+        problems = Problem.objects.filter(lesson=lesson)
+        earned_xp = 0
+        for problem in problems:
+            if problem.id in completed_problems:
+                earned_xp += problem.content.get('points', 10)  # Default 10 XP if not specified
+
+        # Add bonus XP for perfect score
+        if total_score == 100:
+            earned_xp += 50  # Bonus XP for perfect score
+
+        # Process lesson completion using LeagueService
+        league_result = LeagueService.process_lesson_completion(
             user=request.user,
             lesson=lesson,
-            defaults={'status': 'in_progress'}
+            score=total_score,
+            earned_xp=earned_xp
         )
 
-        progress.mark_as_completed(score=score)
+        # Process lesson completion using LearningProgressService
+        progress_result = LearningProgressService.process_lesson_completion(
+            user=request.user,
+            lesson=lesson,
+            score=total_score,
+            earned_xp=earned_xp
+        )
 
-        # Return the updated progress and next lesson info
+        # Return the updated progress, next lesson info, and rewards
         serializer = LessonWithNextSerializer(
             lesson, context={'request': request})
-        return Response(serializer.data)
+        response_data = serializer.data
+        response_data.update({
+            'progress': UserProgressSerializer(progress_result['progress']).data,
+            'rewards': {
+                'xp_earned': earned_xp,
+                'perfect_score_bonus': 50 if total_score == 100 else 0,
+                'total_xp': earned_xp + (50 if total_score == 100 else 0),
+                'streak_updated': progress_result['rewards']['streak_updated'],
+                'current_streak': progress_result['rewards']['streak_days']
+            },
+            'achievements': AchievementSerializer(progress_result['achievements'], many=True).data,
+            'league': {
+                'xp_earned': league_result['xp_earned'],
+                'streak_updated': league_result['streak_updated'],
+                'league_changed': league_result['league_changed'],
+                'current_league': league_result['current_league'],
+                'current_points': league_result['current_points']
+            }
+        })
+        
+        return Response(response_data)
 
     @action(detail=True, methods=['get'])
     def content(self, request, pk=None):
@@ -316,12 +371,11 @@ class LessonContentBlockViewSet(viewsets.ModelViewSet):
     """
     queryset = LessonContentBlock.objects.all()
     serializer_class = LessonContentBlockSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['content']
+    ordering_fields = ['order']
 
     def get_queryset(self):
-        """
-        Optionally restricts the returned content blocks by filtering
-        against query parameters in the URL.
-        """
         queryset = LessonContentBlock.objects.all()
         lesson_id = self.request.query_params.get('lesson', None)
         if lesson_id is not None:
@@ -446,6 +500,111 @@ class ProblemViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def submit_answer(self, request, pk=None):
+        """
+        Submit an answer to a problem and handle rewards.
+        """
+        problem = self.get_object()
+        user = request.user
+        answer = request.data.get('answer')
+        
+        if not answer:
+            return Response(
+                {'error': 'Answer is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if answer is correct
+        is_correct = self._check_answer(problem, answer)
+        
+        # Get or create user progress for the lesson
+        if problem.lesson:
+            progress, created = UserProgress.objects.get_or_create(
+                user=user,
+                lesson=problem.lesson,
+                defaults={'status': 'in_progress'}
+            )
+
+            # Update progress if answer is correct
+            if is_correct:
+                # Award XP for correct answer
+                xp_reward = 10  # Base XP for correct answer
+                user_level = UserLevel.objects.get_or_create(user=user)[0]
+                user_level.add_experience(xp_reward)
+
+                # Award streak points
+                streak_reward = 5  # Base streak points
+                UserReward.objects.create(
+                    user=user,
+                    reward_type='streak',
+                    reward_name='Problem Solved',
+                    value=streak_reward,
+                    lesson=problem.lesson
+                )
+
+                # Update lesson progress
+                progress.mark_as_completed()
+
+                # Check for achievements
+                self._check_problem_achievements(user, problem)
+
+        return Response({
+            'is_correct': is_correct,
+            'xp_earned': xp_reward if is_correct else 0,
+            'streak_points': streak_reward if is_correct else 0
+        })
+
+    def _check_answer(self, problem, answer):
+        """
+        Check if the submitted answer is correct.
+        """
+        if problem.question_type == 'multiple_choice':
+            return answer in problem.correct_answer
+        elif problem.question_type == 'single_choice':
+            return answer == problem.correct_answer
+        elif problem.question_type == 'true_false':
+            return answer == problem.correct_answer
+        elif problem.question_type == 'fill_blank':
+            return answer.lower().strip() == problem.correct_answer.lower().strip()
+        elif problem.question_type == 'matching':
+            return set(answer) == set(problem.correct_answer)
+        elif problem.question_type == 'open_ended':
+            # For open-ended questions, you might want to implement more sophisticated checking
+            return answer.lower().strip() in problem.correct_answer.lower().strip()
+        elif problem.question_type == 'math_expression':
+            # For math expressions, you might want to implement math expression comparison
+            return answer == problem.correct_answer
+        elif problem.question_type == 'code':
+            # For code problems, you might want to implement code execution and comparison
+            return answer == problem.correct_answer
+        return False
+
+    def _check_problem_achievements(self, user, problem):
+        """
+        Check and award achievements related to problem solving.
+        """
+        # Check for perfect score achievement
+        if problem.lesson:
+            lesson_problems = Problem.objects.filter(lesson=problem.lesson)
+            solved_problems = UserProgress.objects.filter(
+                user=user,
+                lesson=problem.lesson,
+                status='completed'
+            ).count()
+            
+            if solved_problems == lesson_problems.count():
+                achievement = Achievement.objects.filter(
+                    achievement_type='perfect_score',
+                    level_required__lte=user.level.level
+                ).first()
+                
+                if achievement:
+                    UserAchievement.objects.get_or_create(
+                        user=user,
+                        achievement=achievement
+                    )
+
 
 class UserProgressViewSet(viewsets.ModelViewSet):
     """
@@ -454,6 +613,7 @@ class UserProgressViewSet(viewsets.ModelViewSet):
     """
     permission_classes = [IsAuthenticated]
     serializer_class = UserProgressSerializer
+    queryset = UserProgress.objects.none()  # Required for DRF router
 
     def get_queryset(self):
         """
@@ -503,6 +663,7 @@ class CourseEnrollmentViewSet(viewsets.ModelViewSet):
     """
     permission_classes = [IsAuthenticated]
     serializer_class = CourseEnrollmentSerializer
+    queryset = CourseEnrollment.objects.none()
 
     def get_queryset(self):
         """
@@ -544,6 +705,7 @@ class UserRewardViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['reward_name', 'lesson__title', 'course__title']
     ordering_fields = ['awarded_at', 'value']
+    queryset = UserReward.objects.none()
 
     def get_queryset(self):
         """
@@ -570,6 +732,7 @@ class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
     API endpoint for viewing the leaderboard.
     """
     serializer_class = LeaderboardEntrySerializer
+    queryset = LeaderboardEntry.objects.none()
 
     def get_queryset(self):
         """
@@ -646,6 +809,7 @@ class DailyChallengeViewSet(viewsets.ModelViewSet):
     """
     permission_classes = [IsAuthenticated]
     serializer_class = DailyChallengeSerializer
+    queryset = DailyChallenge.objects.none()
 
     def get_queryset(self):
         """Get today's challenge and past challenges"""
@@ -723,6 +887,7 @@ class UserLevelViewSet(viewsets.ReadOnlyModelViewSet):
     """
     permission_classes = [IsAuthenticated]
     serializer_class = UserLevelSerializer
+    queryset = UserLevel.objects.none()
 
     def get_queryset(self):
         return UserLevel.objects.filter(user=self.request.user)
@@ -740,6 +905,7 @@ class AchievementViewSet(viewsets.ReadOnlyModelViewSet):
     """
     permission_classes = [IsAuthenticated]
     serializer_class = AchievementSerializer
+    queryset = Achievement.objects.none()
 
     def get_queryset(self):
         user_level = UserLevel.objects.get(user=self.request.user)
@@ -752,12 +918,25 @@ class AchievementViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(UserAchievementSerializer(achievements, many=True).data)
 
 
+class UserAchievementViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for viewing user achievements (earned achievements).
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserAchievementSerializer
+    queryset = UserAchievement.objects.none()
+
+    def get_queryset(self):
+        return UserAchievement.objects.filter(user=self.request.user)
+
+
 class CulturalEventViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing cultural events.
     """
     serializer_class = CulturalEventSerializer
     permission_classes = [IsAuthenticated]
+    queryset = CulturalEvent.objects.none()
 
     def get_queryset(self):
         """Get active cultural events"""
@@ -800,6 +979,7 @@ class CommunityContributionViewSet(viewsets.ModelViewSet):
     """
     serializer_class = CommunityContributionSerializer
     permission_classes = [IsAuthenticated]
+    queryset = CommunityContribution.objects.none()
 
     def get_queryset(self):
         """Get user's contributions"""
@@ -849,3 +1029,130 @@ class CommunityContributionViewSet(viewsets.ModelViewSet):
         user_level.add_experience(bonus_points)
         
         return Response(CommunityContributionSerializer(contribution).data)
+
+
+class UserChallengeProgressViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing user challenge progress.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserChallengeProgressSerializer
+    queryset = UserChallengeProgress.objects.none()
+
+    def get_queryset(self):
+        """
+        Return challenge progress for the authenticated user.
+        """
+        return UserChallengeProgress.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        """
+        Create a new challenge progress entry for the authenticated user.
+        """
+        serializer.save(user=self.request.user)
+
+
+class LeagueViewSet(viewsets.ViewSet):
+    """
+    ViewSet for managing leagues and streaks.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def status(self, request):
+        """Get current user's league status"""
+        try:
+            user_league = UserLeague.objects.get(user=request.user)
+            serializer = UserLeagueSerializer(user_league)
+            return Response(serializer.data)
+        except UserLeague.DoesNotExist:
+            # Create new league entry if doesn't exist
+            user_league = LeagueService._get_or_create_user_league(request.user)
+            serializer = UserLeagueSerializer(user_league)
+            return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def leaderboard(self, request):
+        """Get leaderboard standings"""
+        time_period = request.query_params.get('time_period', 'weekly')
+        league_id = request.query_params.get('league')
+        
+        entries = LeaderboardEntry.objects.filter(time_period=time_period)
+        if league_id:
+            entries = entries.filter(user__userleague__league_id=league_id)
+        
+        entries = entries.order_by('-points')[:100]  # Top 100
+        serializer = LeaderboardEntrySerializer(entries, many=True)
+        
+        # Get user's rank
+        user_rank = LeaderboardEntry.objects.filter(
+            time_period=time_period,
+            points__gt=LeaderboardEntry.objects.get(
+                user=request.user,
+                time_period=time_period
+            ).points
+        ).count() + 1
+        
+        return Response({
+            'standings': serializer.data,
+            'my_rank': user_rank
+        })
+
+    @action(detail=False, methods=['get'])
+    def streak(self, request):
+        """Get user's streak information"""
+        try:
+            user_league = UserLeague.objects.get(user=request.user)
+            return Response({
+                'current_streak': user_league.current_streak,
+                'max_streak': user_league.max_streak,
+                'streak_charges': user_league.streak_charges,
+                'last_activity': user_league.last_activity_date
+            })
+        except UserLeague.DoesNotExist:
+            return Response({
+                'current_streak': 0,
+                'max_streak': 0,
+                'streak_charges': 0,
+                'last_activity': None
+            })
+
+    @action(detail=False, methods=['post'])
+    def use_streak_charge(self, request):
+        """Use a streak charge to maintain streak"""
+        try:
+            user_league = UserLeague.objects.get(user=request.user)
+            if user_league.use_streak_charge():
+                return Response({
+                    'success': True,
+                    'message': 'Waad ku mahadsantahay ilaalinta xariggaaga',
+                    'remaining_charges': user_league.streak_charges
+                })
+            return Response({
+                'success': False,
+                'message': 'Ma haysato charge xarig ah'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except UserLeague.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Ma jiraan league-kaaga'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['get'])
+    def achievements(self, request):
+        """Get user's achievements"""
+        achievements = UserAchievement.objects.filter(user=request.user)
+        serializer = UserAchievementSerializer(achievements, many=True)
+        return Response(serializer.data)
+
+
+class UserCulturalProgressViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing user cultural progress.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserCulturalProgressSerializer
+    queryset = UserCulturalProgress.objects.none()
+
+    def get_queryset(self):
+        return UserCulturalProgress.objects.filter(user=self.request.user)

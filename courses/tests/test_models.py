@@ -28,8 +28,12 @@ class LessonContentBlockTests(TestCase):
             lesson=self.lesson,
             question_text="Test Question",
             question_type="multiple_choice",
-            options=["A", "B", "C"],
-            correct_answer="A"
+            options=[
+                {'id': '1', 'text': 'A'},
+                {'id': '2', 'text': 'B'},
+                {'id': '3', 'text': 'C'}
+            ],
+            correct_answer=[{'id': '1'}]
         )
 
     def test_create_text_block(self):

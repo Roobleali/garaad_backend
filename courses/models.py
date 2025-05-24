@@ -1291,3 +1291,110 @@ class UserNotification(models.Model):
             title='Warbixin Tartanka!',
             message=f'Waad ku guulaysatay booska {league_position} tartanka {league_name}!',
         )
+
+class League(models.Model):
+    """
+    Represents a league level in the competitive system.
+    """
+    LEVELS = (
+        ('hydrogen', 'Hydrogen'),
+        ('lithium', 'Lithium'),
+        ('carbon', 'Carbon'),
+        ('neon', 'Neon'),
+        ('titanium', 'Titanium'),
+        ('xenon', 'Xenon'),
+        ('barium', 'Barium'),
+        ('neodymium', 'Neodymium'),
+        ('tungsten', 'Tungsten'),
+        ('einsteinium', 'Einsteinium'),
+    )
+
+    level = models.CharField(max_length=20, choices=LEVELS, unique=True)
+    promotion_threshold = models.PositiveIntegerField(default=15)  # Number of users to promote
+    stay_threshold = models.PositiveIntegerField(default=10)  # Number of users to stay
+    demotion_threshold = models.PositiveIntegerField(default=5)  # Number of users to demote
+    min_xp_required = models.PositiveIntegerField(default=0)  # Minimum XP required to join
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['min_xp_required']
+
+    def __str__(self):
+        return self.get_level_display()
+
+    @classmethod
+    def get_league_for_xp(cls, xp):
+        """Get the appropriate league for a user's XP"""
+        return cls.objects.filter(min_xp_required__lte=xp).order_by('-min_xp_required').first()
+
+    @classmethod
+    def get_next_league(cls, current_league):
+        """Get the next league level"""
+        if not current_league:
+            return cls.objects.first()
+        
+        leagues = list(cls.objects.all().order_by('min_xp_required'))
+        current_index = leagues.index(current_league)
+        
+        if current_index < len(leagues) - 1:
+            return leagues[current_index + 1]
+        return None
+
+    @classmethod
+    def get_previous_league(cls, current_league):
+        """Get the previous league level"""
+        if not current_league:
+            return None
+            
+        leagues = list(cls.objects.all().order_by('min_xp_required'))
+        current_index = leagues.index(current_league)
+        
+        if current_index > 0:
+            return leagues[current_index - 1]
+        return None
+
+class UserLeague(models.Model):
+    """
+    Tracks a user's league participation and status.
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='leagues')
+    league = models.ForeignKey(League, on_delete=models.CASCADE, related_name='users')
+    current_week_points = models.PositiveIntegerField(default=0)
+    last_week_points = models.PositiveIntegerField(default=0)
+    last_week_rank = models.PositiveIntegerField(null=True, blank=True)
+    streak_charges = models.PositiveIntegerField(default=0)
+    max_streak_charges = models.PositiveIntegerField(default=2)
+    last_activity_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'league']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.league.get_level_display()}"
+
+    def add_streak_charge(self):
+        """Add a streak charge if below max"""
+        if self.streak_charges < self.max_streak_charges:
+            self.streak_charges += 1
+            self.save(update_fields=['streak_charges'])
+
+    def use_streak_charge(self):
+        """Use a streak charge if available"""
+        if self.streak_charges > 0:
+            self.streak_charges -= 1
+            self.save(update_fields=['streak_charges'])
+            return True
+        return False
+
+    def update_weekly_points(self, points):
+        """Update points for the current week"""
+        self.current_week_points += points
+        self.save(update_fields=['current_week_points'])
+
+    def reset_weekly_points(self):
+        """Reset points at the end of the week"""
+        self.last_week_points = self.current_week_points
+        self.current_week_points = 0
+        self.save(update_fields=['last_week_points', 'current_week_points'])

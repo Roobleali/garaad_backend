@@ -1,22 +1,33 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import views
+from .views import (
+    CategoryViewSet, CourseViewSet, LessonViewSet,
+    ProblemViewSet, UserProgressViewSet, CourseEnrollmentViewSet,
+    LeaderboardViewSet, DailyChallengeViewSet, UserChallengeProgressViewSet,
+    UserLevelViewSet, AchievementViewSet, UserAchievementViewSet,
+    CulturalEventViewSet, UserCulturalProgressViewSet, CommunityContributionViewSet,
+    LeagueViewSet, LessonContentBlockViewSet
+)
 
 router = DefaultRouter()
-router.register(r'categories', views.CategoryViewSet)
-router.register(r'courses', views.CourseViewSet)
-router.register(r'lessons', views.LessonViewSet)
-router.register(r'problems', views.ProblemViewSet)
-router.register(r'progress', views.UserProgressViewSet, basename='progress')
-router.register(r'enrollments', views.CourseEnrollmentViewSet, basename='enrollment')
-router.register(r'rewards', views.UserRewardViewSet, basename='reward')
-router.register(r'leaderboard', views.LeaderboardViewSet, basename='leaderboard')
-router.register(r'challenges', views.DailyChallengeViewSet, basename='challenge')
-router.register(r'levels', views.UserLevelViewSet, basename='level')
-router.register(r'achievements', views.AchievementViewSet, basename='achievement')
-router.register(r'cultural-events', views.CulturalEventViewSet, basename='cultural-event')
-router.register(r'contributions', views.CommunityContributionViewSet, basename='contribution')
+router.register(r'categories', CategoryViewSet)
+router.register(r'courses', CourseViewSet)
+router.register(r'lessons', LessonViewSet)
+router.register(r'problems', ProblemViewSet)
+router.register(r'user-progress', UserProgressViewSet)
+router.register(r'enrollments', CourseEnrollmentViewSet)
+router.register(r'leaderboard', LeaderboardViewSet)
+router.register(r'daily-challenges', DailyChallengeViewSet)
+router.register(r'challenge-progress', UserChallengeProgressViewSet)
+router.register(r'user-levels', UserLevelViewSet)
+router.register(r'achievements', AchievementViewSet)
+router.register(r'user-achievements', UserAchievementViewSet)
+router.register(r'cultural-events', CulturalEventViewSet)
+router.register(r'cultural-progress', UserCulturalProgressViewSet)
+router.register(r'community-contributions', CommunityContributionViewSet)
+router.register(r'leagues', LeagueViewSet, basename='league')
+router.register(r'lesson-content-blocks', LessonContentBlockViewSet)
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('v1/', include(router.urls)),
 ]

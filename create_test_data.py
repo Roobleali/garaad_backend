@@ -89,8 +89,13 @@ is_student = True''',
 problem1 = Problem.objects.create(
     question_text='What will be the output of print("Hello, " + "World!")?',
     question_type='single_choice',
-    options=['Hello, World!', 'HelloWorld!', 'Error', 'None'],
-    correct_answer='Hello, World!',
+    options=[
+        {'id': '1', 'text': 'Hello, World!'},
+        {'id': '2', 'text': 'HelloWorld!'},
+        {'id': '3', 'text': 'Error'},
+        {'id': '4', 'text': 'None'}
+    ],
+    correct_answer=[{'id': '1'}],
     explanation='The + operator concatenates strings in Python',
     difficulty='beginner'
 )
@@ -98,8 +103,13 @@ problem1 = Problem.objects.create(
 problem2 = Problem.objects.create(
     question_text='Which of these is a valid variable name in Python?',
     question_type='multiple_choice',
-    options=['123var', '_count', 'my-var', 'class'],
-    correct_answer=['_count'],
+    options=[
+        {'id': '1', 'text': '123var'},
+        {'id': '2', 'text': '_count'},
+        {'id': '3', 'text': 'my-var'},
+        {'id': '4', 'text': 'class'}
+    ],
+    correct_answer=[{'id': '2'}],
     explanation='Variable names cannot start with numbers, contain hyphens, or be Python keywords',
     difficulty='beginner'
 )

@@ -307,7 +307,8 @@ class LessonViewSet(viewsets.ModelViewSet):
                 'order': problem.order,
                 'question_type': problem.question_type,
                 'question_text': problem.question_text,
-                'content': problem.content
+                'content': problem.content,
+                'xp_value': problem.content.get('points', problem.xp)  # Add XP value
             })
         
         # Sort by order

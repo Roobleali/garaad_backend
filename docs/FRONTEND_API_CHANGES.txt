@@ -1,0 +1,105 @@
+============================
+Garaad Backend: API Changes & Endpoints
+============================
+
+This document summarizes the recent backend changes and provides the API endpoints relevant to your requests.
+
+----------------------------
+1. Lesson Completion Endpoint
+----------------------------
+
+**Endpoint:**
+POST /api/lms/lessons/{lessonId}/complete/
+
+**Request Body Example:**
+{
+    "completed_problems": [1, 2, 3],  // Array of completed problem IDs
+    "total_score": 100                // Score out of 100
+}
+
+**Response Example:**
+{
+    "status": "success",
+    "message": "Lesson completed successfully",
+    "earned_xp": 65,  // 5 XP per problem + 50 bonus for perfect score
+    "total_score": 100,
+    "streak": {
+        "current_streak": 3,
+        "max_streak": 5,
+        "streak_charges": 2
+    }
+}
+
+**Notes:**
+- XP is awarded automatically based on problems solved (default 5 XP each).
+- 50 XP bonus for perfect score (100).
+- Streak and achievements are updated automatically.
+
+----------------------------
+2. League & Leaderboard Endpoints
+----------------------------
+
+**a) League Status**
+GET /api/league/leagues/status/
+
+**Response Example:**
+{
+    "current_league": {
+        "id": "league_id",
+        "name": "League Name",
+        "min_xp": 1000
+    },
+    "current_points": 500,
+    "weekly_rank": 5,
+    "streak": {
+        "current_streak": 3,
+        "max_streak": 7,
+        "streak_charges": 2,
+        "last_activity_date": "2024-03-20"
+    },
+    "next_league": {
+        "id": "next_league_id",
+        "name": "Next League",
+        "min_xp": 2000,
+        "points_needed": 1500
+    }
+}
+
+**b) League Leaderboard**
+GET /api/league/leagues/leaderboard/?time_period=weekly&league=league_id
+
+**Response Example:**
+{
+    "time_period": "weekly",
+    "league": "league_id",
+    "standings": [
+        {
+            "rank": 1,
+            "user": {
+                "id": "user_id",
+                "name": "username"
+            },
+            "points": 1000,
+            "streak": 5
+        }
+    ],
+    "my_standing": {
+        "rank": 10,
+        "points": 800,
+        "streak": 3
+    }
+}
+
+**Notes:**
+- Use the correct URL paths (`/api/league/leagues/...`).
+- Include the authentication token in the request headers.
+- Use the correct query parameters for the leaderboard.
+
+----------------------------
+3. Summary of Backend Changes
+----------------------------
+- Fixed lesson completion endpoint: XP, streak, and achievements update automatically.
+- Fixed league and leaderboard endpoints: error handling, field names, and response structure improved.
+- All endpoints require authentication.
+
+If you need more details or examples, please ask! 

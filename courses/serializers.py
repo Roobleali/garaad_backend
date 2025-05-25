@@ -28,9 +28,23 @@ class ProblemSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'which', 'question_text', 'question_type', 'options',
             'correct_answer', 'explanation', 'content',
-            'diagram_config', 'img', 'created_at', 'updated_at'
+            'diagram_config', 'img', 'xp', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def to_representation(self, instance):
+        """
+        Add XP information to the response and handle diagram_config visibility
+        """
+        data = super().to_representation(instance)
+        # Add XP information from content if available, otherwise use model's xp field
+        data['xp_value'] = instance.content.get('points', instance.xp)
+        
+        # Only include diagram_config for diagram type problems
+        if instance.question_type != 'diagram':
+            data.pop('diagram_config', None)
+            
+        return data
 
     def to_internal_value(self, data):
         """

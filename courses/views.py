@@ -180,64 +180,103 @@ class LessonViewSet(viewsets.ModelViewSet):
         Mark a lesson as completed for the authenticated user.
         Calculate XP based on completed problems and update streak.
         """
-        lesson = self.get_object()
-        completed_problems = request.data.get('completed_problems', [])
-        total_score = request.data.get('total_score', 0)
+        try:
+            lesson = self.get_object()
+            completed_problems = request.data.get('completed_problems', [])
+            total_score = request.data.get('total_score', 0)
 
-        # Ensure the user is enrolled in the course
-        CourseEnrollment.enroll_user(request.user, lesson.course)
+            # Ensure the user is enrolled in the course
+            CourseEnrollment.enroll_user(request.user, lesson.course)
 
-        # Calculate XP from completed problems
-        problems = Problem.objects.filter(lesson=lesson)
-        earned_xp = 0
-        for problem in problems:
-            if problem.id in completed_problems:
-                earned_xp += problem.content.get('points', 10)  # Default 10 XP if not specified
+            # Calculate XP from completed problems
+            problems = Problem.objects.filter(lesson=lesson)
+            earned_xp = 0
+            for problem in problems:
+                if problem.id in completed_problems:
+                    earned_xp += problem.content.get('points', 5)  # Default 5 XP if not specified
 
-        # Add bonus XP for perfect score
-        if total_score == 100:
-            earned_xp += 50  # Bonus XP for perfect score
+            # Add bonus XP for perfect score
+            if total_score == 100:
+                earned_xp += 50  # Bonus XP for perfect score
 
-        # Process lesson completion using LeagueService
-        league_result = LeagueService.process_lesson_completion(
-            user=request.user,
-            lesson=lesson,
-            score=total_score,
-            earned_xp=earned_xp
-        )
+            # Get or create progress record
+            progress, created = UserProgress.objects.get_or_create(
+                user=request.user,
+                lesson=lesson,
+                defaults={'status': 'in_progress'}
+            )
 
-        # Process lesson completion using LearningProgressService
-        progress_result = LearningProgressService.process_lesson_completion(
-            user=request.user,
-            lesson=lesson,
-            score=total_score,
-            earned_xp=earned_xp
-        )
+            # Update progress
+            progress.mark_as_completed()
+            progress.score = total_score
+            progress.completed_at = timezone.now()
+            progress.save()
 
-        # Return the updated progress, next lesson info, and rewards
-        serializer = LessonWithNextSerializer(
-            lesson, context={'request': request})
-        response_data = serializer.data
-        response_data.update({
-            'progress': UserProgressSerializer(progress_result['progress']).data,
-            'rewards': {
-                'xp_earned': earned_xp,
-                'perfect_score_bonus': 50 if total_score == 100 else 0,
-                'total_xp': earned_xp + (50 if total_score == 100 else 0),
-                'streak_updated': progress_result['rewards']['streak_updated'],
-                'current_streak': progress_result['rewards']['streak_days']
-            },
-            'achievements': AchievementSerializer(progress_result['achievements'], many=True).data,
-            'league': {
-                'xp_earned': league_result['xp_earned'],
-                'streak_updated': league_result['streak_updated'],
-                'league_changed': league_result['league_changed'],
-                'current_league': league_result['current_league'],
-                'current_points': league_result['current_points']
-            }
-        })
-        
-        return Response(response_data)
+            # Award XP and update streak
+            streak = Streak.objects.get(user=request.user)
+            streak.award_xp(earned_xp, 'problem_completion')
+            streak.update_streak()
+
+            # Check for achievements
+            self._check_lesson_achievements(request.user, lesson)
+
+            return Response({
+                'status': 'success',
+                'message': 'Lesson completed successfully',
+                'earned_xp': earned_xp,
+                'total_score': total_score,
+                'streak': {
+                    'current_streak': streak.current_streak,
+                    'max_streak': streak.max_streak,
+                    'streak_charges': streak.current_energy
+                }
+            })
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _check_lesson_achievements(self, user, lesson):
+        """Check and award achievements for lesson completion."""
+        try:
+            # Check for first lesson completion
+            completed_lessons = UserProgress.objects.filter(
+                user=user,
+                status='completed'
+            ).count()
+            
+            if completed_lessons == 1:
+                # Award first lesson achievement
+                achievement = Achievement.objects.get(
+                    achievement_type='first_lesson'
+                )
+                UserAchievement.objects.get_or_create(
+                    user=user,
+                    achievement=achievement
+                )
+            
+            # Check for course completion
+            course = lesson.course
+            total_lessons = course.lessons.count()
+            completed_course_lessons = UserProgress.objects.filter(
+                user=user,
+                lesson__course=course,
+                status='completed'
+            ).count()
+            
+            if completed_course_lessons == total_lessons:
+                # Award course completion achievement
+                achievement = Achievement.objects.get(
+                    achievement_type='course_completion'
+                )
+                UserAchievement.objects.get_or_create(
+                    user=user,
+                    achievement=achievement
+                )
+        except Exception as e:
+            print(f"Error checking achievements: {str(e)}")
+            # Don't raise the exception, just log it
 
     @action(detail=True, methods=['get'])
     def content(self, request, pk=None):

@@ -29,5 +29,5 @@ router.register(r'leagues', LeagueViewSet, basename='league')
 router.register(r'lesson-content-blocks', LessonContentBlockViewSet)
 
 urlpatterns = [
-    path('v1/', include(router.urls)),
+    path('', include(router.urls)),
 ]

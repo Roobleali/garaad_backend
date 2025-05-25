@@ -37,8 +37,12 @@ class ProblemSerializer(serializers.ModelSerializer):
         Add XP information to the response and handle diagram_config visibility
         """
         data = super().to_representation(instance)
-        # Add XP information from content if available, otherwise use model's xp field
-        data['xp_value'] = instance.content.get('points', instance.xp)
+        
+        # Handle XP value - check if content is dict or list
+        if isinstance(instance.content, dict):
+            data['xp_value'] = instance.content.get('points', instance.xp)
+        else:
+            data['xp_value'] = instance.xp
         
         # Only include diagram_config for diagram type problems
         if instance.question_type != 'diagram':

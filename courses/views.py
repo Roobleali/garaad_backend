@@ -30,6 +30,11 @@ from .serializers import (
 )
 from django.core.exceptions import ValidationError
 from .services import LearningProgressService, LeagueService
+from django.core.cache import cache
+from django.conf import settings
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_cookie
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -1111,32 +1116,60 @@ class LeagueViewSet(viewsets.ViewSet):
             serializer = UserLeagueSerializer(user_league)
             return Response(serializer.data)
 
+    @method_decorator(cache_page(60 * 5))  # Cache for 5 minutes
+    @method_decorator(vary_on_cookie)  # Vary cache by user
     @action(detail=False, methods=['get'])
     def leaderboard(self, request):
-        """Get leaderboard standings"""
+        """Get leaderboard standings with caching"""
         time_period = request.query_params.get('time_period', 'weekly')
         league_id = request.query_params.get('league')
         
+        # Generate cache key
+        cache_key = f'leaderboard_{time_period}_{league_id}'
+        user_rank_key = f'user_rank_{request.user.id}_{time_period}_{league_id}'
+        
+        # Try to get from cache
+        cached_data = cache.get(cache_key)
+        cached_rank = cache.get(user_rank_key)
+        
+        if cached_data and cached_rank is not None:
+            return Response({
+                'standings': cached_data,
+                'my_rank': cached_rank
+            })
+        
+        # If not in cache, get from database
         entries = LeaderboardEntry.objects.filter(time_period=time_period)
         if league_id:
-            entries = entries.filter(user__userleague__league_id=league_id)
+            entries = entries.filter(user__userleague__current_league_id=league_id)
         
         entries = entries.order_by('-points')[:100]  # Top 100
         serializer = LeaderboardEntrySerializer(entries, many=True)
         
-        # Get user's rank
-        user_rank = LeaderboardEntry.objects.filter(
-            time_period=time_period,
-            points__gt=LeaderboardEntry.objects.get(
+        # Calculate user's rank
+        try:
+            user_entry = LeaderboardEntry.objects.get(
                 user=request.user,
                 time_period=time_period
-            ).points
-        ).count() + 1
+            )
+            user_rank = LeaderboardEntry.objects.filter(
+                time_period=time_period,
+                points__gt=user_entry.points
+            ).count() + 1
+        except LeaderboardEntry.DoesNotExist:
+            user_rank = 0
         
-        return Response({
+        # Prepare response data
+        response_data = {
             'standings': serializer.data,
             'my_rank': user_rank
-        })
+        }
+        
+        # Cache the results
+        cache.set(cache_key, serializer.data, 60 * 5)  # Cache for 5 minutes
+        cache.set(user_rank_key, user_rank, 60 * 5)  # Cache for 5 minutes
+        
+        return Response(response_data)
 
     @action(detail=False, methods=['get'])
     def streak(self, request):

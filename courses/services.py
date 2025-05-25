@@ -5,9 +5,14 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import (
     UserNotification, UserReward, UserLevel, UserProgress, 
-    LeaderboardEntry, Achievement, UserAchievement, UserLeague, League
+    LeaderboardEntry, Achievement, UserAchievement,
+    CulturalEvent, UserCulturalProgress, CommunityContribution
 )
+from django.db import transaction
+from django.db.models import F, Sum
+from django.core.cache import cache
 import logging
+from leagues.models import UserLeague, League  # Import from leagues app
 
 logger = logging.getLogger(__name__)
 
@@ -438,26 +443,22 @@ class LeagueService:
     
     @classmethod
     def _get_or_create_user_league(cls, user):
-        """Get or create user's league based on XP"""
-        try:
-            return UserLeague.objects.get(user=user)
-        except UserLeague.DoesNotExist:
-            # Get user's total XP
-            total_xp = UserReward.objects.filter(
-                user=user,
-                reward_type='points'
-            ).aggregate(total=models.Sum('value'))['total'] or 0
-            
-            # Get appropriate league
-            league = League.get_league_for_xp(total_xp)
-            if not league:
-                league = League.objects.first()  # Start with lowest league
-            
-            return UserLeague.objects.create(
-                user=user,
-                league=league
-            )
-    
+        """Get or create user's league entry"""
+        user_league, created = UserLeague.objects.get_or_create(
+            user=user,
+            defaults={
+                'current_league': League.objects.first(),
+                'total_xp': 0,
+                'weekly_xp': 0,
+                'monthly_xp': 0,
+                'current_streak': 0,
+                'max_streak': 0,
+                'streak_charges': 0,
+                'last_activity_date': timezone.now()
+            }
+        )
+        return user_league
+
     @classmethod
     def _calculate_xp_earned(cls, user, lesson, score):
         """Calculate XP earned from lesson completion"""
@@ -479,33 +480,23 @@ class LeagueService:
     @classmethod
     def _update_streak(cls, user_league):
         """Update user's streak"""
-        today = timezone.now().date()
-        
-        # Check if user has streak charges
-        if user_league.last_activity_date and (today - user_league.last_activity_date).days > 1:
-            if user_league.use_streak_charge():
-                # Streak maintained using charge
-                user_league.last_activity_date = today
-                user_league.save(update_fields=['last_activity_date'])
-                return True
+        with transaction.atomic():
+            today = timezone.now().date()
+            last_activity = user_league.last_activity_date.date()
+            
+            if today == last_activity:
+                return user_league
+                
+            if today - last_activity == timezone.timedelta(days=1):
+                user_league.current_streak += 1
+                user_league.max_streak = max(user_league.max_streak, user_league.current_streak)
             else:
-                # Streak broken
-                user_league.last_activity_date = today
-                user_league.save(update_fields=['last_activity_date'])
-                return False
-        
-        # Normal streak update
-        if not user_league.last_activity_date or (today - user_league.last_activity_date).days == 1:
-            user_league.last_activity_date = today
-            user_league.save(update_fields=['last_activity_date'])
+                user_league.current_streak = 1
+                
+            user_league.last_activity_date = timezone.now()
+            user_league.save()
             
-            # Award streak charge if earned
-            if user_league.last_activity_date and (today - user_league.last_activity_date).days == 1:
-                user_league.add_streak_charge()
-            
-            return True
-        
-        return False
+            return user_league
     
     @classmethod
     def _check_league_change(cls, user_league):
@@ -567,4 +558,39 @@ class LeagueService:
             for i, user_league in enumerate(middle_users):
                 user_league.last_week_rank = league.promotion_threshold + i + 1
                 user_league.reset_weekly_points()
-                user_league.save() 
+                user_league.save()
+
+    @classmethod
+    def _update_leaderboard(cls, user):
+        """Update leaderboard entries"""
+        with transaction.atomic():
+            # Update weekly leaderboard
+            weekly_entry, _ = LeaderboardEntry.objects.get_or_create(
+                user=user,
+                time_period='weekly',
+                defaults={'points': 0}
+            )
+            weekly_entry.points = F('points') + xp_gained
+            weekly_entry.save()
+            
+            # Update monthly leaderboard
+            monthly_entry, _ = LeaderboardEntry.objects.get_or_create(
+                user=user,
+                time_period='monthly',
+                defaults={'points': 0}
+            )
+            monthly_entry.points = F('points') + xp_gained
+            monthly_entry.save()
+            
+            # Update all-time leaderboard
+            all_time_entry, _ = LeaderboardEntry.objects.get_or_create(
+                user=user,
+                time_period='all_time',
+                defaults={'points': 0}
+            )
+            all_time_entry.points = F('points') + xp_gained
+            all_time_entry.save()
+            
+            # Invalidate leaderboard cache
+            cache.delete_pattern('leaderboard_*')
+            cache.delete_pattern(f'user_rank_{user.id}_*') 

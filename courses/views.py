@@ -12,9 +12,9 @@ from .models import (
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry,
     DailyChallenge, UserChallengeProgress, UserLevel,
     Achievement, UserAchievement,
-    CulturalEvent, UserCulturalProgress, CommunityContribution,
-    UserLeague, League
+    CulturalEvent, UserCulturalProgress, CommunityContribution
 )
+from leagues.models import UserLeague, League  # Import from leagues app
 from .serializers import (
     CategorySerializer, CourseSerializer, CourseListSerializer,
     LessonSerializer, LessonContentBlockSerializer,

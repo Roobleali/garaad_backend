@@ -5,9 +5,10 @@ from .models import (
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry,
     DailyChallenge, UserChallengeProgress, UserLevel,
     Achievement, UserAchievement, CulturalEvent,
-    UserCulturalProgress, CommunityContribution, UserLeague, League
+    UserCulturalProgress, CommunityContribution
 )
 from django.db import models
+from leagues.models import UserLeague, League  # Import from leagues app
 
 
 class HintSerializer(serializers.ModelSerializer):
@@ -532,29 +533,25 @@ class CommunityContributionSerializer(serializers.ModelSerializer):
 class LeagueSerializer(serializers.ModelSerializer):
     class Meta:
         model = League
-        fields = ['id', 'level', 'promotion_threshold', 'stay_threshold', 
-                 'demotion_threshold', 'min_xp_required']
+        fields = ['id', 'name', 'somali_name', 'description', 'min_xp', 'order', 'icon']
 
 
 class UserLeagueSerializer(serializers.ModelSerializer):
-    league = LeagueSerializer()
+    current_league = LeagueSerializer(read_only=True)
     next_league = serializers.SerializerMethodField()
-    previous_league = serializers.SerializerMethodField()
     
     class Meta:
         model = UserLeague
-        fields = ['id', 'league', 'current_week_points', 'last_week_rank',
-                 'current_streak', 'max_streak', 'streak_charges',
-                 'last_activity_date', 'next_league', 'previous_league']
+        fields = ['current_league', 'total_xp', 'weekly_xp', 'monthly_xp', 'next_league']
     
     def get_next_league(self, obj):
-        next_league = League.get_next_league(obj.league)
+        next_league = League.objects.filter(min_xp__gt=obj.current_league.min_xp).order_by('min_xp').first()
         if next_league:
-            return LeagueSerializer(next_league).data
-        return None
-    
-    def get_previous_league(self, obj):
-        prev_league = League.get_previous_league(obj.league)
-        if prev_league:
-            return LeagueSerializer(prev_league).data
+            return {
+                'id': next_league.id,
+                'name': next_league.name,
+                'somali_name': next_league.somali_name,
+                'min_xp': next_league.min_xp,
+                'points_needed': next_league.min_xp - obj.total_xp
+            }
         return None

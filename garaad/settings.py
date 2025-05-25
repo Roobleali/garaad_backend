@@ -72,7 +72,12 @@ else:
     CSRF_COOKIE_SECURE = False
 
 # Allow all hosts in development, restrict in production
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost'] if DEBUG else ['api.garaad.org']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0'] if DEBUG else [
+    'api.garaad.org',
+    '127.0.0.1',
+    'localhost',
+    '0.0.0.0'
+]
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = DEBUG

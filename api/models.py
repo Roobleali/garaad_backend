@@ -280,7 +280,7 @@ class Notification(models.Model):
         ('social', 'Social Interaction'),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='gamification_notifications')
     type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
     title = models.CharField(max_length=100)
     message = models.CharField(max_length=255)

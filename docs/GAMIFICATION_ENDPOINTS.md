@@ -168,6 +168,79 @@
   - Weekly points
   - User standings
 
+### 5. Notification System
+
+#### GET `/api/notifications/`
+- **Purpose**: Get user's notifications
+- **Response**: 
+```json
+{
+    "count": 5,
+    "results": [
+        {
+            "id": 1,
+            "type": "streak",
+            "title": "First Streak!",
+            "message": "Waad ku mahadsantahay bilowga xariggaaga!",
+            "data": {
+                "streak_days": 1,
+                "xp_earned": 20
+            },
+            "is_read": false,
+            "created_at": "2024-03-20T10:00:00Z"
+        }
+    ]
+}
+```
+
+#### GET `/api/notifications/unread_count/`
+- **Purpose**: Get count of unread notifications
+- **Response**: 
+```json
+{
+    "unread_count": 3
+}
+```
+
+#### POST `/api/notifications/{id}/mark_read/`
+- **Purpose**: Mark a specific notification as read
+- **Response**: 
+```json
+{
+    "message": "Notification marked as read"
+}
+```
+
+#### POST `/api/notifications/mark_all_read/`
+- **Purpose**: Mark all notifications as read
+- **Response**: 
+```json
+{
+    "message": "All notifications marked as read"
+}
+```
+
+### Notification Types and Events
+
+1. **Streak Updates**
+   - First streak achieved
+   - Streak maintained
+   - Streak milestone (7, 30, 100 days)
+   - Streak reset
+
+2. **League Promotions**
+   - League promotion achieved
+   - XP earned for promotion
+
+3. **Energy Updates**
+   - Energy used
+   - Energy restored
+
+4. **Milestone Achievements**
+   - Streak milestones
+   - XP milestones
+   - Problem solving milestones
+
 ## Data Flow Between Endpoints
 
 ### 1. Problem Solving Flow

@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
 import logging
-from .models import Streak, DailyActivity
+from .models import Streak, DailyActivity, Notification
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -208,3 +208,10 @@ class StreakSerializer(serializers.ModelSerializer):
 class StreakUpdateSerializer(serializers.Serializer):
     problems_solved = serializers.IntegerField(min_value=0)
     lesson_ids = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'type', 'title', 'message', 'data', 'is_read', 'created_at']
+        read_only_fields = ['id', 'type', 'title', 'message', 'data', 'created_at']

@@ -447,6 +447,7 @@ class Problem(models.Model):
     content = models.JSONField(default=dict, blank=True, null=True)
     diagram_config = models.JSONField(default=get_default_diagram_config, blank=True)
     img = models.URLField(blank=True, null=True, help_text="URL of an image associated with the problem")
+    xp = models.PositiveIntegerField(default=10, help_text="XP awarded for solving this problem")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -601,10 +602,12 @@ class UserProgress(models.Model):
         Lesson, related_name='user_progress', on_delete=models.CASCADE)
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default='not_started')
-    # Optional score for practice-enabled lessons
     score = models.PositiveIntegerField(blank=True, null=True)
     last_visited_at = models.DateTimeField(auto_now=True)
     completed_at = models.DateTimeField(blank=True, null=True)
+    problems_solved = models.PositiveIntegerField(default=0)
+    total_xp_earned = models.PositiveIntegerField(default=0)
+    streak_updated = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ['user', 'lesson']
@@ -621,31 +624,28 @@ class UserProgress(models.Model):
             self.save()
 
     def mark_as_completed(self, score=None):
-        """Mark lesson as completed with optional score"""
-        if self.status != 'completed':
-            from django.utils import timezone
-            self.status = 'completed'
-            if score is not None:
-                self.score = score
-            self.completed_at = timezone.now()
-            self.save()
-
-            # Create reward for completing a lesson
-            UserReward.objects.create(
-                user=self.user,
-                reward_type='points',
-                reward_name='Lesson Completion',
-                value=10,
-                lesson=self.lesson,
-                course=self.lesson.course
-            )
-
-            # Update leaderboard
-            LeaderboardEntry.update_points(self.user)
-
-            # Update course enrollment progress
-            CourseEnrollment.update_progress(
-                self.user, self.lesson.course)
+        """Mark the lesson as completed and award XP"""
+        self.status = 'completed'
+        self.completed_at = timezone.now()
+        if score is not None:
+            self.score = score
+        
+        # Calculate total XP from solved problems
+        solved_problems = Problem.objects.filter(
+            lesson=self.lesson,
+            userproblem__user=self.user,
+            userproblem__solved=True
+        )
+        self.total_xp_earned = sum(problem.xp for problem in solved_problems)
+        
+        self.save()
+        
+        # Update user's streak and XP
+        streak, _ = Streak.objects.get_or_create(user=self.user)
+        streak.award_xp(self.total_xp_earned, 'lesson_completion')
+        
+        # Update course progress
+        CourseEnrollment.update_progress(self.user, self.lesson.course)
 
 
 class CourseEnrollment(models.Model):
@@ -1398,3 +1398,65 @@ class UserLeague(models.Model):
         self.last_week_points = self.current_week_points
         self.current_week_points = 0
         self.save(update_fields=['last_week_points', 'current_week_points'])
+
+class UserProblem(models.Model):
+    """
+    Tracks a user's progress on individual problems.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        related_name='solved_problems', 
+        on_delete=models.CASCADE
+    )
+    problem = models.ForeignKey(
+        Problem, 
+        related_name='user_solutions', 
+        on_delete=models.CASCADE
+    )
+    solved = models.BooleanField(default=False)
+    solved_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveIntegerField(default=0)
+    xp_earned = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        unique_together = ['user', 'problem']
+        ordering = ['-solved_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.problem.question_text[:50]}"
+    
+    def mark_as_solved(self):
+        """Mark problem as solved and award XP"""
+        if not self.solved:
+            self.solved = True
+            self.solved_at = timezone.now()
+            self.xp_earned = self.problem.xp
+            self.save()
+            
+            # Update lesson progress
+            progress, _ = UserProgress.objects.get_or_create(
+                user=self.user,
+                lesson=self.problem.lesson
+            )
+            progress.problems_solved += 1
+            progress.total_xp_earned += self.xp_earned
+            
+            # Update streak after 2-3 problems
+            if progress.problems_solved in [2, 3] and not progress.streak_updated:
+                streak, _ = Streak.objects.get_or_create(user=self.user)
+                streak.update_streak(1, [self.problem.lesson.id])
+                progress.streak_updated = True
+            
+            progress.save()
+            
+            # Award XP
+            streak, _ = Streak.objects.get_or_create(user=self.user)
+            streak.award_xp(self.xp_earned, 'problem')
+            
+            # Update league standings
+            from leagues.models import UserLeague
+            user_league = UserLeague.objects.get(user=self.user)
+            user_league.update_weekly_points(self.xp_earned)
+            
+            return True
+        return False

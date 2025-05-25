@@ -16,9 +16,15 @@ class Streak(models.Model):
     max_energy = models.IntegerField(default=3, validators=[MinValueValidator(1), MaxValueValidator(5)])
     last_activity_date = models.DateField(null=True, blank=True)
     last_energy_update = models.DateTimeField(auto_now=True)
+    
+    # XP tracking
     xp = models.IntegerField(default=0)  # Total XP earned
     daily_xp = models.IntegerField(default=0)  # XP earned today
+    weekly_xp = models.IntegerField(default=0)  # XP earned this week
+    monthly_xp = models.IntegerField(default=0)  # XP earned this month
     last_xp_reset = models.DateField(null=True, blank=True)  # Track when daily XP was last reset
+    last_weekly_reset = models.DateField(null=True, blank=True)  # Track when weekly XP was last reset
+    last_monthly_reset = models.DateField(null=True, blank=True)  # Track when monthly XP was last reset
 
     def __str__(self):
         return f"{self.user.username}'s Streak"
@@ -31,7 +37,6 @@ class Streak(models.Model):
         
         if energy_to_add > 0:
             self.current_energy = min(self.current_energy + energy_to_add, self.max_energy)
-            # Update last_energy_update to reflect the time used for energy regeneration
             self.last_energy_update = now - timedelta(hours=hours_passed % 4)
             self.save(update_fields=['current_energy', 'last_energy_update'])
             return True
@@ -45,32 +50,60 @@ class Streak(models.Model):
             return True
         return False
 
-    def reset_daily_xp(self):
-        """Reset daily XP if it's a new day"""
+    def reset_xp_counters(self):
+        """Reset daily, weekly, and monthly XP if needed"""
         today = timezone.now().date()
+        
+        # Reset daily XP
         if self.last_xp_reset != today:
             self.daily_xp = 0
             self.last_xp_reset = today
-            self.save(update_fields=['daily_xp', 'last_xp_reset'])
+        
+        # Reset weekly XP (on Mondays)
+        if not self.last_weekly_reset or (today - self.last_weekly_reset).days >= 7:
+            self.weekly_xp = 0
+            self.last_weekly_reset = today
+        
+        # Reset monthly XP (on 1st of month)
+        if not self.last_monthly_reset or (today - self.last_monthly_reset).days >= 30:
+            self.monthly_xp = 0
+            self.last_monthly_reset = today
+        
+        self.save(update_fields=['daily_xp', 'weekly_xp', 'monthly_xp', 
+                                'last_xp_reset', 'last_weekly_reset', 'last_monthly_reset'])
 
     def award_xp(self, amount, xp_type='problem'):
         """Award XP to the user with different types of rewards"""
-        self.reset_daily_xp()
+        self.reset_xp_counters()
         
         # Base XP for daily streak
         if xp_type == 'streak':
             self.xp += amount
             self.daily_xp += amount
+            self.weekly_xp += amount
+            self.monthly_xp += amount
         # XP for completing problems
         elif xp_type == 'problem':
             self.xp += amount
             self.daily_xp += amount
+            self.weekly_xp += amount
+            self.monthly_xp += amount
         # Bonus XP for milestones
         elif xp_type == 'milestone':
             self.xp += amount
             self.daily_xp += amount
+            self.weekly_xp += amount
+            self.monthly_xp += amount
         
-        self.save(update_fields=['xp', 'daily_xp'])
+        self.save(update_fields=['xp', 'daily_xp', 'weekly_xp', 'monthly_xp'])
+        
+        # Check for league promotion
+        from leagues.models import UserLeague, League
+        user_league = UserLeague.objects.get(user=self.user)
+        next_league = League.objects.filter(min_xp__gt=user_league.current_league.min_xp).order_by('min_xp').first()
+        if next_league and self.xp >= next_league.min_xp:
+            user_league.current_league = next_league
+            user_league.save()
 
     def update_streak(self, problems_solved, lesson_ids):
         today = timezone.now().date()
@@ -79,8 +112,8 @@ class Streak(models.Model):
         if not self.use_energy():
             raise ValueError("Not enough energy to perform this action")
         
-        # Reset daily XP if it's a new day
-        self.reset_daily_xp()
+        # Reset XP counters
+        self.reset_xp_counters()
         
         # Update streak
         if not self.last_activity_date:

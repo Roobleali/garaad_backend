@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'api',   # API endpoints
     'accounts',
     'courses',  # Learning management system
+    'leagues',  # Add the leagues app
 ]
 
 MIDDLEWARE = [

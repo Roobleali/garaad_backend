@@ -1,0 +1,134 @@
+from django.shortcuts import render
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.db.models import F
+from django.utils import timezone
+from datetime import timedelta
+from .models import League, UserLeague
+from api.models import Streak
+from .serializers import (
+    LeagueSerializer, UserLeagueSerializer, 
+    LeagueStatusSerializer
+)
+
+# Create your views here.
+
+class LeagueViewSet(viewsets.ModelViewSet):
+    queryset = League.objects.all()
+    serializer_class = LeagueSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def status(self, request):
+        """Get current user's league status."""
+        user_league = UserLeague.objects.get_or_create(
+            user=request.user,
+            defaults={'current_league': League.objects.order_by('order').first()}
+        )[0]
+        
+        # Get weekly rank
+        week_start = timezone.now() - timedelta(days=7)
+        weekly_rank = UserLeague.objects.filter(
+            weekly_xp__gt=user_league.weekly_xp
+        ).count() + 1
+        
+        # Get streak
+        streak = Streak.objects.get(user=request.user)
+        
+        # Get next league
+        next_league = League.objects.filter(
+            min_xp__gt=user_league.current_league.min_xp
+        ).order_by('min_xp').first()
+        
+        data = {
+            'current_league': user_league.current_league,
+            'current_points': user_league.total_xp,
+            'weekly_rank': weekly_rank,
+            'streak': {
+                'current_streak': streak.current_streak,
+                'max_streak': streak.max_streak,
+                'streak_charges': streak.current_energy,
+                'last_activity_date': streak.last_activity_date
+            },
+            'next_league': {
+                'id': next_league.id,
+                'name': next_league.name,
+                'somali_name': next_league.somali_name,
+                'min_xp': next_league.min_xp,
+                'points_needed': next_league.min_xp - user_league.total_xp
+            } if next_league else None
+        }
+        
+        serializer = LeagueStatusSerializer(data)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def leaderboard(self, request):
+        """Get leaderboard standings."""
+        time_period = request.query_params.get('time_period', 'weekly')
+        league_id = request.query_params.get('league')
+        
+        queryset = UserLeague.objects.all()
+        
+        if league_id:
+            queryset = queryset.filter(current_league_id=league_id)
+        
+        if time_period == 'weekly':
+            week_start = timezone.now() - timedelta(days=7)
+            queryset = queryset.order_by('-weekly_xp')
+        elif time_period == 'monthly':
+            month_start = timezone.now() - timedelta(days=30)
+            queryset = queryset.order_by('-monthly_xp')
+        else:  # all_time
+            queryset = queryset.order_by('-total_xp')
+        
+        # Get top 100 users
+        top_users = queryset[:100]
+        
+        # Get user's own standing
+        user_league = UserLeague.objects.get(user=request.user)
+        user_rank = queryset.filter(
+            total_xp__gt=user_league.total_xp
+        ).count() + 1
+        
+        return Response({
+            'time_period': time_period,
+            'league': league_id,
+            'standings': [{
+                'rank': idx + 1,
+                'user': {
+                    'id': user_league.user.id,
+                    'name': user_league.user.username,
+                },
+                'points': user_league.total_xp,
+                'streak': Streak.objects.get(user=user_league.user).current_streak
+            } for idx, user_league in enumerate(top_users)],
+            'my_standing': {
+                'rank': user_rank,
+                'points': user_league.total_xp,
+                'streak': Streak.objects.get(user=request.user).current_streak
+            }
+        })
+
+class StreakViewSet(viewsets.ModelViewSet):
+    queryset = Streak.objects.all()
+    serializer_class = StreakSerializer
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['post'])
+    def use_charge(self, request):
+        """Use a streak charge to maintain streak."""
+        streak = Streak.objects.get(user=request.user)
+        if streak.use_streak_charge():
+            return Response({
+                'success': True,
+                'streak_maintained': True,
+                'remaining_charges': streak.streak_charges,
+                'message': 'Waad ku mahadsantahay ilaalinta xariggaaga'
+            })
+        return Response({
+            'success': False,
+            'message': 'Ma haysato kayd maalmeed'
+        }, status=status.HTTP_400_BAD_REQUEST)

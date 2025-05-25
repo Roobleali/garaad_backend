@@ -1141,7 +1141,10 @@ class LeagueViewSet(viewsets.ViewSet):
         # If not in cache, get from database
         entries = LeaderboardEntry.objects.filter(time_period=time_period)
         if league_id:
-            entries = entries.filter(user__userleague__current_league_id=league_id)
+            # First get all users in the specified league
+            league_users = UserLeague.objects.filter(current_league_id=league_id).values_list('user_id', flat=True)
+            # Then filter leaderboard entries by those users
+            entries = entries.filter(user_id__in=league_users)
         
         entries = entries.order_by('-points')[:100]  # Top 100
         serializer = LeaderboardEntrySerializer(entries, many=True)

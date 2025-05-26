@@ -40,14 +40,14 @@ class LeagueViewSet(viewsets.ModelViewSet):
             
             # Get next league
             next_league = League.objects.filter(
-                min_xp__gt=user_league.league.min_xp
+                min_xp__gt=user_league.current_league.min_xp
             ).order_by('min_xp').first()
             
             data = {
                 'current_league': {
-                    'id': user_league.league.id,
-                    'name': user_league.league.get_level_display(),
-                    'min_xp': user_league.league.min_xp
+                    'id': user_league.current_league.id,
+                    'name': str(user_league.current_league),
+                    'min_xp': user_league.current_league.min_xp
                 },
                 'current_points': user_league.weekly_xp,
                 'weekly_rank': weekly_rank,
@@ -59,7 +59,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
                 },
                 'next_league': {
                     'id': next_league.id,
-                    'name': next_league.get_level_display(),
+                    'name': str(next_league),
                     'min_xp': next_league.min_xp,
                     'points_needed': next_league.min_xp - user_league.weekly_xp
                 } if next_league else None

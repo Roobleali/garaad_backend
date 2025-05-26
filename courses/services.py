@@ -437,7 +437,7 @@ class LeagueService:
             'xp_earned': xp_earned,
             'streak_updated': streak_updated,
             'league_changed': league_changed,
-            'current_league': user_league.league.get_level_display(),
+            'current_league': str(user_league.current_league),
             'current_points': user_league.weekly_xp
         }
     
@@ -503,24 +503,24 @@ class LeagueService:
         """Check if user should change leagues"""
         # Get current rank in league
         rank = UserLeague.objects.filter(
-            league=user_league.league,
+            current_league=user_league.current_league,
             weekly_xp__gt=user_league.weekly_xp
         ).count() + 1
         
         # Check promotion
-        if rank <= user_league.league.promotion_threshold:
-            next_league = League.get_next_league(user_league.league)
+        if rank <= user_league.current_league.promotion_threshold:
+            next_league = League.get_next_league(user_league.current_league)
             if next_league:
-                user_league.league = next_league
-                user_league.save(update_fields=['league'])
+                user_league.current_league = next_league
+                user_league.save(update_fields=['current_league'])
                 return True
         
         # Check demotion
-        elif rank > (user_league.league.promotion_threshold + user_league.league.stay_threshold):
-            prev_league = League.get_previous_league(user_league.league)
+        elif rank > (user_league.current_league.promotion_threshold + user_league.current_league.stay_threshold):
+            prev_league = League.get_previous_league(user_league.current_league)
             if prev_league:
-                user_league.league = prev_league
-                user_league.save(update_fields=['league'])
+                user_league.current_league = prev_league
+                user_league.save(update_fields=['current_league'])
                 return True
         
         return False
@@ -533,13 +533,13 @@ class LeagueService:
         
         for league in leagues:
             # Get all users in this league
-            user_leagues = UserLeague.objects.filter(league=league).order_by('-weekly_xp')
+            user_leagues = UserLeague.objects.filter(current_league=league).order_by('-weekly_xp')
             
             # Process promotions
             for i, user_league in enumerate(user_leagues[:league.promotion_threshold]):
                 next_league = League.get_next_league(league)
                 if next_league:
-                    user_league.league = next_league
+                    user_league.current_league = next_league
                     user_league.last_week_rank = i + 1
                     user_league.reset_weekly_points()
                     user_league.save()
@@ -548,7 +548,7 @@ class LeagueService:
             for i, user_league in enumerate(user_leagues[-(league.demotion_threshold):]):
                 prev_league = League.get_previous_league(league)
                 if prev_league:
-                    user_league.league = prev_league
+                    user_league.current_league = prev_league
                     user_league.last_week_rank = len(user_leagues) - i
                     user_league.reset_weekly_points()
                     user_league.save()

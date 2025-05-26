@@ -15,7 +15,7 @@ class Streak(models.Model):
     current_energy = models.IntegerField(default=3, validators=[MinValueValidator(0), MaxValueValidator(3)])
     max_energy = models.IntegerField(default=3, validators=[MinValueValidator(1), MaxValueValidator(5)])
     last_activity_date = models.DateField(null=True, blank=True)
-    last_energy_update = models.DateTimeField(auto_now=True)
+    last_energy_update = models.DateTimeField(default=timezone.now)
     
     # XP tracking
     xp = models.IntegerField(default=0)  # Total XP earned
@@ -46,7 +46,8 @@ class Streak(models.Model):
         """Use one energy point if available"""
         if self.current_energy > 0:
             self.current_energy -= 1
-            self.save(update_fields=['current_energy'])
+            self.last_energy_update = timezone.now()
+            self.save(update_fields=['current_energy', 'last_energy_update'])
             # Create notification for energy usage
             Notification.objects.create(
                 user=self.user,
@@ -107,7 +108,7 @@ class Streak(models.Model):
         
         # Check for league promotion
         from leagues.models import UserLeague, League
-        user_league = UserLeague.objects.get(user=self.user)
+        user_league, _ = UserLeague.objects.get_or_create(user=self.user, defaults={'current_league': League.objects.first()})
         next_league = League.objects.filter(min_xp__gt=user_league.current_league.min_xp).order_by('min_xp').first()
         if next_league and self.xp >= next_league.min_xp:
             old_league = user_league.current_league

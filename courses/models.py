@@ -1409,7 +1409,7 @@ class UserProblem(models.Model):
             
             # Update league standings
             from leagues.models import UserLeague
-            user_league = UserLeague.objects.get(user=self.user)
+            user_league, _ = UserLeague.objects.get_or_create(user=self.user, defaults={'current_league': League.objects.first()})
             user_league.update_weekly_points(self.xp_earned)
             
             return True

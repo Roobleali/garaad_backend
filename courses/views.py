@@ -218,7 +218,7 @@ class LessonViewSet(viewsets.ModelViewSet):
             progress.save()
 
             # Award XP and update streak
-            streak = Streak.objects.get(user=request.user)
+            streak, _ = Streak.objects.get_or_create(user=request.user)
             streak.award_xp(earned_xp, 'problem_completion')
             streak.update_streak()
 

@@ -24,10 +24,10 @@ class LeagueViewSet(viewsets.ModelViewSet):
     def status(self, request):
         """Get current user's league status."""
         try:
-            user_league = UserLeague.objects.get_or_create(
+            user_league, _ = UserLeague.objects.get_or_create(
                 user=request.user,
                 defaults={'current_league': League.objects.order_by('min_xp_required').first()}
-            )[0]
+            )
             
             # Get weekly rank
             week_start = timezone.now() - timedelta(days=7)
@@ -36,7 +36,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
             ).count() + 1
             
             # Get streak
-            streak = Streak.objects.get(user=request.user)
+            streak, _ = Streak.objects.get_or_create(user=request.user)
             
             # Get next league
             next_league = League.objects.filter(
@@ -94,7 +94,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
             top_users = queryset[:100]
             
             # Get user's own standing
-            user_league = UserLeague.objects.get(user=request.user)
+            user_league, _ = UserLeague.objects.get_or_create(user=request.user)
             user_rank = queryset.filter(
                 current_week_points__gt=user_league.current_week_points
             ).count() + 1
@@ -126,7 +126,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
     def use_streak_charge(self, request):
         """Use a streak charge to maintain streak."""
         try:
-            streak = Streak.objects.get(user=request.user)
+            streak, _ = Streak.objects.get_or_create(user=request.user)
             if streak.use_streak_charge():
                 return Response({
                     'success': True,

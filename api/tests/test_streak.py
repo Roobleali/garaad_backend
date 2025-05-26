@@ -2,16 +2,19 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
+from uuid import uuid4
 from ..models import Streak, DailyActivity
+from unittest.mock import patch
 
 User = get_user_model()
 
 class StreakModelTest(TestCase):
     def setUp(self):
-        # Create test user
+        # Create test user with unique email and username
+        unique_id = uuid4().hex[:8]
         self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
+            username=f'testuser_{unique_id}',
+            email=f'test_{unique_id}@example.com',
             password='testpass123'
         )
         # Create streak for user
@@ -66,16 +69,22 @@ class StreakModelTest(TestCase):
 
     def test_milestone_xp(self):
         """Test XP rewards for milestone streaks"""
-        # Simulate 7-day streak
-        for i in range(7):
-            self.streak.last_activity_date = timezone.now().date() - timedelta(days=6-i)
-            self.streak.current_streak = i + 1
-            self.streak.save()
-        
-        # Complete activity on 7th day
-        self.streak.update_streak(problems_solved=3, lesson_ids=['lesson7'])
-        self.assertEqual(self.streak.current_streak, 7)
-        self.assertEqual(self.streak.xp, 85)  # 20 XP for streak + 15 XP for problems + 50 XP for milestone
+        # Give enough energy for 7 days
+        self.streak.current_energy = 7
+        self.streak.save()
+        base_date = timezone.now().date() - timedelta(days=6)
+        with patch('django.utils.timezone.now') as mock_now:
+            for i in range(7):
+                mock_now.return_value = timezone.datetime.combine(base_date + timedelta(days=i), timezone.datetime.min.time(), tzinfo=timezone.get_current_timezone())
+                self.streak.last_activity_date = (base_date + timedelta(days=i-1)) if i > 0 else None
+                self.streak.current_streak = i if i > 0 else 0
+                self.streak.save()
+                self.streak.update_streak(problems_solved=3, lesson_ids=[f'lesson{i+1}'])
+                print(f"Day {i+1}: XP = {self.streak.xp}, Streak = {self.streak.current_streak}")
+            self.assertEqual(self.streak.current_streak, 7)
+            # 7 days: (20+15)*7 + 50 milestone = 245 + 50 = 295
+            expected_xp = 35 * 7 + 50
+            self.assertEqual(self.streak.xp, expected_xp)
 
     def test_energy_system(self):
         """Test energy regeneration and usage"""

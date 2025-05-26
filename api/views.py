@@ -229,8 +229,8 @@ class GamificationViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def status(self, request):
         """Get user's complete gamification status"""
-        streak = Streak.objects.get(user=request.user)
-        user_league = UserLeague.objects.get(user=request.user)
+        streak, _ = Streak.objects.get_or_create(user=request.user)
+        user_league, _ = UserLeague.objects.get_or_create(user=request.user, defaults={'current_league': League.objects.first()})
         
         # Get next league
         next_league = League.objects.filter(

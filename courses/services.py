@@ -438,7 +438,7 @@ class LeagueService:
             'streak_updated': streak_updated,
             'league_changed': league_changed,
             'current_league': user_league.league.get_level_display(),
-            'current_points': user_league.current_week_points
+            'current_points': user_league.weekly_xp
         }
     
     @classmethod
@@ -504,7 +504,7 @@ class LeagueService:
         # Get current rank in league
         rank = UserLeague.objects.filter(
             league=user_league.league,
-            current_week_points__gt=user_league.current_week_points
+            weekly_xp__gt=user_league.weekly_xp
         ).count() + 1
         
         # Check promotion
@@ -533,7 +533,7 @@ class LeagueService:
         
         for league in leagues:
             # Get all users in this league
-            user_leagues = UserLeague.objects.filter(league=league).order_by('-current_week_points')
+            user_leagues = UserLeague.objects.filter(league=league).order_by('-weekly_xp')
             
             # Process promotions
             for i, user_league in enumerate(user_leagues[:league.promotion_threshold]):

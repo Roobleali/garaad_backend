@@ -32,7 +32,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
             # Get weekly rank
             week_start = timezone.now() - timedelta(days=7)
             weekly_rank = UserLeague.objects.filter(
-                current_week_points__gt=user_league.current_week_points
+                weekly_xp__gt=user_league.weekly_xp
             ).count() + 1
             
             # Get streak
@@ -49,7 +49,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
                     'name': user_league.league.get_level_display(),
                     'min_xp': user_league.league.min_xp
                 },
-                'current_points': user_league.current_week_points,
+                'current_points': user_league.weekly_xp,
                 'weekly_rank': weekly_rank,
                 'streak': {
                     'current_streak': streak.current_streak,
@@ -61,7 +61,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
                     'id': next_league.id,
                     'name': next_league.get_level_display(),
                     'min_xp': next_league.min_xp,
-                    'points_needed': next_league.min_xp - user_league.current_week_points
+                    'points_needed': next_league.min_xp - user_league.weekly_xp
                 } if next_league else None
             }
             
@@ -84,11 +84,11 @@ class LeagueViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(current_league_id=league_id)
             
             if time_period == 'weekly':
-                queryset = queryset.order_by('-current_week_points')
+                queryset = queryset.order_by('-weekly_xp')
             elif time_period == 'monthly':
-                queryset = queryset.order_by('-last_week_points')
+                queryset = queryset.order_by('-monthly_xp')
             else:  # all_time
-                queryset = queryset.order_by('-current_week_points')
+                queryset = queryset.order_by('-weekly_xp')
             
             # Get top 100 users
             top_users = queryset[:100]
@@ -96,7 +96,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
             # Get user's own standing
             user_league, _ = UserLeague.objects.get_or_create(user=request.user)
             user_rank = queryset.filter(
-                current_week_points__gt=user_league.current_week_points
+                weekly_xp__gt=user_league.weekly_xp
             ).count() + 1
             
             return Response({
@@ -108,12 +108,12 @@ class LeagueViewSet(viewsets.ModelViewSet):
                         'id': user_league.user.id,
                         'name': user_league.user.username,
                     },
-                    'points': user_league.current_week_points,
+                    'points': user_league.weekly_xp,
                     'streak': Streak.objects.get(user=user_league.user).current_streak
                 } for idx, user_league in enumerate(top_users)],
                 'my_standing': {
                     'rank': user_rank,
-                    'points': user_league.current_week_points,
+                    'points': user_league.weekly_xp,
                     'streak': Streak.objects.get(user=request.user).current_streak
                 }
             })

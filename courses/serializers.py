@@ -5,7 +5,7 @@ from .models import (
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry,
     DailyChallenge, UserChallengeProgress, UserLevel,
     Achievement, UserAchievement, CulturalEvent,
-    UserCulturalProgress, CommunityContribution
+    UserCulturalProgress, CommunityContribution, UserNotification
 )
 from django.db import models
 from leagues.models import UserLeague, League  # Import from leagues app
@@ -555,3 +555,10 @@ class UserLeagueSerializer(serializers.ModelSerializer):
                 'points_needed': next_league.min_xp - obj.total_xp
             }
         return None
+
+
+class UserNotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserNotification
+        fields = ['id', 'notification_type', 'title', 'message', 'is_read', 'created_at', 'scheduled_for']
+        read_only_fields = ['id', 'notification_type', 'title', 'message', 'created_at', 'scheduled_for']

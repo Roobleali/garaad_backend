@@ -19,6 +19,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .utils import send_verification_email
 from datetime import timedelta
 from django.utils import timezone
+from api.models import Streak
+from leagues.models import UserLeague, League
+from courses.models import UserReward
 
 User = get_user_model()
 
@@ -327,21 +330,57 @@ def get_user_profile(request):
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
 def user_profile(request):
-    """Get or update user profile including qabiil and laan"""
+    """Get or update user profile including qabiil and laan, plus gamification info"""
     try:
         profile, created = UserProfile.objects.get_or_create(user=request.user)
-        
         if request.method == 'GET':
             serializer = UserProfileSerializer(profile)
-            return Response(serializer.data)
-            
+            # --- Gamification info ---
+            # XP, streak, league, badges, notification preferences
+            xp = 0
+            streak = None
+            league = None
+            badges = []
+            notification_prefs = {}
+            try:
+                streak = Streak.objects.get(user=request.user)
+                xp = streak.xp
+            except Exception:
+                pass
+            try:
+                user_league = UserLeague.objects.get(user=request.user)
+                league = {
+                    'id': user_league.current_league.id,
+                    'name': str(user_league.current_league),
+                    'min_xp': user_league.current_league.min_xp
+                }
+            except Exception:
+                pass
+            try:
+                badges = list(UserReward.objects.filter(user=request.user, reward_type='badge').values('reward_name', 'awarded_at'))
+            except Exception:
+                pass
+            try:
+                notification_prefs = getattr(request.user.student_profile, 'notification_preferences', {})
+            except Exception:
+                pass
+            data = serializer.data
+            data['xp'] = xp
+            data['streak'] = {
+                'current': getattr(streak, 'current_streak', 0),
+                'max': getattr(streak, 'max_streak', 0),
+                'energy': getattr(streak, 'current_energy', 0)
+            }
+            data['league'] = league
+            data['badges'] = badges
+            data['notification_preferences'] = notification_prefs
+            return Response(data)
         elif request.method == 'PUT':
             serializer = UserProfileSerializer(profile, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
     except Exception as e:
         return Response(
             {'error': str(e)},

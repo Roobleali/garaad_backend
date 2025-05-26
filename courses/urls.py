@@ -6,7 +6,7 @@ from .views import (
     LeaderboardViewSet, DailyChallengeViewSet, UserChallengeProgressViewSet,
     UserLevelViewSet, AchievementViewSet, UserAchievementViewSet,
     CulturalEventViewSet, UserCulturalProgressViewSet, CommunityContributionViewSet,
-    LeagueViewSet, LessonContentBlockViewSet
+    LeagueViewSet, LessonContentBlockViewSet, UserRewardViewSet, UserNotificationViewSet
 )
 
 router = DefaultRouter()
@@ -27,6 +27,8 @@ router.register(r'cultural-progress', UserCulturalProgressViewSet)
 router.register(r'community-contributions', CommunityContributionViewSet)
 router.register(r'leagues', LeagueViewSet, basename='league')
 router.register(r'lesson-content-blocks', LessonContentBlockViewSet)
+router.register(r'user-rewards', UserRewardViewSet, basename='userreward')
+router.register(r'notifications', UserNotificationViewSet, basename='usernotification')
 
 urlpatterns = [
     path('', include(router.urls)),

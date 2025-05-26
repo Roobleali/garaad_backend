@@ -12,7 +12,8 @@ from .models import (
     UserProgress, CourseEnrollment, UserReward, LeaderboardEntry,
     DailyChallenge, UserChallengeProgress, UserLevel,
     Achievement, UserAchievement,
-    CulturalEvent, UserCulturalProgress, CommunityContribution
+    CulturalEvent, UserCulturalProgress, CommunityContribution,
+    UserNotification
 )
 from leagues.models import UserLeague, League  # Import from leagues app
 from .serializers import (
@@ -26,7 +27,7 @@ from .serializers import (
     DailyChallengeSerializer, UserChallengeProgressSerializer,
     UserLevelSerializer, AchievementSerializer, UserAchievementSerializer,
     CulturalEventSerializer, UserCulturalProgressSerializer, CommunityContributionSerializer,
-    UserLeagueSerializer, LeagueSerializer
+    UserLeagueSerializer, LeagueSerializer, UserNotificationSerializer
 )
 from django.core.exceptions import ValidationError
 from .services import LearningProgressService, LeagueService
@@ -35,6 +36,7 @@ from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_cookie
+from api.models import Streak
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -153,9 +155,14 @@ class LessonViewSet(viewsets.ModelViewSet):
         problems = Problem.objects.filter(lesson=lesson)
         problem_xp_info = []
         for problem in problems:
+            xp_value = 10
+            if isinstance(problem.content, dict):
+                xp_value = problem.content.get('points', 10)
+            elif hasattr(problem, 'xp'):
+                xp_value = problem.xp
             problem_xp_info.append({
                 'id': problem.id,
-                'xp_value': problem.content.get('points', 10),  # Default 10 XP if not specified
+                'xp_value': xp_value,
                 'question_type': problem.question_type
             })
         
@@ -198,7 +205,12 @@ class LessonViewSet(viewsets.ModelViewSet):
             earned_xp = 0
             for problem in problems:
                 if problem.id in completed_problems:
-                    earned_xp += problem.content.get('points', 5)  # Default 5 XP if not specified
+                    if isinstance(problem.content, dict):
+                        earned_xp += problem.content.get('points', 5)
+                    elif hasattr(problem, 'xp'):
+                        earned_xp += problem.xp
+                    else:
+                        earned_xp += 5
 
             # Add bonus XP for perfect score
             if total_score == 100:
@@ -220,7 +232,7 @@ class LessonViewSet(viewsets.ModelViewSet):
             # Award XP and update streak
             streak, _ = Streak.objects.get_or_create(user=request.user)
             streak.award_xp(earned_xp, 'problem_completion')
-            streak.update_streak()
+            streak.update_streak(len(completed_problems), [lesson.id])
 
             # Check for achievements
             self._check_lesson_achievements(request.user, lesson)
@@ -1232,3 +1244,29 @@ class UserCulturalProgressViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return UserCulturalProgress.objects.filter(user=self.request.user)
+
+
+class UserNotificationViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserNotificationSerializer
+    queryset = UserNotification.objects.none()
+
+    def get_queryset(self):
+        return UserNotification.objects.filter(user=self.request.user)
+
+    @action(detail=False, methods=['post'])
+    def mark_all_read(self, request):
+        self.get_queryset().update(is_read=True)
+        return Response({'message': 'All notifications marked as read'})
+
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save()
+        return Response({'message': 'Notification marked as read'})
+
+    @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        count = self.get_queryset().filter(is_read=False).count()
+        return Response({'unread_count': count})

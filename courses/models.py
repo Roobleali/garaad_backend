@@ -625,6 +625,7 @@ class UserProgress(models.Model):
 
     def mark_as_completed(self, score=None):
         """Mark the lesson as completed and award XP"""
+        from api.models import Streak
         self.status = 'completed'
         self.completed_at = timezone.now()
         if score is not None:
@@ -633,8 +634,8 @@ class UserProgress(models.Model):
         # Calculate total XP from solved problems
         solved_problems = Problem.objects.filter(
             lesson=self.lesson,
-            userproblem__user=self.user,
-            userproblem__solved=True
+            user_solutions__user=self.user,
+            user_solutions__solved=True
         )
         self.total_xp_earned = sum(problem.xp for problem in solved_problems)
         

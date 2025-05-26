@@ -5,7 +5,6 @@ from .views import SignupView, SigninView
 
 router = DefaultRouter()
 router.register(r'gamification', views.GamificationViewSet, basename='gamification')
-router.register(r'notifications', views.NotificationViewSet, basename='notifications')
 
 urlpatterns = [
     path('', views.api_root, name='api-root'),

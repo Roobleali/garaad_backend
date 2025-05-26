@@ -1142,7 +1142,7 @@ class LeagueViewSet(viewsets.ViewSet):
         entries = LeaderboardEntry.objects.filter(time_period=time_period)
         if league_id:
             # Get all users in the specified league
-            league_users = UserLeague.objects.filter(current_league=league_id).values_list('user_id', flat=True)
+            league_users = UserLeague.objects.filter(current_league_id=league_id).values_list('user_id', flat=True)
             # Filter leaderboard entries by those users
             entries = entries.filter(user_id__in=league_users)
         

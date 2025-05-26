@@ -1313,11 +1313,11 @@ class League(models.Model):
     promotion_threshold = models.PositiveIntegerField(default=15)
     stay_threshold = models.PositiveIntegerField(default=10)
     demotion_threshold = models.PositiveIntegerField(default=5)
-    min_xp_required = models.PositiveIntegerField(default=0)
+    min_xp = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['min_xp_required']
+        ordering = ['min_xp']
 
     def __str__(self):
         return self.get_level_display()
@@ -1325,7 +1325,7 @@ class League(models.Model):
     @classmethod
     def get_league_for_xp(cls, xp):
         """Get the appropriate league for a user's XP"""
-        return cls.objects.filter(min_xp_required__lte=xp).order_by('-min_xp_required').first()
+        return cls.objects.filter(min_xp__lte=xp).order_by('-min_xp').first()
 
     @classmethod
     def get_next_league(cls, current_league):
@@ -1333,7 +1333,7 @@ class League(models.Model):
         if not current_league:
             return cls.objects.first()
         
-        leagues = list(cls.objects.all().order_by('min_xp_required'))
+        leagues = list(cls.objects.all().order_by('min_xp'))
         current_index = leagues.index(current_league)
         
         if current_index < len(leagues) - 1:
@@ -1345,8 +1345,8 @@ class League(models.Model):
         """Get the previous league level"""
         if not current_league:
             return None
-            
-        leagues = list(cls.objects.all().order_by('min_xp_required'))
+        
+        leagues = list(cls.objects.all().order_by('min_xp'))
         current_index = leagues.index(current_league)
         
         if current_index > 0:

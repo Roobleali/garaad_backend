@@ -26,7 +26,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
         try:
             user_league, _ = UserLeague.objects.get_or_create(
                 user=request.user,
-                defaults={'current_league': League.objects.order_by('min_xp_required').first()}
+                defaults={'current_league': League.objects.order_by('min_xp').first()}
             )
             
             # Get weekly rank
@@ -40,14 +40,14 @@ class LeagueViewSet(viewsets.ModelViewSet):
             
             # Get next league
             next_league = League.objects.filter(
-                min_xp_required__gt=user_league.league.min_xp_required
-            ).order_by('min_xp_required').first()
+                min_xp__gt=user_league.league.min_xp
+            ).order_by('min_xp').first()
             
             data = {
                 'current_league': {
                     'id': user_league.league.id,
                     'name': user_league.league.get_level_display(),
-                    'min_xp': user_league.league.min_xp_required
+                    'min_xp': user_league.league.min_xp
                 },
                 'current_points': user_league.current_week_points,
                 'weekly_rank': weekly_rank,
@@ -60,8 +60,8 @@ class LeagueViewSet(viewsets.ModelViewSet):
                 'next_league': {
                     'id': next_league.id,
                     'name': next_league.get_level_display(),
-                    'min_xp': next_league.min_xp_required,
-                    'points_needed': next_league.min_xp_required - user_league.current_week_points
+                    'min_xp': next_league.min_xp,
+                    'points_needed': next_league.min_xp - user_league.current_week_points
                 } if next_league else None
             }
             
@@ -81,7 +81,7 @@ class LeagueViewSet(viewsets.ModelViewSet):
             queryset = UserLeague.objects.all()
             
             if league_id:
-                queryset = queryset.filter(league_id=league_id)
+                queryset = queryset.filter(current_league_id=league_id)
             
             if time_period == 'weekly':
                 queryset = queryset.order_by('-current_week_points')

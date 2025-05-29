@@ -102,34 +102,42 @@ class SigninView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = SigninSerializer(
-            data=request.data, context={'request': request})
+        try:
+            serializer = SigninSerializer(
+                data=request.data, context={'request': request})
 
-        if serializer.is_valid():
-            user = serializer.validated_data['user']
-            refresh = RefreshToken.for_user(user)
+            if serializer.is_valid():
+                user = serializer.validated_data['user']
+                refresh = RefreshToken.for_user(user)
 
-            # Import UserOnboardingSerializer here to avoid circular imports
-            from accounts.serializers import UserOnboardingSerializer
+                # Import UserOnboardingSerializer here to avoid circular imports
+                from accounts.serializers import UserOnboardingSerializer
 
-            # Get user's onboarding data if it exists
-            try:
-                from accounts.models import UserOnboarding
-                onboarding = UserOnboarding.objects.get(user=user)
-                onboarding_data = UserOnboardingSerializer(onboarding).data
-            except:
-                onboarding_data = None
+                # Get user's onboarding data if it exists
+                try:
+                    from accounts.models import UserOnboarding
+                    onboarding = UserOnboarding.objects.get(user=user)
+                    onboarding_data = UserOnboardingSerializer(onboarding).data
+                except Exception as e:
+                    onboarding_data = None
 
+                return Response({
+                    'user': UserSerializer(user).data,
+                    'onboarding': onboarding_data,
+                    'tokens': {
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                    }
+                }, status=status.HTTP_200_OK)
+
+            return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as e:
+            logger.error(f"Signin error: {str(e)}")
+            logger.error(traceback.format_exc())
             return Response({
-                'user': UserSerializer(user).data,
-                'onboarding': onboarding_data,
-                'tokens': {
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                }
-            }, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+                'error': 'An error occurred during sign-in',
+                'detail': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET', 'POST'])

@@ -97,7 +97,14 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         return super().validate(attrs)
 
 class UserOnboardingSerializer(serializers.ModelSerializer):
+    preferred_study_time = serializers.ChoiceField(choices=[
+        ('morning', 'Aroorti Subaxda inta aan quraacaynayo'),
+        ('afternoon', 'Waqtiga Nasashasha intaan Khadaynayo'),
+        ('evening', 'Habeenki ah ka dib cashada ama Kahor intan seexanin'),
+        ('flexible', 'Waqti kale oo maalintayda ah')
+    ], default='flexible')
+
     class Meta:
         model = UserOnboarding
-        fields = ('goal', 'learning_approach', 'topic', 'math_level', 'minutes_per_day', 'has_completed_onboarding')
+        fields = ('goal', 'learning_approach', 'topic', 'math_level', 'minutes_per_day', 'preferred_study_time', 'has_completed_onboarding')
         read_only_fields = ('has_completed_onboarding',)

@@ -6,6 +6,8 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.conf import settings
 import random
 import string
+from datetime import datetime, timedelta
+from django.utils import timezone
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
@@ -163,15 +165,25 @@ class StudentProfile(models.Model):
         self.save()
 
 class UserOnboarding(models.Model):
+    STUDY_TIME_CHOICES = [
+        ('morning', 'Aroorti Subaxda inta aan quraacaynayo'),
+        ('afternoon', 'Waqtiga Nasashasha intaan Khadaynayo'),
+        ('evening', 'Habeenki ah ka dib cashada ama Kahor intan seexanin'),
+        ('flexible', 'Waqti kale oo maalintayda ah')
+    ]
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     goal = models.CharField(max_length=255, default="Horumarinta xirfadaha")
     learning_approach = models.CharField(max_length=255, default="Waxbarasho shaqsiyeed")
     topic = models.CharField(max_length=255, default="Xisaab")
     math_level = models.CharField(max_length=255, default="Bilowga")
     minutes_per_day = models.IntegerField(default=30)
+    preferred_study_time = models.CharField(max_length=20, choices=STUDY_TIME_CHOICES, default='flexible')
     has_completed_onboarding = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def get_preferred_study_time_display(self):
+        return dict(self.STUDY_TIME_CHOICES).get(self.preferred_study_time, self.preferred_study_time)
 
     def __str__(self):
         return f"{self.user.username}'s onboarding status: {'Completed' if self.has_completed_onboarding else 'Pending'}"
@@ -204,6 +216,10 @@ class EmailVerification(models.Model):
     def generate_code(cls):
         """Generate a random 6-digit code"""
         return ''.join(random.choices(string.digits, k=6))
+
+    def is_expired(self):
+        """Check if the verification code has expired (10 minutes)."""
+        return timezone.now() - self.created_at > timedelta(minutes=10)
 
     def __str__(self):
         return f"Verification code for {self.user.email}"

@@ -75,6 +75,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('preferred_study_time', models.CharField(choices=[('morning', 'Aroorti Subaxda inta aan quraacaynayo'), ('afternoon', 'Waqtiga Nasashasha intaan Khadaynayo'), ('evening', 'Habeenki ah ka dib cashada ama Kahor intan seexanin'), ('flexible', 'Waqti kale oo maalintayda ah')], default='flexible', max_length=20)),
             ],
             options={
                 'db_table': 'user_onboarding',

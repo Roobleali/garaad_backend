@@ -13,18 +13,42 @@ from django.db.models import F, Sum
 from django.core.cache import cache
 import logging
 from leagues.models import UserLeague, League  # Import from leagues app
+from accounts.utils import send_resend_email, TEST_MODE
 
 logger = logging.getLogger(__name__)
 
 class NotificationService:
     @staticmethod
     def send_notification_email(notification):
-        """Send notification email to user"""
+        """Send notification email to user using Resend API"""
         try:
-            # Get user's profile for personalization
-            user_profile = notification.user.student_profile
-            
-            # Email templates based on notification type
+            # Prefer onboarding for personalization
+            try:
+                onboarding = notification.user.useronboarding
+            except Exception:
+                onboarding = None
+            try:
+                user_profile = notification.user.student_profile
+            except Exception:
+                user_profile = None
+
+            # Use onboarding if available, else fallback to student_profile
+            if onboarding:
+                study_badge = ''  # You can add onboarding-specific logic if needed
+                goal_badge = ''
+                daily_goal_minutes = onboarding.minutes_per_day
+                preferred_study_time = onboarding.get_preferred_study_time_display()
+            elif user_profile:
+                study_badge = user_profile.get_study_time_badge()
+                goal_badge = user_profile.get_goal_badge()
+                daily_goal_minutes = user_profile.daily_goal_minutes
+                preferred_study_time = user_profile.get_preferred_study_time_display()
+            else:
+                study_badge = ''
+                goal_badge = ''
+                daily_goal_minutes = 15
+                preferred_study_time = ''
+
             templates = {
                 'streak_reminder': {
                     'subject': 'Ilaaligaaga Waxbarashada! 🔥',
@@ -39,7 +63,7 @@ class NotificationService:
                     'template': 'emails/league_update.html',
                 },
                 'daily_goal': {
-                    'subject': f'Waqtiga Waxbarashada! ({user_profile.daily_goal_minutes} Daqiiqo) 🎯',
+                    'subject': f'Waqtiga Waxbarashada! ({daily_goal_minutes} Daqiiqo) 🎯',
                     'template': 'emails/daily_goal.html',
                 },
             }
@@ -48,28 +72,27 @@ class NotificationService:
             if not template_info:
                 return False
 
-            # Add personalized context
             context = {
                 'user': notification.user,
                 'notification': notification,
-                'site_url': settings.SITE_URL,
-                'study_badge': user_profile.get_study_time_badge(),
-                'goal_badge': user_profile.get_goal_badge(),
-                'daily_goal_minutes': user_profile.daily_goal_minutes,
-                'preferred_study_time': user_profile.get_preferred_study_time_display()
+                'site_url': getattr(settings, 'SITE_URL', 'https://garaad.org'),
+                'study_badge': study_badge,
+                'goal_badge': goal_badge,
+                'daily_goal_minutes': daily_goal_minutes,
+                'preferred_study_time': preferred_study_time
             }
 
-            # Send email
-            send_mail(
-                subject=template_info['subject'],
-                message=notification.message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[notification.user.email],
-                html_message=render_to_string(template_info['template'], context),
-                fail_silently=False,
+            html = render_to_string(template_info['template'], context)
+            subject = template_info['subject']
+            to_email = "maanc143@gmail.com" if TEST_MODE else notification.user.email
+
+            send_resend_email(
+                to_email=to_email,
+                subject=subject,
+                html=html,
+                text=notification.message
             )
 
-            # Mark notification as sent
             notification.is_sent = True
             notification.save()
 
@@ -82,10 +105,35 @@ class NotificationService:
     @staticmethod
     def schedule_daily_reminder(user):
         """Schedule daily reminder based on user's preferred study time"""
-        profile = user.student_profile
-        reminder_hour = profile.get_reminder_time()
-        
-        # Calculate next reminder time
+        try:
+            onboarding = user.useronboarding
+            reminder_times = {
+                'morning': 7,
+                'afternoon': 11,
+                'evening': 19,
+                'flexible': 12,
+            }
+            reminder_hour = reminder_times.get(onboarding.preferred_study_time, 12)
+            daily_goal_minutes = onboarding.minutes_per_day
+            preferred_study_time = onboarding.get_preferred_study_time_display()
+            goal_badge = ''
+            study_badge = ''
+        except Exception:
+            # fallback to student_profile
+            profile = getattr(user, 'student_profile', None)
+            if profile:
+                reminder_hour = profile.get_reminder_time()
+                daily_goal_minutes = profile.daily_goal_minutes
+                preferred_study_time = profile.get_preferred_study_time_display()
+                goal_badge = profile.get_goal_badge()
+                study_badge = profile.get_study_time_badge()
+            else:
+                reminder_hour = 12
+                daily_goal_minutes = 15
+                preferred_study_time = ''
+                goal_badge = ''
+                study_badge = ''
+
         now = timezone.now()
         reminder_time = now.replace(
             hour=reminder_hour,
@@ -93,21 +141,18 @@ class NotificationService:
             second=0,
             microsecond=0
         )
-        
-        # If reminder time has passed for today, schedule for tomorrow
         if now >= reminder_time:
             reminder_time = reminder_time + timezone.timedelta(days=1)
 
-        # Create reminder notification
         return UserNotification.objects.create(
             user=user,
             notification_type='daily_goal',
-            title=f'Waqtiga Waxbarashada! ({profile.daily_goal_minutes} Daqiiqo)',
+            title=f'Waqtiga Waxbarashada! ({daily_goal_minutes} Daqiiqo)',
             message=(
-                f'Waa waqtigii waxbarasho ee {profile.get_preferred_study_time_display()}!\n'
-                f'Hadafkaaga maanta: {profile.daily_goal_minutes} daqiiqo\n'
-                f'"{profile.get_goal_badge()}"\n'
-                f'{profile.get_study_time_badge()}'
+                f'Waa waqtigii waxbarasho ee {preferred_study_time}!\n'
+                f'Hadafkaaga maanta: {daily_goal_minutes} daqiiqo\n'
+                f'"{goal_badge}"\n'
+                f'{study_badge}'
             ),
             scheduled_for=reminder_time
         )

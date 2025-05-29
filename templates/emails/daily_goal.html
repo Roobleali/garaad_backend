@@ -6,76 +6,112 @@
     <title>{{ notification.title }}</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.7;
             margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
+            padding: 0;
+            background: linear-gradient(135deg, #f8fafc 0%, #e0e7ef 100%);
         }
         .container {
             max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin: 32px auto;
+            background: #fff;
+            padding: 32px 24px 24px 24px;
+            border-radius: 22px;
+            box-shadow: 0 6px 24px rgba(44, 62, 80, 0.13);
         }
         .header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
+        }
+        .header-emoji {
+            font-size: 2.8rem;
+            margin-bottom: 8px;
+        }
+        .catchy-intro {
+            text-align: center;
+            font-size: 1.25rem;
+            color: #1abc9c;
+            margin-bottom: 18px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        .goal-section {
+            background: #eaf6fb;
+            border-radius: 12px;
+            padding: 20px 0;
+            text-align: center;
+            margin: 22px 0 18px 0;
+            border: 2.5px dashed #8e44ad;
+            font-size: 1.25rem;
         }
         .badge {
             text-align: center;
-            margin: 20px 0;
-            padding: 15px;
+            margin: 16px 0 8px 0;
+            padding: 13px;
             background-color: #f8f9fa;
-            border-radius: 5px;
+            border-radius: 9px;
             font-style: italic;
+            font-size: 1.13rem;
+            letter-spacing: 0.2px;
+        }
+        .info-row {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 1.13rem;
         }
         .cta-button {
             display: inline-block;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: #ffffff;
+            padding: 14px 32px;
+            background: linear-gradient(90deg, #ff5e62 0%, #ff9966 100%);
+            color: #fff;
             text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
+            border-radius: 10px;
+            font-size: 1.15rem;
+            font-weight: bold;
+            margin-top: 22px;
+            box-shadow: 0 2px 12px rgba(255,94,98,0.13);
+            letter-spacing: 1.2px;
+            transition: background 0.2s;
+        }
+        .cta-button:hover {
+            background: linear-gradient(90deg, #ff9966 0%, #ff5e62 100%);
         }
         .footer {
             text-align: center;
-            margin-top: 20px;
+            margin-top: 36px;
             color: #6c757d;
-            font-size: 0.9em;
+            font-size: 1.08rem;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>{{ notification.title }}</h1>
+            <div class="header-emoji">🔥🚀📢</div>
+            <h1 style="font-size:2rem;">{{ notification.title }} <span style="font-size:1.7rem;">🥇</span></h1>
         </div>
-        
-        <p>Asc {{ user.username }},</p>
-        
-        <p>{{ notification.message }}</p>
-        
-        <div class="badge">
-            {{ study_badge }}
+        <div class="catchy-intro">
+            Yo {{ user.username }}! 👋 <br>
+            Waa waqtigii <span style="color:#e67e22;">#grind</span> & <span style="color:#8e44ad;">#goals</span>! 💪✨
         </div>
-        
-        <div class="badge">
-            {{ goal_badge }}
+        <div class="goal-section">
+            <span style="font-size:1.4rem; color:#8e44ad; font-weight:bold;">{{ notification.message }} <span style="font-size:1.5rem;">📚💡</span></span>
         </div>
-        
-        <p>Hadafkaaga maanta: {{ daily_goal_minutes }} daqiiqo</p>
-        <p>Waqtiga aad doorbidayso: {{ preferred_study_time }}</p>
-        
+        {% if study_badge %}
+        <div class="badge">🏆 {{ study_badge }} <span style="font-size:1.2rem;">😎</span></div>
+        {% endif %}
+        {% if goal_badge %}
+        <div class="badge">🌈 {{ goal_badge }} <span style="font-size:1.2rem;">🚀</span></div>
+        {% endif %}
+        <div class="info-row">🎯 <strong>Hadafkaaga maanta:</strong> <span style="color:#e67e22; font-weight:bold;">{{ daily_goal_minutes }} daqiiqo</span> <span style="font-size:1.2rem;">⏳</span></div>
+        <div class="info-row">🕒 <strong>Waqtiga aad doorbidayso:</strong> <span style="color:#8e44ad; font-weight:bold;">{{ preferred_study_time }}</span> <span style="font-size:1.2rem;">⏰</span></div>
         <center>
-            <a href="{{ site_url }}" class="cta-button">Bilow Waxbarashada</a>
+            <a href="{{ site_url }}" class="cta-button">✨ Bilow Waxbarashada! ✨</a>
         </center>
-        
         <div class="footer">
-            <p>Garaad - Waxbarasho Tayo Leh</p>
+            <p>Garaad - Waxbarasho Tayo Leh <span style="font-size:1.3rem;">🦄💬</span><br>
+            <span style="font-size:1.1rem;">La wadaag saaxiibadaa, #GaraadFam! 🤳🏽💬</span></p>
         </div>
     </div>
 </body>

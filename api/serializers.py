@@ -11,10 +11,17 @@ logger = logging.getLogger(__name__)
 
 
 class UserOnboardingSerializer(serializers.ModelSerializer):
+    preferred_study_time = serializers.ChoiceField(choices=[
+        ('morning', 'Aroorti Subaxda inta aan quraacaynayo'),
+        ('afternoon', 'Waqtiga Nasashasha intaan Khadaynayo'),
+        ('evening', 'Habeenki ah ka dib cashada ama Kahor intan seexanin'),
+        ('flexible', 'Waqti kale oo maalintayda ah')
+    ], default='flexible')
+
     class Meta:
         model = UserOnboarding
         fields = ['goal', 'learning_approach',
-                  'topic', 'math_level', 'minutes_per_day']
+                  'topic', 'math_level', 'minutes_per_day', 'preferred_study_time']
 
 
 class SignupWithOnboardingSerializer(serializers.Serializer):
@@ -32,6 +39,12 @@ class SignupWithOnboardingSerializer(serializers.Serializer):
     topic = serializers.CharField(required=False, default="Xisaab")
     math_level = serializers.CharField(required=False, default="Bilowga")
     minutes_per_day = serializers.IntegerField(required=False, default=30)
+    preferred_study_time = serializers.ChoiceField(choices=[
+        ('morning', 'Aroorti Subaxda inta aan quraacaynayo'),
+        ('afternoon', 'Waqtiga Nasashasha intaan Khadaynayo'),
+        ('evening', 'Habeenki ah ka dib cashada ama Kahor intan seexanin'),
+        ('flexible', 'Waqti kale oo maalintayda ah')
+    ], default='flexible', required=False)
 
     def validate_name(self, value):
         """
@@ -113,7 +126,12 @@ class SignupWithOnboardingSerializer(serializers.Serializer):
             # Create onboarding profile
             onboarding = UserOnboarding.objects.create(
                 user=user,
-                **validated_data,
+                goal=validated_data.get('goal', "Horumarinta xirfadaha"),
+                learning_approach=validated_data.get('learning_approach', "Waxbarasho shaqsiyeed"),
+                topic=validated_data.get('topic', "Xisaab"),
+                math_level=validated_data.get('math_level', "Bilowga"),
+                minutes_per_day=validated_data.get('minutes_per_day', 30),
+                preferred_study_time=validated_data.get('preferred_study_time', 'flexible'),
                 has_completed_onboarding=True
             )
 

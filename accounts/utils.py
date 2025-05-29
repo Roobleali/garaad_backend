@@ -43,38 +43,31 @@ def send_verification_email(user):
         data = {
             "from": FROM_EMAIL,
             "to": to_email,
-            "subject": "Xaqiiji Emailkaaga - Garaad",
+            "subject": "Xaqiiji Emailkaaga - Garaad ✅",
             "html": f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <div style="text-align: center; margin-bottom: 30px;">
-                    <img src="https://garaad.org/static/images/logo.png" alt="Garaad Logo" style="max-width: 150px; height: auto;">
+            <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: linear-gradient(135deg, #f8fafc 0%, #e0e7ef 100%); border-radius: 16px; box-shadow: 0 4px 16px rgba(44, 62, 80, 0.08);\">
+                <div style=\"text-align: center; margin-bottom: 24px;\">
+                    <img src=\"https://www.garaad.org/favicon.ico">
+                    <h1 style=\"color: #3498DB; font-size: 2rem; margin: 0;\">Garaad 📚</h1>
                 </div>
-                
-                <h2 style="color: #2C3E50; text-align: center; margin-bottom: 25px; font-size: 24px;">Ku soo dhowow Garaad!</h2>
-                
-                <p style="color: #34495E; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-                    Waad ku mahadsantahay inaad is diiwaangelisay. Fadlan isticmaal koodka soo socda si aad u xaqiijiso cinwaanka emailkaaga:
+                <div style=\"text-align: center; margin-bottom: 20px;\">
+                    <span style=\"font-size: 2.5rem;\">✅📧</span>
+                </div>
+                <h2 style=\"color: #2C3E50; text-align: center; margin-bottom: 18px; font-size: 1.5rem;\">Ku soo dhowow Garaad!</h2>
+                <p style=\"color: #34495E; font-size: 1.1rem; line-height: 1.7; margin-bottom: 18px; text-align: center;\">
+                    Waad ku mahadsantahay inaad is diiwaangelisay. <br>Fadlan isticmaal koodka hoose si aad u xaqiijiso cinwaanka emailkaaga:
                 </p>
-                
-                <div style="background-color: #F8F9FA; padding: 25px; border-radius: 8px; text-align: center; margin: 25px 0; border: 2px dashed #3498DB;">
-                    <h1 style="color: #3498DB; margin: 0; font-size: 32px; letter-spacing: 5px;">{code}</h1>
+                <div style=\"background: #eaf6fb; padding: 28px 0; border-radius: 10px; text-align: center; margin: 24px 0; border: 2px dashed #3498DB;\">
+                    <span style=\"font-size: 2.2rem; color: #3498DB; font-weight: bold; letter-spacing: 8px;\">{code}</span>
                 </div>
-                
-                <div style="background-color: #F1F8FF; padding: 15px; border-radius: 6px; margin: 20px 0;">
-                    <p style="color: #2C3E50; margin: 0; font-size: 14px;">
-                        <strong>Xasuuso:</strong> Number sireedkan wuxuu dhacayaa 24 saac gudahood.
-                    </p>
+                <div style=\"background: #fffbe6; padding: 14px; border-radius: 8px; margin: 18px 0; text-align: center;\">
+                    <span style=\"font-size: 1.1rem; color: #e67e22;\">⏰ <strong>Xasuuso:</strong> Koodhkani wuxuu dhacayaa 10 daqiiqo gudahood.</span>
                 </div>
-                
-                <p style="color: #7F8C8D; font-size: 14px; line-height: 1.5; margin: 25px 0;">
+                <p style=\"color: #7F8C8D; font-size: 1rem; line-height: 1.5; margin: 22px 0; text-align: center;\">
                     Haddii aadan codsanin xaqiijintan, fadlan iska dhaaf emailkaan.
                 </p>
-                
-                <div style="border-top: 1px solid #ECF0F1; margin-top: 30px; padding-top: 20px; text-align: center;">
-                    <p style="color: #7F8C8D; margin: 0; font-size: 14px;">
-                        Mahadsanid,<br>
-                        <strong style="color: #2C3E50;">Kooxda Garaad</strong>
-                    </p>
+                <div style=\"border-top: 1px solid #ECF0F1; margin-top: 28px; padding-top: 18px; text-align: center;\">
+                    <span style=\"font-size: 1.1rem; color: #2C3E50;\">Mahadsanid, <span style=\"font-weight: bold;\">Kooxda Garaad</span> 🙏</span>
                 </div>
             </div>
             """
@@ -99,4 +92,36 @@ def send_verification_email(user):
         logger.error(f"Failed to send verification email: {str(e)}")
         # If email sending fails, delete the verification code
         verification.delete()
+        raise e 
+
+def send_resend_email(to_email, subject, html, text=None):
+    """
+    Send an email using Resend API. Used for notifications and gamification emails.
+    """
+    try:
+        headers = {
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "from": FROM_EMAIL,
+            "to": to_email,
+            "subject": subject,
+            "html": html
+        }
+        if text:
+            data["text"] = text
+        logger.info(f"Sending Resend email with data: {data}")
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers=headers,
+            json=data
+        )
+        logger.info(f"Resend API Response Status: {response.status_code}")
+        logger.info(f"Resend API Response: {response.text}")
+        if response.status_code != 200:
+            raise Exception(f"Failed to send email: {response.text}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send Resend email: {str(e)}")
         raise e 

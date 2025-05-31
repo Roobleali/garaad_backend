@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import timedelta
 import dj_database_url
 from dotenv import load_dotenv
+from django.contrib.auth import get_user_model
 
 # Load environment variables
 load_dotenv()
@@ -196,3 +197,7 @@ LOGGING = {
         },
     },
 }
+
+User = get_user_model()
+if not User.objects.filter(is_superuser=True).exists():
+    User.objects.create_superuser('info@garaad.org', 'info@garaad.org', 'Garaad#3344')

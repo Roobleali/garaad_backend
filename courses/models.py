@@ -276,6 +276,10 @@ class LessonContentBlock(models.Model):
                 'content': 'Content must be a dictionary'
             })
 
+        # Skip validation for problem blocks
+        if self.block_type == 'problem':
+            return
+
         # Get validators for this block type
         validators = self.type_validators.get(self.block_type)
         if not validators:
@@ -315,13 +319,18 @@ class LessonContentBlock(models.Model):
         """
         if not self.content:
             # Initialize with default content for the block type
-            self.content = self.default_content.get(self.block_type, {})
+            if self.block_type == 'problem':
+                self.content = {}
+            else:
+                self.content = self.default_content.get(self.block_type, {})
         else:
-            # Validate content
-            self.validate_content()
-            # Merge with default content
-            default = self.default_content.get(self.block_type, {})
-            self.content = {**default, **self.content}
+            # Skip validation for problem blocks
+            if self.block_type != 'problem':
+                # Validate content
+                self.validate_content()
+                # Merge with default content
+                default = self.default_content.get(self.block_type, {})
+                self.content = {**default, **self.content}
             
         super().save(*args, **kwargs)
 

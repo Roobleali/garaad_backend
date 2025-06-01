@@ -439,6 +439,31 @@ class LessonContentBlockViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(lesson_id=lesson_id)
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new content block, with special handling for problem blocks.
+        """
+        try:
+            # For problem blocks, ensure content is an empty dict
+            if request.data.get('block_type') == 'problem':
+                request.data['content'] = {}
+
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except ValidationError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'An unexpected error occurred: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     @action(detail=False, methods=['post'])
     def reorder(self, request):
         """

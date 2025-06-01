@@ -154,24 +154,16 @@ class LessonContentBlockSerializer(serializers.ModelSerializer):
                     'problem': 'Problem reference is required for problem blocks'
                 })
             
-            # Ensure minimum content structure for problem blocks
-            default_content = {
-                "introduction": "",
-                "show_hints": True,
-                "show_solution": False,
-                "attempts_allowed": 3,
-                "points": 10
-            }
-            
-            # Update content with defaults for missing fields
-            if content is None:
-                content = default_content
-            else:
-                for key, value in default_content.items():
-                    if key not in content:
-                        content[key] = value
-            
-            data['content'] = content
+            # For problem blocks, content should be an empty dict
+            data['content'] = {}
+            return data
+
+        # For non-problem blocks, ensure content is provided
+        if content is None:
+            raise serializers.ValidationError({
+                'content': 'Content is required for non-problem blocks'
+            })
+
         return data
 
     def create(self, validated_data):
@@ -179,7 +171,6 @@ class LessonContentBlockSerializer(serializers.ModelSerializer):
         Create a new LessonContentBlock instance
         """
         instance = super().create(validated_data)
-        instance.validate_content()  # Run model validation
         return instance
 
     def update(self, instance, validated_data):
@@ -187,7 +178,6 @@ class LessonContentBlockSerializer(serializers.ModelSerializer):
         Update a LessonContentBlock instance
         """
         instance = super().update(instance, validated_data)
-        instance.validate_content()  # Run model validation
         return instance
 
 

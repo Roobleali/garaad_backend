@@ -521,6 +521,9 @@ class ProblemViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         try:
+            # Log the incoming request data
+            print("Creating problem with data:", request.data)
+            
             # Ensure content is a dictionary if empty array is provided
             if 'content' in request.data and request.data['content'] == []:
                 request.data['content'] = {}
@@ -558,27 +561,50 @@ class ProblemViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_400_BAD_REQUEST
                     )
             
+            # Create serializer and validate data
             serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
+            print("Validating data with serializer")
             
             try:
-                self.perform_create(serializer)
-                headers = self.get_success_headers(serializer.data)
-                return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-            except ValidationError as e:
+                serializer.is_valid(raise_exception=True)
+            except serializers.ValidationError as e:
+                print("Validation error:", e.detail)
                 return Response(
-                    {'error': str(e)},
+                    {'error': e.detail},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-        except serializers.ValidationError as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            # Try to save the problem
+            try:
+                print("Attempting to save problem")
+                self.perform_create(serializer)
+                print("Problem saved successfully")
+                headers = self.get_success_headers(serializer.data)
+                return Response(
+                    serializer.data, 
+                    status=status.HTTP_201_CREATED, 
+                    headers=headers
+                )
+            except Exception as e:
+                print("Error saving problem:", str(e))
+                return Response(
+                    {
+                        'error': 'Failed to save problem',
+                        'detail': str(e)
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
         except Exception as e:
+            print("Unexpected error:", str(e))
+            import traceback
+            traceback.print_exc()
             return Response(
-                {'error': f'An unexpected error occurred: {str(e)}'},
+                {
+                    'error': 'An unexpected error occurred',
+                    'detail': str(e),
+                    'type': type(e).__name__
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

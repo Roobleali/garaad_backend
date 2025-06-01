@@ -111,19 +111,15 @@ class ProblemSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """
-        Create a new LessonContentBlock instance
+        Create a new Problem instance
         """
-        instance = super().create(validated_data)
-        instance.validate_content()  # Run model validation
-        return instance
+        return super().create(validated_data)
 
     def update(self, instance, validated_data):
         """
-        Update a LessonContentBlock instance
+        Update a Problem instance
         """
-        instance = super().update(instance, validated_data)
-        instance.validate_content()  # Run model validation
-        return instance
+        return super().update(instance, validated_data)
 
 
 class LessonContentBlockSerializer(serializers.ModelSerializer):

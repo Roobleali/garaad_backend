@@ -178,7 +178,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name',
-                  'last_name', 'is_premium', 'has_completed_onboarding']
+                  'last_name', 'is_premium', 'has_completed_onboarding', 'is_superuser']
 
     def get_has_completed_onboarding(self, obj):
         try:

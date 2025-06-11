@@ -234,6 +234,21 @@ class LessonViewSet(viewsets.ModelViewSet):
             streak.award_xp(earned_xp, 'problem_completion')
             streak.update_streak(len(completed_problems), [lesson.id])
 
+            # Get or create user league with default league
+            default_league = League.objects.order_by('min_xp').first()
+            if not default_league:
+                raise Exception("No default league found in the system")
+                
+            user_league, _ = UserLeague.objects.get_or_create(
+                user=request.user,
+                defaults={
+                    'current_league': default_league,
+                    'total_xp': 0,
+                    'weekly_xp': 0,
+                    'monthly_xp': 0
+                }
+            )
+
             # Check for achievements
             self._check_lesson_achievements(request.user, lesson)
 

@@ -85,34 +85,11 @@ class CourseViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(category_id=category_id)
         return queryset
 
-    def retrieve(self, request, *args, **kwargs):
-        """
-        Override retrieve to check for premium access
-        """
-        course = self.get_object()
-        serializer = self.get_serializer(course)
-        data = serializer.data
-
-        # If user is not authenticated or not premium, only return basic info
-        if not request.user.is_authenticated or not request.user.is_premium:
-            allowed_fields = ['id', 'title', 'description', 'thumbnail', 'category']
-            data = {k: v for k, v in data.items() if k in allowed_fields}
-            data['requires_premium'] = True
-            return Response(data)
-
-        return Response(data)
-
     @action(detail=True, methods=['post'])
     def update_progress(self, request, pk=None):
         """
         Update the progress of a course.
         """
-        if not request.user.is_authenticated or not request.user.is_premium:
-            return Response(
-                {'error': 'Premium subscription required'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         course = self.get_object()
         progress = request.data.get('progress', 0)
         course.progress = min(max(0, progress), 100)
@@ -124,12 +101,6 @@ class CourseViewSet(viewsets.ModelViewSet):
         """
         Enroll the authenticated user in a course.
         """
-        if not request.user.is_premium:
-            return Response(
-                {'error': 'Premium subscription required'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         course = self.get_object()
         enrollment = CourseEnrollment.enroll_user(
             user=request.user, course=course)
@@ -175,15 +146,45 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """
-        Override retrieve to check for premium access
+        Override retrieve to include problem XP information
         """
-        if not request.user.is_authenticated or not request.user.is_premium:
-            return Response(
-                {'error': 'Premium subscription required'},
-                status=status.HTTP_403_FORBIDDEN
+        lesson = self.get_object()
+        response = super().retrieve(request, *args, **kwargs)
+
+        # Add problem XP information
+        problems = Problem.objects.filter(lesson=lesson)
+        problem_xp_info = []
+        for problem in problems:
+            xp_value = 10
+            if isinstance(problem.content, dict):
+                xp_value = problem.content.get('points', 10)
+            elif hasattr(problem, 'xp'):
+                xp_value = problem.xp
+            problem_xp_info.append({
+                'id': problem.id,
+                'xp_value': xp_value,
+                'question_type': problem.question_type
+            })
+        
+        response.data['problem_xp_info'] = problem_xp_info
+        response.data['total_possible_xp'] = sum(p['xp_value'] for p in problem_xp_info)
+
+        # If the user is authenticated, update their lesson progress
+        if request.user.is_authenticated:
+            # Ensure the user is enrolled in the course
+            CourseEnrollment.enroll_user(request.user, lesson.course)
+
+            # Get or create a progress record and mark as in progress
+            progress, created = UserProgress.objects.get_or_create(
+                user=request.user,
+                lesson=lesson
             )
 
-        return super().retrieve(request, *args, **kwargs)
+            # Only update if the lesson isn't already completed
+            if progress.status != 'completed':
+                progress.mark_as_in_progress()
+
+        return response
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def complete(self, request, pk=None):
@@ -191,12 +192,6 @@ class LessonViewSet(viewsets.ModelViewSet):
         Mark a lesson as completed for the authenticated user.
         Calculate XP based on completed problems and update streak.
         """
-        if not request.user.is_premium:
-            return Response(
-                {'error': 'Premium subscription required'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         try:
             lesson = self.get_object()
             completed_problems = request.data.get('completed_problems', [])

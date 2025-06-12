@@ -239,15 +239,22 @@ class LessonViewSet(viewsets.ModelViewSet):
             if not default_league:
                 raise Exception("No default league found in the system")
                 
-            user_league, _ = UserLeague.objects.get_or_create(
+            user_league, created = UserLeague.objects.get_or_create(
                 user=request.user,
                 defaults={
                     'current_league': default_league,
-                    'total_xp': 0,
-                    'weekly_xp': 0,
-                    'monthly_xp': 0
+                    'total_xp': earned_xp,
+                    'weekly_xp': earned_xp,
+                    'monthly_xp': earned_xp
                 }
             )
+            
+            if not created:
+                # Update existing user league
+                user_league.total_xp += earned_xp
+                user_league.weekly_xp += earned_xp
+                user_league.monthly_xp += earned_xp
+                user_league.save()
 
             # Check for achievements
             self._check_lesson_achievements(request.user, lesson)
@@ -261,6 +268,12 @@ class LessonViewSet(viewsets.ModelViewSet):
                     'current_streak': streak.current_streak,
                     'max_streak': streak.max_streak,
                     'streak_charges': streak.current_energy
+                },
+                'league': {
+                    'name': user_league.current_league.name,
+                    'somali_name': user_league.current_league.somali_name,
+                    'total_xp': user_league.total_xp,
+                    'weekly_xp': user_league.weekly_xp
                 }
             })
         except Exception as e:

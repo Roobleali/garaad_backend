@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'accounts',
     'courses',  # Learning management system
     'leagues',  # Add the leagues app
+    'subscriptions.apps.SubscriptionsConfig',  # Updated to use the new app name
 ]
 
 MIDDLEWARE = [
@@ -196,3 +197,11 @@ LOGGING = {
         },
     },
 }
+
+# Waafipay Settings
+WAAFIPAY_MERCHANT_ID = os.environ.get('WAAFIPAY_MERCHANT_ID', '')
+WAAFIPAY_API_KEY = os.environ.get('WAAFIPAY_API_KEY', '')
+WAAFIPAY_API_USER_ID = os.environ.get('WAAFIPAY_API_USER_ID', '')
+WAAFIPAY_TEST_MODE = os.environ.get('WAAFIPAY_TEST_MODE', 'True') == 'True'
+WAAFIPAY_LOCAL_AMOUNT = 19  # $19 for local users
+WAAFIPAY_DIASPORA_AMOUNT = 49  # $49 for diaspora users

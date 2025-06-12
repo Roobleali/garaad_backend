@@ -85,7 +85,8 @@ urlpatterns = [
     # Learning Management System API
     path('api/lms/', include('courses.urls')),
     # League and Gamification API
-    path('api/league/', include('leagues.urls')),
+    path('api/leagues/', include('leagues.urls')),
+    path('api/subscriptions/', include('subscriptions.urls')),
 
     # Add hello-world endpoint
     path('hello-world/', hello_world, name='hello_world'),

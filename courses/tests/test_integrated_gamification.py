@@ -7,11 +7,14 @@ from courses.models import (
     CommunityContribution, UserReward,
     DailyChallenge, UserChallengeProgress,
     LeaderboardEntry, UserNotification,
-    Course, Lesson, UserProgress, Category, CourseEnrollment
+    Course, Lesson, UserProgress, Category, CourseEnrollment,
+    Problem
 )
 from accounts.models import StudentProfile
 from datetime import timedelta
 import json
+from api.models import Streak
+from leagues.models import League, UserLeague
 
 User = get_user_model()
 
@@ -22,6 +25,15 @@ class IntegratedGamificationTest(TestCase):
             username='testuser',
             email='test@example.com',
             password='testpass123'
+        )
+        
+        # Create a default league
+        self.default_league = League.objects.create(
+            name='Beginner',
+            somali_name='Bilowga',
+            description='The starting league',
+            min_xp=0,
+            order=1
         )
         
         # Create student profile
@@ -76,6 +88,25 @@ class IntegratedGamificationTest(TestCase):
             lesson_number=1,
             estimated_time=30,
             is_published=True
+        )
+
+        # Create test problems
+        self.problem1 = Problem.objects.create(
+            lesson=self.lesson,
+            question_text='Test Question 1',
+            question_type='multiple_choice',
+            options=['A', 'B', 'C', 'D'],
+            correct_answer='A',
+            xp=10
+        )
+        
+        self.problem2 = Problem.objects.create(
+            lesson=self.lesson,
+            question_text='Test Question 2',
+            question_type='multiple_choice',
+            options=['X', 'Y', 'Z'],
+            correct_answer='Z',
+            xp=15
         )
 
         # Create initial achievements

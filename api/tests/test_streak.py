@@ -5,6 +5,7 @@ from datetime import timedelta
 from uuid import uuid4
 from ..models import Streak, DailyActivity
 from unittest.mock import patch
+from leagues.models import League, UserLeague
 
 User = get_user_model()
 
@@ -19,6 +20,15 @@ class StreakModelTest(TestCase):
         )
         # Create streak for user
         self.streak = Streak.objects.create(user=self.user)
+        
+        # Create a default league
+        self.default_league = League.objects.create(
+            name='Beginner',
+            somali_name='Bilowga',
+            description='The starting league',
+            min_xp=0,
+            order=1
+        )
 
     def test_initial_streak_state(self):
         """Test initial streak state"""

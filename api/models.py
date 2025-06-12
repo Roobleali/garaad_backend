@@ -108,7 +108,20 @@ class Streak(models.Model):
         
         # Check for league promotion
         from leagues.models import UserLeague, League
-        user_league, _ = UserLeague.objects.get_or_create(user=self.user, defaults={'current_league': League.objects.first()})
+        default_league = League.objects.order_by('min_xp').first()
+        if not default_league:
+            raise Exception("No default league found in the system")
+            
+        user_league, _ = UserLeague.objects.get_or_create(
+            user=self.user,
+            defaults={
+                'current_league': default_league,
+                'total_xp': 0,
+                'weekly_xp': 0,
+                'monthly_xp': 0
+            }
+        )
+        
         next_league = League.objects.filter(min_xp__gt=user_league.current_league.min_xp).order_by('min_xp').first()
         if next_league and self.xp >= next_league.min_xp:
             old_league = user_league.current_league

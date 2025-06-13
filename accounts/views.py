@@ -19,7 +19,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .utils import send_verification_email
 from datetime import timedelta
 from django.utils import timezone
-from api.models import Streak
+from api.models import Streak, Notification
 from leagues.models import UserLeague, League
 from courses.models import UserReward
 
@@ -386,3 +386,74 @@ def user_profile(request):
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_premium_status(request):
+    """Update a user's premium status and subscription details"""
+    try:
+        user = request.user
+        is_premium = request.data.get('is_premium')
+        subscription_type = request.data.get('subscription_type')
+        subscription_start_date = request.data.get('subscription_start_date')
+        subscription_end_date = request.data.get('subscription_end_date')
+        
+        if is_premium is None:
+            return Response({
+                'error': 'is_premium field is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        if is_premium and not subscription_type:
+            return Response({
+                'error': 'subscription_type is required when setting premium status'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Update subscription details
+        user.is_premium = is_premium
+        if is_premium:
+            user.subscription_type = subscription_type
+            user.subscription_start_date = timezone.now() if not subscription_start_date else timezone.datetime.fromisoformat(subscription_start_date.replace('Z', '+00:00'))
+            
+            if subscription_type == 'lifetime':
+                user.subscription_end_date = None
+            elif subscription_type == 'monthly':
+                user.subscription_end_date = timezone.now() + timedelta(days=30) if not subscription_end_date else timezone.datetime.fromisoformat(subscription_end_date.replace('Z', '+00:00'))
+            elif subscription_type == 'yearly':
+                user.subscription_end_date = timezone.now() + timedelta(days=365) if not subscription_end_date else timezone.datetime.fromisoformat(subscription_end_date.replace('Z', '+00:00'))
+        else:
+            # Reset subscription details when removing premium status
+            user.subscription_type = None
+            user.subscription_start_date = None
+            user.subscription_end_date = None
+            
+        user.save()
+        
+        # Create notification for premium status change
+        notification_type = 'achievement' if is_premium else 'reminder'
+        title = 'Hambalyo! Waad noqotay Premium' if is_premium else 'Xasuuso Premium-kaaga'
+        message = 'Waad ku mahadsantahay inaad noqoto Premium! Waxaad hadda heli doontaa dhammaan awoodaha.' if is_premium else 'Premium-kaaga wuu dhacay. Dib u noqo si aad u hesho dhammaan awoodaha.'
+        
+        Notification.objects.create(
+            user=user,
+            type=notification_type,
+            title=title,
+            message=message,
+            data={
+                'premium_status': is_premium,
+                'subscription_type': subscription_type,
+                'subscription_end_date': user.subscription_end_date.isoformat() if user.subscription_end_date else None
+            }
+        )
+        
+        return Response({
+            'message': 'Premium status updated successfully',
+            'is_premium': user.is_premium,
+            'subscription_type': user.subscription_type,
+            'subscription_start_date': user.subscription_start_date.isoformat() if user.subscription_start_date else None,
+            'subscription_end_date': user.subscription_end_date.isoformat() if user.subscription_end_date else None
+        })
+        
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

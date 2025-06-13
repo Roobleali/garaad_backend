@@ -17,6 +17,20 @@ class User(AbstractUser):
     age = models.PositiveIntegerField(null=True, blank=True)
     is_email_verified = models.BooleanField(default=False)
     
+    # Subscription fields
+    subscription_start_date = models.DateTimeField(null=True, blank=True)
+    subscription_end_date = models.DateTimeField(null=True, blank=True)
+    subscription_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('monthly', 'Monthly'),
+            ('yearly', 'Yearly'),
+            ('lifetime', 'Lifetime')
+        ],
+        null=True,
+        blank=True
+    )
+    
     # Additional fields
     profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
     bio = models.TextField(max_length=500, blank=True)
@@ -50,6 +64,24 @@ class User(AbstractUser):
         db_table = 'accounts_user'
         verbose_name = 'User'
         verbose_name_plural = 'Users'
+
+    def is_subscription_active(self):
+        """Check if the user's subscription is still active"""
+        if not self.is_premium:
+            return False
+            
+        if self.subscription_type == 'lifetime':
+            return True
+            
+        if not self.subscription_end_date:
+            return False
+            
+        return timezone.now() <= self.subscription_end_date
+    
+    def update_subscription_status(self):
+        """Update is_premium based on subscription status"""
+        self.is_premium = self.is_subscription_active()
+        self.save()
 
 
 class StudentProfile(models.Model):

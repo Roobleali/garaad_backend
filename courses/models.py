@@ -377,7 +377,13 @@ def get_default_diagram_config():
                     "type": "square",
                     "count": 4,
                     "color": "#3498db",
-                    "size": 20
+                    "size": 20,
+                    "layout": {
+                        "rows": 2,
+                        "columns": 2,
+                        "position": "center",
+                        "alignment": "center"
+                    }
                 }
             ],
             "scale": {

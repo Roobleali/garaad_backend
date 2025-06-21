@@ -1,0 +1,31 @@
+{
+  "backup_timestamp": "20250621_062130",
+  "total_records": 1211,
+  "backup_files": [
+    "database_backups/auth_permission_20250621_062130.json",
+    "database_backups/contenttypes_contenttype_20250621_062130.json",
+    "database_backups/api_streak_20250621_062130.json",
+    "database_backups/api_dailyactivity_20250621_062130.json",
+    "database_backups/api_notification_20250621_062130.json",
+    "database_backups/accounts_user_20250621_062130.json",
+    "database_backups/accounts_useronboarding_20250621_062130.json",
+    "database_backups/accounts_emailverification_20250621_062130.json",
+    "database_backups/courses_category_20250621_062130.json",
+    "database_backups/courses_course_20250621_062130.json",
+    "database_backups/courses_lesson_20250621_062130.json",
+    "database_backups/courses_lessoncontentblock_20250621_062130.json",
+    "database_backups/courses_problem_20250621_062130.json",
+    "database_backups/courses_userprogress_20250621_062130.json",
+    "database_backups/courses_courseenrollment_20250621_062130.json",
+    "database_backups/courses_userreward_20250621_062130.json",
+    "database_backups/courses_leaderboardentry_20250621_062130.json",
+    "database_backups/courses_userproblem_20250621_062130.json",
+    "database_backups/leagues_league_20250621_062130.json",
+    "database_backups/leagues_userleague_20250621_062130.json"
+  ],
+  "database_info": {
+    "engine": "django.db.backends.postgresql",
+    "name": "postgres",
+    "host": "aws-0-us-east-1.pooler.supabase.com"
+  }
+}

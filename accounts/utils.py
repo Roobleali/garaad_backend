@@ -99,29 +99,58 @@ def send_resend_email(to_email, subject, html, text=None):
     Send an email using Resend API. Used for notifications and gamification emails.
     """
     try:
+        # Validate required environment variables
+        if not RESEND_API_KEY:
+            logger.error("RESEND_API_KEY is not configured")
+            return False
+            
+        if not FROM_EMAIL:
+            logger.error("FROM_EMAIL is not configured")
+            return False
+
         headers = {
             "Authorization": f"Bearer {RESEND_API_KEY}",
             "Content-Type": "application/json"
         }
+        
         data = {
             "from": FROM_EMAIL,
             "to": to_email,
             "subject": subject,
             "html": html
         }
+        
         if text:
             data["text"] = text
-        logger.info(f"Sending Resend email with data: {data}")
+            
+        logger.info(f"Sending Resend email to: {to_email}")
+        logger.info(f"Email subject: {subject}")
+        logger.info(f"From email: {FROM_EMAIL}")
+        logger.info(f"Test mode: {TEST_MODE}")
+        
         response = requests.post(
             "https://api.resend.com/emails",
             headers=headers,
-            json=data
+            json=data,
+            timeout=30  # Add timeout
         )
+        
         logger.info(f"Resend API Response Status: {response.status_code}")
         logger.info(f"Resend API Response: {response.text}")
-        if response.status_code != 200:
-            raise Exception(f"Failed to send email: {response.text}")
-        return True
+        
+        if response.status_code == 200:
+            logger.info(f"Email sent successfully to {to_email}")
+            return True
+        else:
+            logger.error(f"Failed to send email to {to_email}. Status: {response.status_code}, Response: {response.text}")
+            return False
+            
+    except requests.exceptions.Timeout:
+        logger.error(f"Timeout while sending email to {to_email}")
+        return False
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error while sending email to {to_email}: {str(e)}")
+        return False
     except Exception as e:
-        logger.error(f"Failed to send Resend email: {str(e)}")
-        raise e 
+        logger.error(f"Failed to send Resend email to {to_email}: {str(e)}")
+        return False 

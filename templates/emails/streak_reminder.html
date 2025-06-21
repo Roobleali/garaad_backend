@@ -3,86 +3,64 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ notification.title }}</title>
+    <title>Ha lumin dadaalkaaga!</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .streak-info {
-            text-align: center;
-            margin: 20px 0;
-            padding: 15px;
-            background-color: #fff3cd;
-            border-radius: 5px;
-            color: #856404;
-        }
-        .badge {
-            text-align: center;
-            margin: 20px 0;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-            font-style: italic;
-        }
-        .cta-button {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #ffc107;
-            color: #000000;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 20px;
-            color: #6c757d;
-            font-size: 0.9em;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f8f9fa; color: #343a40; }
+        .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .header { text-align: center; margin-bottom: 25px; }
+        .logo { max-height: 50px; margin-bottom: 20px; }
+        .header-emoji { font-size: 48px; }
+        .header-title { font-size: 24px; font-weight: 600; color: #212529; margin-bottom: 5px; }
+        .header-subtitle { font-size: 16px; color: #6c757d; }
+        .course-section { border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 30px; text-align: center; }
+        .course-thumbnail { max-width: 120px; border-radius: 8px; margin-bottom: 15px; }
+        .course-title { font-size: 18px; font-weight: 600; color: #212529; margin: 0 0 15px 0; }
+        .progress-bar-container { background-color: #e9ecef; border-radius: 8px; height: 12px; overflow: hidden; width: 100%; margin-bottom: 8px; }
+        .progress-bar { background-color: #007bff; height: 100%; border-radius: 8px; transition: width 0.5s ease-in-out; }
+        .progress-text { font-size: 14px; color: #6c757d; }
+        .main-content p { font-size: 16px; color: #495057; margin-bottom: 25px; text-align: center; }
+        .cta-button { display: block; width: calc(100% - 40px); margin: 0 auto; padding: 15px 20px; background-color: #007bff; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 500; text-align: center; }
+        .footer { text-align: center; margin-top: 30px; color: #6c757d; font-size: 14px; }
+        .footer a { color: #007bff; text-decoration: none; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>{{ notification.title }}</h1>
+            <img src="https://www.garaad.org/logo.png" alt="Garaad Logo" class="logo">
+            {% if broke_streak %}
+                <div class="header-emoji">😔</div>
+                <h1 class="header-title">Xariggaaga oo {{ streak_count }} maalmood ah halis ayuu ku jiraa.</h1>
+                <p class="header-subtitle">Ha is dhiibin! Qaado daqiiqado kooban si aad u sii waddo dadaalkaaga.</p>
+            {% else %}
+                <div class="header-emoji">👋</div>
+                <h1 class="header-title">In muddo ah waa lagu la'aa.</h1>
+                <p class="header-subtitle">Safarkaaga waxbarasho horey uga sii wad casharkaaga ku xiga.</p>
+            {% endif %}
         </div>
-        
-        <p>Asc {{ user.username }},</p>
-        
-        <div class="streak-info">
-            {{ notification.message }}
+
+        {% if course_name and next_lesson_title %}
+        <div class="course-section">
+            {% if course_thumbnail %}
+                <img src="{{ course_thumbnail }}" alt="{{ course_name }} Thumbnail" class="course-thumbnail">
+            {% endif %}
+            <h2 class="course-title">{{ course_name }}</h2>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: {{ progress_percent|default:0 }}%;"></div>
+            </div>
+            <p class="progress-text">{{ progress_percent|default:0 }}% waad dhamaysay</p>
         </div>
+
+        <p>Casharkaaga xiga waa diyaar: <strong>{{ next_lesson_title }}</strong></p>
         
-        <div class="badge">
-            {{ study_badge }}
-        </div>
-        
-        <div class="badge">
-            {{ goal_badge }}
-        </div>
-        
-        <center>
-            <a href="{{ site_url }}" class="cta-button">Sii Wad Waxbarashada</a>
-        </center>
-        
+        <a href="https://www.garaad.org/courses/" class="cta-button">Sii Wad Waxbarashada</a>
+        {% else %}
+        <p>Casharkaaga xiga waa ku sugayaa!</p>
+        <a href="{{ site_url }}" class="cta-button">Tag Boodhkaaga</a>
+        {% endif %}
+
         <div class="footer">
-            <p>Garaad - Waxbarasho Tayo Leh</p>
+            <p>Garaad - Waxbarasho Tayo Leh. <a href="{{ site_url }}/settings">Maamul ogeysiisyada</a>.</p>
         </div>
     </div>
 </body>

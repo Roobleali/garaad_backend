@@ -80,18 +80,26 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0'] if DEBUG else [
 ]
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = DEBUG
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if not DEBUG else ['http://localhost:3000']
 CORS_ALLOW_CREDENTIALS = True
 
-# If no CORS origins are set in environment variables, use default list
-if not CORS_ALLOWED_ORIGINS and not DEBUG:
+if DEBUG:
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+else:
+    # Production allowed origins
     CORS_ALLOWED_ORIGINS = [
         'https://garaad.org',
         'https://www.garaad.org',
         'https://garaad-backend-production.up.railway.app',
         'https://garaad-backend-development.up.railway.app'
     ]
+
+    # Optionally, add origins from environment variable
+    env_origins = os.getenv('CORS_ALLOWED_ORIGINS')
+    if env_origins:
+        CORS_ALLOWED_ORIGINS.extend([origin.strip() for origin in env_origins.split(',')])
 
 # Database configuration
 DATABASES = {

@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: garaad-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: python manage.py migrate && gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 garaad.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.9.18"
+      - key: DEBUG
+        value: "False"
+      - key: DJANGO_SETTINGS_MODULE
+        value: "garaad.settings"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTHONDONTWRITEBYTECODE
+        value: "1"
+      # These should be set in Render dashboard:
+      # - DATABASE_URL (your Supabase connection string)
+      # - SECRET_KEY
+      # - RESEND_API_KEY
+      # - FROM_EMAIL
+      # - CORS_ALLOWED_ORIGINS

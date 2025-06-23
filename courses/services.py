@@ -123,7 +123,7 @@ class NotificationService:
             html = render_to_string('emails/streak_reminder.html', context)
             success = send_resend_email(
                 to_email=user.email,
-                subject='You can do it! Keep up with your lessons.',
+                subject='Waxbarashada waa ku sugayaa! Sii wad casharkaaga.',
                 html=html
             )
             if success:

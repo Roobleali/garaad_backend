@@ -184,6 +184,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom user model
 AUTH_USER_MODEL = 'accounts.User'
 
+# Site URL for email templates
+SITE_URL = os.getenv('SITE_URL', 'https://garaad.org')
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

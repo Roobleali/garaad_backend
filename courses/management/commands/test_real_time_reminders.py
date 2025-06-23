@@ -64,10 +64,7 @@ class Command(BaseCommand):
             
             if reminder_type == 'all' or reminder_type == 'inactivity':
                 self.stdout.write("Testing inactivity reminder...")
-                success = NotificationService.send_inactivity_reminder(
-                    user, 
-                    options['days_inactive']
-                )
+                success = NotificationService.send_inactivity_reminder(user)
                 if success:
                     self.stdout.write(self.style.SUCCESS("Inactivity reminder sent successfully!"))
                 else:
@@ -75,10 +72,7 @@ class Command(BaseCommand):
             
             if reminder_type == 'all' or reminder_type == 'streak_break':
                 self.stdout.write("Testing streak break reminder...")
-                success = NotificationService.send_streak_break_reminder(
-                    user, 
-                    options['streak_days']
-                )
+                success = NotificationService.send_streak_break_reminder(user, options['streak_days'])
                 if success:
                     self.stdout.write(self.style.SUCCESS("Streak break reminder sent successfully!"))
                 else:
@@ -86,42 +80,15 @@ class Command(BaseCommand):
             
             if reminder_type == 'all' or reminder_type == 'goal':
                 self.stdout.write("Testing goal reminder...")
-                success = NotificationService.send_goal_reminder(
-                    user, 
-                    options['goal_type']
-                )
-                if success:
-                    self.stdout.write(self.style.SUCCESS("Goal reminder sent successfully!"))
-                else:
-                    self.stdout.write(self.style.ERROR("Failed to send goal reminder"))
+                self.stdout.write(self.style.WARNING("Goal reminder method not implemented yet"))
             
             if reminder_type == 'all' or reminder_type == 'motivational':
                 self.stdout.write("Testing motivational reminder...")
-                success = NotificationService.send_motivational_reminder(
-                    user, 
-                    options['motivation_type']
-                )
-                if success:
-                    self.stdout.write(self.style.SUCCESS("Motivational reminder sent successfully!"))
-                else:
-                    self.stdout.write(self.style.ERROR("Failed to send motivational reminder"))
+                self.stdout.write(self.style.WARNING("Motivational reminder method not implemented yet"))
             
             if reminder_type == 'all' or reminder_type == 'immediate':
                 self.stdout.write("Testing immediate reminder...")
-                custom_message = options['custom_message']
-                if custom_message:
-                    success = NotificationService.send_immediate_reminder(
-                        user, 
-                        'custom', 
-                        custom_message
-                    )
-                else:
-                    success = NotificationService.send_immediate_reminder(user)
-                
-                if success:
-                    self.stdout.write(self.style.SUCCESS("Immediate reminder sent successfully!"))
-                else:
-                    self.stdout.write(self.style.ERROR("Failed to send immediate reminder"))
+                self.stdout.write(self.style.WARNING("Immediate reminder method not implemented yet"))
             
             # Test the comprehensive real-time reminder checker
             if reminder_type == 'all':

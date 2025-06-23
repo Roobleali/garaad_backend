@@ -14,6 +14,9 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.template.loader import render_to_string
+from django.urls import path
+from rest_framework.response import Response
 from decouple import config
 
 # Configure logging
@@ -25,24 +28,8 @@ RESEND_API_KEY = config('RESEND_API_KEY', default='re_Shq6E56u_5RoR96gXtidwjKHCd
 FROM_EMAIL = config('FROM_EMAIL', default='noreply@garaad.org')
 RESEND_TEST_MODE = config('RESEND_TEST_MODE', default=False, cast=bool)
 
-# Email Verification Model
-class EmailVerification(models.Model):
-    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
-    code = models.CharField(max_length=6)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_used = models.BooleanField(default=False)
-
-    @classmethod
-    def generate_code(cls):
-        """Generate a random 6-digit verification code."""
-        return ''.join(random.choices(string.digits, k=6))
-
-    def is_expired(self):
-        """Check if the verification code has expired (24 hours)."""
-        return datetime.now() - self.created_at > timedelta(hours=24)
-
-    def __str__(self):
-        return f"Verification for {self.user.email}"
+# Import EmailVerification model from accounts app
+from accounts.models import EmailVerification
 
 # Email Sending Function
 def send_verification_email(user):
@@ -67,7 +54,17 @@ def send_verification_email(user):
         
         # Prepare email data
         subject = 'Xaqiiji Emailkaaga - Garaad'
-        message = f"""
+        
+        # Render HTML template
+        context = {
+            'verification_code': code,
+            'site_url': getattr(settings, 'SITE_URL', 'https://garaad.org'),
+        }
+        
+        html_message = render_to_string('emails/email_verification.html', context)
+        
+        # Fallback text message
+        text_message = f"""
         Ku soo dhowow Garaad!
 
         Koodkaaga xaqiijinta waa: {code}
@@ -91,7 +88,8 @@ def send_verification_email(user):
             "from": FROM_EMAIL,
             "to": user.email,
             "subject": subject,
-            "text": message
+            "html": html_message,
+            "text": text_message
         }
         
         # Log email data

@@ -397,6 +397,7 @@ class Problem(models.Model):
     order = models.PositiveIntegerField(default=0)
     content = models.JSONField(default=dict, blank=True, null=True)
     diagram_config = models.JSONField(default=dict, blank=True)
+    diagrams = models.JSONField(null=True, blank=True, help_text="Multiple diagram configurations for complex problems")
     img = models.URLField(blank=True, null=True, help_text="URL of an image associated with the problem")
     xp = models.PositiveIntegerField(default=10, help_text="XP awarded for solving this problem")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -415,6 +416,29 @@ class Problem(models.Model):
         # Initialize empty fields if needed
         if not self.content or self.content == []:
             self.content = {}
+        
+        # Validate diagram configuration exclusivity
+        if self.question_type == 'diagram':
+            has_single_diagram = self.diagram_config and self.diagram_config != {}
+            has_multiple_diagrams = self.diagrams and self.diagrams != []
+            
+            if has_single_diagram and has_multiple_diagrams:
+                raise ValidationError({
+                    'diagram_config': 'Cannot use both diagram_config and diagrams simultaneously'
+                })
+            
+            if not has_single_diagram and not has_multiple_diagrams:
+                raise ValidationError({
+                    'diagram_config': 'Diagram problems require either diagram_config or diagrams'
+                })
+            
+            # Validate single diagram structure
+            if has_single_diagram:
+                self.validate_single_diagram(self.diagram_config)
+            
+            # Validate multiple diagrams structure
+            if has_multiple_diagrams:
+                self.validate_multiple_diagrams(self.diagrams)
         
         # Validate multiple choice questions
         if self.question_type in ['multiple_choice', 'single_choice']:
@@ -469,6 +493,53 @@ class Problem(models.Model):
                         'correct_answer': f"Answer ID '{answer.get('id')}' not found in options"
                     })
 
+    def validate_single_diagram(self, diagram_config):
+        """Validate single diagram configuration structure"""
+        required_fields = ['diagram_id', 'diagram_type', 'scale_weight', 'objects']
+        for field in required_fields:
+            if field not in diagram_config:
+                raise ValidationError({
+                    'diagram_config': f'Missing required field: {field}'
+                })
+        
+        # Validate objects
+        for obj in diagram_config.get('objects', []):
+            self.validate_diagram_object(obj)
+    
+    def validate_multiple_diagrams(self, diagrams):
+        """Validate multiple diagrams configuration structure"""
+        if not isinstance(diagrams, list) or len(diagrams) == 0:
+            raise ValidationError({
+                'diagrams': 'Diagrams must be a non-empty array'
+            })
+        
+        for i, diagram in enumerate(diagrams):
+            try:
+                self.validate_single_diagram(diagram)
+            except ValidationError as e:
+                # Re-raise with diagram index for clarity
+                raise ValidationError({
+                    'diagrams': f'Diagram {i}: {str(e.message_dict)}'
+                })
+    
+    def validate_diagram_object(self, obj):
+        """Validate diagram object structure"""
+        required_fields = ['type', 'color', 'text_color', 'number', 'position', 'layout']
+        for field in required_fields:
+            if field not in obj:
+                raise ValidationError({
+                    'diagram_config': f'Object missing required field: {field}'
+                })
+        
+        # Validate layout
+        layout = obj.get('layout', {})
+        layout_fields = ['rows', 'columns', 'position', 'alignment']
+        for field in layout_fields:
+            if field not in layout:
+                raise ValidationError({
+                    'diagram_config': f'Layout missing required field: {field}'
+                })
+
     def save(self, *args, **kwargs):
         if not self.order and self.lesson:
             # Get the highest order number for this lesson
@@ -484,9 +555,11 @@ class Problem(models.Model):
         if self.content is None or self.content == []:
             self.content = {}
         
-        # Initialize diagram_config if it's a diagram problem
-        if self.question_type == 'diagram' and not self.diagram_config:
-            self.diagram_config = {}
+        # Initialize diagram configuration if it's a diagram problem
+        if self.question_type == 'diagram':
+            # Ensure at least one diagram format is initialized
+            if not self.diagram_config and not self.diagrams:
+                self.diagram_config = {}
         
         # Run validation
         self.clean()

@@ -543,6 +543,26 @@ class ProblemViewSet(viewsets.ModelViewSet):
             if 'content' in request.data and request.data['content'] == []:
                 request.data['content'] = {}
             
+            # Validate diagram configuration for diagram problems
+            if request.data.get('question_type') == 'diagram':
+                diagram_config = request.data.get('diagram_config')
+                diagrams = request.data.get('diagrams')
+                
+                has_single_diagram = diagram_config and diagram_config != {}
+                has_multiple_diagrams = diagrams and diagrams != []
+                
+                if has_single_diagram and has_multiple_diagrams:
+                    return Response(
+                        {'error': 'Cannot use both diagram_config and diagrams simultaneously'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                if not has_single_diagram and not has_multiple_diagrams:
+                    return Response(
+                        {'error': 'Diagram problems require either diagram_config or diagrams'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
             # Validate options and correct_answer for multiple choice questions
             if request.data.get('question_type') in ['multiple_choice', 'single_choice']:
                 options = request.data.get('options', [])

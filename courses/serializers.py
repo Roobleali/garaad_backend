@@ -29,13 +29,13 @@ class ProblemSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'which', 'question_text', 'question_type', 'options',
             'correct_answer', 'explanation', 'content',
-            'diagram_config', 'img', 'xp', 'created_at', 'updated_at'
+            'diagram_config', 'diagrams', 'img', 'xp', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
 
     def to_representation(self, instance):
         """
-        Add XP information to the response and handle diagram_config visibility
+        Add XP information to the response and handle diagram configuration visibility
         """
         data = super().to_representation(instance)
         
@@ -45,9 +45,23 @@ class ProblemSerializer(serializers.ModelSerializer):
         else:
             data['xp_value'] = instance.xp
         
-        # Only include diagram_config for diagram type problems
-        if instance.question_type != 'diagram':
+        # Handle diagram configuration for diagram type problems
+        if instance.question_type == 'diagram':
+            # Ensure mutual exclusivity in response
+            if instance.diagrams and instance.diagrams != []:
+                # Multiple diagrams format
+                data['diagram_config'] = None
+            elif instance.diagram_config and instance.diagram_config != {}:
+                # Single diagram format
+                data['diagrams'] = None
+            else:
+                # No diagrams configured
+                data['diagram_config'] = None
+                data['diagrams'] = None
+        else:
+            # Non-diagram problems should not include diagram fields
             data.pop('diagram_config', None)
+            data.pop('diagrams', None)
             
         return data
 
@@ -66,6 +80,32 @@ class ProblemSerializer(serializers.ModelSerializer):
         # Ensure content is a dictionary
         if data.get('content') == []:
             data['content'] = {}
+        
+        # Validate diagram configuration exclusivity
+        if data.get('question_type') == 'diagram':
+            diagram_config = data.get('diagram_config')
+            diagrams = data.get('diagrams')
+            
+            has_single_diagram = diagram_config and diagram_config != {}
+            has_multiple_diagrams = diagrams and diagrams != []
+            
+            if has_single_diagram and has_multiple_diagrams:
+                raise serializers.ValidationError({
+                    'diagram_config': 'Cannot use both diagram_config and diagrams simultaneously'
+                })
+            
+            if not has_single_diagram and not has_multiple_diagrams:
+                raise serializers.ValidationError({
+                    'diagram_config': 'Diagram problems require either diagram_config or diagrams'
+                })
+            
+            # Validate single diagram structure
+            if has_single_diagram:
+                self.validate_single_diagram(diagram_config)
+            
+            # Validate multiple diagrams structure
+            if has_multiple_diagrams:
+                self.validate_multiple_diagrams(diagrams)
             
         # Validate options for multiple choice questions
         if data.get('question_type') in ['multiple_choice', 'single_choice']:
@@ -108,6 +148,53 @@ class ProblemSerializer(serializers.ModelSerializer):
                     })
         
         return data
+
+    def validate_single_diagram(self, diagram_config):
+        """Validate single diagram configuration structure"""
+        required_fields = ['diagram_id', 'diagram_type', 'scale_weight', 'objects']
+        for field in required_fields:
+            if field not in diagram_config:
+                raise serializers.ValidationError({
+                    'diagram_config': f'Missing required field: {field}'
+                })
+        
+        # Validate objects
+        for obj in diagram_config.get('objects', []):
+            self.validate_diagram_object(obj)
+    
+    def validate_multiple_diagrams(self, diagrams):
+        """Validate multiple diagrams configuration structure"""
+        if not isinstance(diagrams, list) or len(diagrams) == 0:
+            raise serializers.ValidationError({
+                'diagrams': 'Diagrams must be a non-empty array'
+            })
+        
+        for i, diagram in enumerate(diagrams):
+            try:
+                self.validate_single_diagram(diagram)
+            except serializers.ValidationError as e:
+                # Re-raise with diagram index for clarity
+                raise serializers.ValidationError({
+                    'diagrams': f'Diagram {i}: {str(e.detail)}'
+                })
+    
+    def validate_diagram_object(self, obj):
+        """Validate diagram object structure"""
+        required_fields = ['type', 'color', 'text_color', 'number', 'position', 'layout']
+        for field in required_fields:
+            if field not in obj:
+                raise serializers.ValidationError({
+                    'diagram_config': f'Object missing required field: {field}'
+                })
+        
+        # Validate layout
+        layout = obj.get('layout', {})
+        layout_fields = ['rows', 'columns', 'position', 'alignment']
+        for field in layout_fields:
+            if field not in layout:
+                raise serializers.ValidationError({
+                    'diagram_config': f'Layout missing required field: {field}'
+                })
 
     def create(self, validated_data):
         """

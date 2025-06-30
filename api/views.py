@@ -22,6 +22,13 @@ from django.db.models import F
 from datetime import timedelta
 from leagues.models import League, UserLeague
 from leagues.serializers import LeagueSerializer
+from .admin_dashboard import AdminDashboardService
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.decorators import method_decorator
+from django.db.models import Max, Sum, Count
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -364,3 +371,191 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def unread_count(self, request):
         count = self.get_queryset().filter(is_read=False).count()
         return Response({'unread_count': count})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_dashboard(request):
+    """
+    Comprehensive admin dashboard with all LMS metrics
+    Requires superuser or staff permissions
+    """
+    # Check if user is admin/staff
+    if not (request.user.is_staff or request.user.is_superuser):
+        return Response({
+            'error': 'Access denied. Admin privileges required.'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        dashboard_data = AdminDashboardService.get_dashboard_data()
+        return Response({
+            'success': True,
+            'data': dashboard_data,
+            'generated_at': timezone.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error generating admin dashboard: {str(e)}")
+        return Response({
+            'error': 'Failed to generate dashboard data',
+            'detail': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_users_overview(request):
+    """
+    Detailed user overview for admin dashboard
+    """
+    if not (request.user.is_staff or request.user.is_superuser):
+        return Response({
+            'error': 'Access denied. Admin privileges required.'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        user_stats = AdminDashboardService.get_user_stats()
+        return Response({
+            'success': True,
+            'data': user_stats
+        })
+    except Exception as e:
+        logger.error(f"Error getting user overview: {str(e)}")
+        return Response({
+            'error': 'Failed to get user overview',
+            'detail': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_course_analytics(request):
+    """
+    Course analytics for admin dashboard
+    """
+    if not (request.user.is_staff or request.user.is_superuser):
+        return Response({
+            'error': 'Access denied. Admin privileges required.'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        course_stats = AdminDashboardService.get_course_stats()
+        learning_stats = AdminDashboardService.get_learning_stats()
+        
+        return Response({
+            'success': True,
+            'data': {
+                'courses': course_stats,
+                'learning': learning_stats
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting course analytics: {str(e)}")
+        return Response({
+            'error': 'Failed to get course analytics',
+            'detail': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_revenue_report(request):
+    """
+    Revenue and subscription analytics
+    """
+    if not (request.user.is_staff or request.user.is_superuser):
+        return Response({
+            'error': 'Access denied. Admin privileges required.'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        revenue_stats = AdminDashboardService.get_revenue_stats()
+        return Response({
+            'success': True,
+            'data': revenue_stats
+        })
+    except Exception as e:
+        logger.error(f"Error getting revenue report: {str(e)}")
+        return Response({
+            'error': 'Failed to get revenue report',
+            'detail': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_user_activity(request):
+    """
+    Real-time user activity monitoring
+    """
+    if not (request.user.is_staff or request.user.is_superuser):
+        return Response({
+            'error': 'Access denied. Admin privileges required.'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        # Get query parameters
+        time_period = request.query_params.get('period', 'today')  # today, week, month
+        limit = int(request.query_params.get('limit', 50))
+        
+        today = timezone.now().date()
+        
+        if time_period == 'today':
+            start_date = today
+        elif time_period == 'week':
+            start_date = today - timedelta(days=7)
+        elif time_period == 'month':
+            start_date = today - timedelta(days=30)
+        else:
+            start_date = today
+        
+        # Get active users in the time period
+        active_users = User.objects.filter(
+            daily_activities__date__gte=start_date
+        ).distinct().annotate(
+            last_activity=Max('daily_activities__date'),
+            total_problems=Sum('daily_activities__problems_solved'),
+            activity_days=Count('daily_activities__date', distinct=True)
+        ).order_by('-last_activity')[:limit]
+        
+        # Get recent activities
+        recent_activities = DailyActivity.objects.filter(
+            date__gte=start_date
+        ).select_related('user').order_by('-date', '-problems_solved')[:100]
+        
+        activity_data = []
+        for activity in recent_activities:
+            activity_data.append({
+                'user_id': activity.user.id,
+                'username': activity.user.username,
+                'email': activity.user.email,
+                'is_premium': activity.user.is_premium,
+                'date': activity.date,
+                'status': activity.status,
+                'problems_solved': activity.problems_solved,
+                'lesson_ids': activity.lesson_ids
+            })
+        
+        user_activity_data = []
+        for user in active_users:
+            user_activity_data.append({
+                'user_id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'is_premium': user.is_premium,
+                'last_activity': user.last_activity,
+                'total_problems': user.total_problems or 0,
+                'activity_days': user.activity_days,
+                'streak': getattr(user.streak, 'current_streak', 0) if hasattr(user, 'streak') else 0
+            })
+        
+        return Response({
+            'success': True,
+            'data': {
+                'active_users': user_activity_data,
+                'recent_activities': activity_data,
+                'time_period': time_period,
+                'total_active_users': len(user_activity_data)
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting user activity: {str(e)}")
+        return Response({
+            'error': 'Failed to get user activity',
+            'detail': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

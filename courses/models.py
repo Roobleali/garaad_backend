@@ -367,70 +367,6 @@ def get_default_content():
         }
     }
 
-def get_default_diagram_config():
-    return {
-        "type": "scale-weight",
-        "parameters": {
-            "weight": 40,
-            "items": [
-                {
-                    "type": "square",
-                    "count": 4,
-                    "color": "#3498db",
-                    "size": 20,
-                    "layout": {
-                        "rows": 2,
-                        "columns": 2,
-                        "position": "center",
-                        "alignment": "center"
-                    }
-                }
-            ],
-            "scale": {
-                "width": 300,
-                "height": 200,
-                "color": "#2c3e50"
-            }
-        },
-        "interactive": True,
-        "controls": [
-            {
-                "type": "slider",
-                "name": "weight",
-                "label": "Total Weight",
-                "min": 0,
-                "max": 100,
-                "step": 1,
-                "default": 40
-            },
-            {
-                "type": "slider",
-                "name": "items_count",
-                "label": "Number of Items",
-                "min": 1,
-                "max": 10,
-                "step": 1,
-                "default": 4
-            }
-        ],
-        "animations": {
-            "weight_change": {
-                "duration": 500,
-                "easing": "easeInOut"
-            },
-            "item_addition": {
-                "duration": 300,
-                "easing": "easeOut"
-            }
-        },
-        "styles": {
-            "background": "#f8f9fa",
-            "text_color": "#2c3e50",
-            "font_family": "Arial, sans-serif",
-            "font_size": "14px"
-        }
-    }
-
 class Problem(models.Model):
     """
     Reusable question entity (used in lessons or practice sets).
@@ -460,7 +396,7 @@ class Problem(models.Model):
         blank=True, help_text="Explanation of the answer")
     order = models.PositiveIntegerField(default=0)
     content = models.JSONField(default=dict, blank=True, null=True)
-    diagram_config = models.JSONField(default=get_default_diagram_config, blank=True)
+    diagram_config = models.JSONField(default=dict, blank=True)
     img = models.URLField(blank=True, null=True, help_text="URL of an image associated with the problem")
     xp = models.PositiveIntegerField(default=10, help_text="XP awarded for solving this problem")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -550,7 +486,7 @@ class Problem(models.Model):
         
         # Initialize diagram_config if it's a diagram problem
         if self.question_type == 'diagram' and not self.diagram_config:
-            self.diagram_config = get_default_diagram_config()
+            self.diagram_config = {}
         
         # Run validation
         self.clean()
@@ -869,124 +805,6 @@ class LeaderboardEntry(models.Model):
             time_period='monthly',
             defaults={'points': monthly_points}
         )
-
-# Default content structures for different block types
-default_content = {
-    'text': {
-        'text': '',
-        'style': None
-    },
-    'example': {
-        'title': '',
-        'description': '',
-        'code': '',
-        'language': 'python',
-        'explanation': None
-    },
-    'code': {
-        'code': '',
-        'language': 'python',
-        'explanation': None
-    },
-    'image': {
-        'url': '',
-        'caption': None,
-        'width': None,
-        'height': None,
-        'alt_text': None
-    },
-    'video': {
-        'url': '',
-        'title': '',
-        'description': None,
-        'duration': None
-    },
-    'quiz': {
-        'question': '',
-        'options': [],
-        'correct_answer': 0,
-        'explanation': None
-    }
-}
-
-# Block type specific content validators
-content_validators = {
-    'text': {
-        'text': str,
-        'style': (str, type(None))
-    },
-    'example': {
-        'title': str,
-        'description': str,
-        'code': str,
-        'language': str,
-        'explanation': (str, type(None))
-    },
-    'code': {
-        'code': str,
-        'language': str,
-        'explanation': (str, type(None))
-    },
-    'image': {
-        'url': str,
-        'caption': (str, type(None)),
-        'width': (int, type(None)),
-        'height': (int, type(None)),
-        'alt_text': (str, type(None))
-    },
-    'video': {
-        'url': str,
-        'title': str,
-        'description': (str, type(None)),
-        'duration': (int, type(None))
-    },
-    'quiz': {
-        'question': str,
-        'options': list,
-        'correct_answer': int,
-        'explanation': (str, type(None))
-    }
-}
-
-def validate_content(self, content):
-    """
-    Validates the content structure based on block type.
-    """
-    if not isinstance(content, dict):
-        raise ValidationError('Content must be a dictionary')
-
-    block_type = content.get('block_type')
-    if not block_type:
-        raise ValidationError('block_type is required')
-
-    if block_type not in self.default_content:
-        raise ValidationError(f'Invalid block_type: {block_type}')
-
-    # Get validators for this block type
-    validators = self.content_validators[block_type]
-    default = self.default_content[block_type]
-
-    # Merge with defaults for any missing fields
-    content_data = {**default, **content}
-
-    # Validate each field's type
-    for field, expected_type in validators.items():
-        value = content_data.get(field)
-        
-        if isinstance(expected_type, tuple):
-            # Handle fields that can accept multiple types
-            if value is not None and not isinstance(value, expected_type):
-                raise ValidationError(
-                    f'Field {field} must be one of types {expected_type}, got {type(value)}'
-                )
-        else:
-            # Handle fields with a single expected type
-            if not isinstance(value, expected_type):
-                raise ValidationError(
-                    f'Field {field} must be of type {expected_type}, got {type(value)}'
-                )
-
-    return content_data
 
 class DailyChallenge(models.Model):
     """

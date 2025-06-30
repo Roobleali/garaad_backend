@@ -77,7 +77,7 @@ class Migration(migrations.Migration):
                 ('explanation', models.TextField(blank=True, help_text='Explanation of the answer')),
                 ('order', models.PositiveIntegerField(default=0)),
                 ('content', models.JSONField(default=courses.models.get_default_content)),
-                ('diagram_config', models.JSONField(blank=True, default=courses.models.get_default_diagram_config)),
+                ('diagram_config', models.JSONField(blank=True, default=dict)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('lesson', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='problems', to='courses.lesson')),

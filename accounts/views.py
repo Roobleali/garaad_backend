@@ -524,3 +524,34 @@ def referral_stats_view(request):
     }
     
     return Response(stats, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_referral_code_view(request):
+    """
+    API endpoint to generate a referral code for the currently logged-in user.
+    This is useful for users who don't have a referral code yet.
+    """
+    user = request.user
+    
+    # Check if user already has a referral code
+    if user.referral_code:
+        return Response({
+            'error': 'User already has a referral code',
+            'referral_code': user.referral_code
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Generate a new referral code
+        user.referral_code = User.generate_referral_code()
+        user.save()
+        
+        return Response({
+            'message': 'Referral code generated successfully',
+            'referral_code': user.referral_code
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'error': f'Failed to generate referral code: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

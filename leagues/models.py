@@ -42,3 +42,26 @@ class UserLeague(models.Model):
             self.current_league = next_league
         
         self.save()
+    
+    def update_weekly_points(self, amount):
+        """Update weekly points for the user."""
+        self.weekly_xp += amount
+        self.total_xp += amount
+        self.monthly_xp += amount
+        self.save()
+    
+    def update_monthly_points(self, amount):
+        """Update monthly points for the user."""
+        self.monthly_xp += amount
+        self.total_xp += amount
+        self.save()
+    
+    def reset_weekly_points(self):
+        """Reset weekly points to 0."""
+        self.weekly_xp = 0
+        self.save()
+    
+    def reset_monthly_points(self):
+        """Reset monthly points to 0."""
+        self.monthly_xp = 0
+        self.save()

@@ -122,6 +122,9 @@ class Streak(models.Model):
             }
         )
         
+        # Update UserLeague points
+        user_league.update_weekly_points(amount)
+        
         next_league = League.objects.filter(min_xp__gt=user_league.current_league.min_xp).order_by('min_xp').first()
         if next_league and self.xp >= next_league.min_xp:
             old_league = user_league.current_league

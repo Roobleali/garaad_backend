@@ -30,7 +30,7 @@ from .serializers import (
     UserLeagueSerializer, LeagueSerializer, UserNotificationSerializer
 )
 from django.core.exceptions import ValidationError
-from .services import LearningProgressService, LeagueService
+from .services import LearningProgressService, LeagueService, NotificationService
 from django.core.cache import cache
 from django.conf import settings
 from django.utils.decorators import method_decorator
@@ -251,6 +251,9 @@ class LessonViewSet(viewsets.ModelViewSet):
 
             # Check for achievements
             self._check_lesson_achievements(request.user, lesson)
+
+            # Send real-time notification
+            NotificationService.send_lesson_completion_notification(request.user, lesson)
 
             return Response({
                 'status': 'success',
@@ -691,6 +694,9 @@ class ProblemViewSet(viewsets.ModelViewSet):
 
                 # Check for achievements
                 self._check_problem_achievements(user, problem)
+
+        # Send real-time notification
+        NotificationService.send_problem_completion_notification(user, problem)
 
         return Response({
             'is_correct': is_correct,

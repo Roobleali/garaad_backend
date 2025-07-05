@@ -80,6 +80,87 @@ class NotificationService:
         
         # --- 4. Send a general motivational reminder if no other conditions are met ---
         # (Implementation for this check would go here)
+    
+    @staticmethod
+    def process_scheduled_notifications():
+        """
+        Process all scheduled notifications that are due to be sent.
+        """
+        from courses.models import UserNotification
+        from django.utils import timezone
+        
+        now = timezone.now()
+        
+        # Get all due notifications
+        due_notifications = UserNotification.objects.filter(
+            is_sent=False,
+            scheduled_for__lte=now
+        )
+        
+        processed_count = 0
+        for notification in due_notifications:
+            try:
+                # Send the notification email
+                success = NotificationService.send_notification_email(notification)
+                if success:
+                    notification.is_sent = True
+                    notification.save()
+                    processed_count += 1
+                    print(f"Successfully processed notification {notification.id} for user {notification.user.username}")
+                else:
+                    print(f"Failed to process notification {notification.id} for user {notification.user.username}")
+            except Exception as e:
+                print(f"Error processing notification {notification.id}: {e}")
+        
+        print(f"Processed {processed_count} scheduled notifications")
+        return processed_count
+    
+    @staticmethod
+    def send_notification_email(notification):
+        """
+        Send an email for a specific notification.
+        """
+        try:
+            context = get_user_learning_context(notification.user)
+            if not context:
+                context = {
+                    'user': notification.user,
+                    'notification': notification,
+                    'site_url': 'https://garaad.org'
+                }
+            
+            # Add notification-specific context
+            context['notification'] = notification
+            context['notification_type'] = notification.notification_type
+            
+            # Choose template based on notification type
+            template_map = {
+                'streak_reminder': 'emails/streak_reminder.html',
+                'daily_goal': 'emails/daily_goal.html',
+                'achievement_earned': 'emails/achievement_earned.html',
+                'league_update': 'emails/league_update.html',
+                'challenge_available': 'emails/challenge_available.html'
+            }
+            
+            template_name = template_map.get(notification.notification_type, 'emails/general_notification.html')
+            
+            html = render_to_string(template_name, context)
+            success = send_resend_email(
+                to_email=notification.user.email,
+                subject=notification.title,
+                html=html
+            )
+            
+            if success:
+                print(f"Successfully sent {notification.notification_type} email to {notification.user.email}")
+                return True
+            else:
+                print(f"Failed to send {notification.notification_type} email to {notification.user.email}")
+                return False
+                
+        except Exception as e:
+            print(f"Error sending notification email: {e}")
+            return False
         
     @staticmethod
     def is_streak_broken(user):
@@ -160,6 +241,113 @@ class NotificationService:
                 print(f"Failed to send streak break reminder to user {user.id}.")
         except Exception as e:
             print(f"Failed to send streak break reminder to user {user.id}: {e}")
+
+    @staticmethod
+    def send_lesson_completion_notification(user, lesson):
+        """
+        Send a notification when a user completes a lesson.
+        """
+        try:
+            # Check if user should receive a notification
+            streak = Streak.objects.get(user=user)
+            
+            # If this is the first lesson of the day, send a motivational notification
+            if streak.last_activity_date != timezone.now().date():
+                context = get_user_learning_context(user)
+                if context:
+                    context['lesson_title'] = lesson.title
+                    context['course_name'] = lesson.course.title
+                    
+                    html = render_to_string('emails/lesson_completion.html', context)
+                    success = send_resend_email(
+                        to_email=user.email,
+                        subject='Hambalyo! Waad dhammaystirtay casharkaaga!',
+                        html=html
+                    )
+                    if success:
+                        print(f"Sent lesson completion notification to user {user.id}")
+                        
+        except Streak.DoesNotExist:
+            pass  # User doesn't have a streak record yet
+        except Exception as e:
+            print(f"Error sending lesson completion notification: {e}")
+
+    @staticmethod
+    def send_problem_completion_notification(user, problem):
+        """
+        Send a notification when a user completes a problem.
+        """
+        try:
+            # Check if user should receive a notification
+            streak = Streak.objects.get(user=user)
+            
+            # If user solved multiple problems in a row, send encouragement
+            recent_problems = UserProgress.objects.filter(
+                user=user,
+                status='completed',
+                completed_at__gte=timezone.now() - timedelta(hours=1)
+            ).count()
+            
+            if recent_problems >= 3:
+                context = get_user_learning_context(user)
+                if context:
+                    context['problems_solved'] = recent_problems
+                    context['problem_title'] = problem.question_text[:50] + "..." if len(problem.question_text) > 50 else problem.question_text
+                    
+                    html = render_to_string('emails/problem_completion.html', context)
+                    success = send_resend_email(
+                        to_email=user.email,
+                        subject='Waxaad ku mahadsantahay dadaalkaaga!',
+                        html=html
+                    )
+                    if success:
+                        print(f"Sent problem completion notification to user {user.id}")
+                        
+        except Streak.DoesNotExist:
+            pass  # User doesn't have a streak record yet
+        except Exception as e:
+            print(f"Error sending problem completion notification: {e}")
+
+    @staticmethod
+    def send_daily_reminder_notification(user):
+        """
+        Send a daily reminder notification to encourage learning.
+        """
+        try:
+            context = get_user_learning_context(user)
+            if not context:
+                context = {
+                    'user': user,
+                    'site_url': 'https://garaad.org'
+                }
+            
+            # Add daily motivation context
+            context['daily_motivation'] = True
+            context['streak_days'] = 0
+            
+            # Get user's current streak
+            try:
+                streak = Streak.objects.get(user=user)
+                context['streak_days'] = streak.current_streak
+            except Streak.DoesNotExist:
+                pass
+            
+            html = render_to_string('emails/daily_reminder.html', context)
+            success = send_resend_email(
+                to_email=user.email,
+                subject='Maanta waa maalin wanaagsan oo aad ku baran karto!',
+                html=html
+            )
+            if success:
+                print(f"Sent daily reminder to user {user.id}")
+                return True
+            else:
+                print(f"Failed to send daily reminder to user {user.id}")
+                return False
+                
+        except Exception as e:
+            print(f"Error sending daily reminder: {e}")
+            return False
 
 
 class LearningProgressService:

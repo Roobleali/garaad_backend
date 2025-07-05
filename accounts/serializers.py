@@ -46,37 +46,86 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = ['created_at', 'updated_at']
 
+class ReferredUserSerializer(serializers.ModelSerializer):
+    """Serializer for users referred by the current user"""
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'created_at']
+
 class UserSerializer(serializers.ModelSerializer):
     has_completed_onboarding = serializers.SerializerMethodField()
     profile = UserProfileSerializer(source='user_profile', required=False)
+    referral_count = serializers.SerializerMethodField()
+    referred_by_username = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name',
-                  'last_name', 'is_premium', 'has_completed_onboarding', 'profile', 'age']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_premium', 
+                  'has_completed_onboarding', 'profile', 'age', 'referral_code', 
+                  'referral_points', 'referral_count', 'referred_by_username']
 
     def get_has_completed_onboarding(self, obj):
         try:
             return obj.useronboarding.has_completed_onboarding
         except UserOnboarding.DoesNotExist:
             return False
+    
+    def get_referral_count(self, obj):
+        return obj.get_referral_count()
+    
+    def get_referred_by_username(self, obj):
+        return obj.referred_by.username if obj.referred_by else None
 
 class SignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     age = serializers.IntegerField(required=True, min_value=1, max_value=120)
+    referral_code = serializers.CharField(max_length=8, required=False, write_only=True)
     
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'age')
+        fields = ('id', 'username', 'email', 'password', 'age', 'referral_code')
+    
+    def validate_referral_code(self, value):
+        """Validate that the referral code exists and is valid"""
+        if value:
+            try:
+                User.objects.get(referral_code=value)
+            except User.DoesNotExist:
+                raise serializers.ValidationError("Invalid referral code")
+        return value
     
     def create(self, validated_data):
+        referral_code = validated_data.pop('referral_code', None)
+        
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
             age=validated_data['age']
         )
+        
+        # Handle referral if provided
+        if referral_code:
+            try:
+                referrer = User.objects.get(referral_code=referral_code)
+                user.referred_by = referrer
+                user.save()
+                
+                # Award points to referrer
+                referrer.award_referral_points(10)
+                
+            except User.DoesNotExist:
+                # This should not happen due to validation, but handle gracefully
+                pass
+        
         return user
+
+class ReferralSerializer(serializers.Serializer):
+    """Serializer for referral data"""
+    referral_code = serializers.CharField(max_length=8, read_only=True)
+    referral_points = serializers.IntegerField(read_only=True)
+    referral_count = serializers.IntegerField(read_only=True)
+    referred_users = ReferredUserSerializer(many=True, read_only=True)
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     username_field = User.EMAIL_FIELD

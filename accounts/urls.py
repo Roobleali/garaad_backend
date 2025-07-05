@@ -9,4 +9,6 @@ urlpatterns = [
     path('refresh/', views.CustomTokenRefreshView.as_view(), name='token_refresh'),
     path('verify-email/', views.verify_email, name='verify_email'),
     path('resend-verification/', views.resend_verification_email, name='resend_verification_email'),
+    path('referrals/', views.referrals_view, name='referrals'),
+    path('referral-stats/', views.referral_stats_view, name='referral_stats'),
 ]

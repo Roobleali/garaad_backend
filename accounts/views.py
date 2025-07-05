@@ -12,7 +12,9 @@ from .serializers import (
     SignupSerializer, 
     EmailTokenObtainPairSerializer, 
     UserOnboardingSerializer,
-    UserProfileSerializer
+    UserProfileSerializer,
+    ReferralSerializer,
+    ReferredUserSerializer
 )
 from django.db import transaction
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -174,7 +176,7 @@ def signup_view(request):
     serializer = SignupSerializer(data=request.data)
     if serializer.is_valid():
         with transaction.atomic():
-            # Create the user
+            # Create the user (referral handling is done in serializer)
             user = serializer.save()
             
             # Create onboarding record if onboarding data is provided
@@ -278,6 +280,7 @@ def register_user(request):
         email = request.data.get('email')
         password = request.data.get('password')
         age = request.data.get('age')
+        referral_code = request.data.get('referral_code')
 
         if not all([username, email, password, age]):
             return Response({
@@ -294,6 +297,16 @@ def register_user(request):
                 'error': 'Email already exists'
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Validate referral code if provided
+        referrer = None
+        if referral_code:
+            try:
+                referrer = User.objects.get(referral_code=referral_code)
+            except User.DoesNotExist:
+                return Response({
+                    'error': 'Invalid referral code'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         with transaction.atomic():
             user = User.objects.create_user(
                 username=username,
@@ -301,6 +314,14 @@ def register_user(request):
                 password=password,
                 age=age
             )
+
+            # Handle referral if provided
+            if referrer:
+                user.referred_by = referrer
+                user.save()
+                
+                # Award points to referrer
+                referrer.award_referral_points(10)
 
             # Send verification email
             try:
@@ -313,7 +334,8 @@ def register_user(request):
             refresh = RefreshToken.for_user(user)
             return Response({
                 'token': str(refresh.access_token),
-                'user': UserSerializer(user).data
+                'user': UserSerializer(user).data,
+                'message': 'User registered successfully. Please check your email for verification.'
             }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
@@ -457,3 +479,48 @@ def update_premium_status(request):
         return Response({
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def referrals_view(request):
+    """
+    API endpoint to fetch referral data for the currently logged-in user.
+    Returns:
+    - User's referral code
+    - Total referral points earned
+    - Count of referred users
+    - List of referred users with their details
+    """
+    user = request.user
+    referred_users = user.get_referral_list()
+    
+    # Serialize referred users
+    referred_users_data = ReferredUserSerializer(referred_users, many=True).data
+    
+    referral_data = {
+        'referral_code': user.referral_code,
+        'referral_points': user.referral_points,
+        'referral_count': user.get_referral_count(),
+        'referred_users': referred_users_data
+    }
+    
+    return Response(referral_data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def referral_stats_view(request):
+    """
+    API endpoint to fetch referral statistics for the currently logged-in user.
+    Returns summary statistics without detailed user information.
+    """
+    user = request.user
+    
+    stats = {
+        'referral_code': user.referral_code,
+        'referral_points': user.referral_points,
+        'referral_count': user.get_referral_count(),
+        'referred_by': user.referred_by.username if user.referred_by else None,
+        'is_referred_user': user.referred_by is not None
+    }
+    
+    return Response(stats, status=status.HTTP_200_OK)

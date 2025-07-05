@@ -17,6 +17,17 @@ class User(AbstractUser):
     age = models.PositiveIntegerField(null=True, blank=True)
     is_email_verified = models.BooleanField(default=False)
     
+    # Referral System fields
+    referral_code = models.CharField(max_length=8, unique=True, blank=True)
+    referred_by = models.ForeignKey(
+        'self', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='referrals'
+    )
+    referral_points = models.PositiveIntegerField(default=0)
+    
     # Subscription fields
     subscription_start_date = models.DateTimeField(null=True, blank=True)
     subscription_end_date = models.DateTimeField(null=True, blank=True)
@@ -64,6 +75,33 @@ class User(AbstractUser):
         db_table = 'accounts_user'
         verbose_name = 'User'
         verbose_name_plural = 'Users'
+
+    def save(self, *args, **kwargs):
+        # Generate referral code if not exists
+        if not self.referral_code:
+            self.referral_code = self.generate_referral_code()
+        super().save(*args, **kwargs)
+    
+    @classmethod
+    def generate_referral_code(cls):
+        """Generate a unique 8-character alphanumeric referral code"""
+        while True:
+            code = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+            if not cls.objects.filter(referral_code=code).exists():
+                return code
+    
+    def award_referral_points(self, points=10):
+        """Award points for successful referral"""
+        self.referral_points += points
+        self.save()
+    
+    def get_referral_count(self):
+        """Get count of users referred by this user"""
+        return self.referrals.count()
+    
+    def get_referral_list(self):
+        """Get list of users referred by this user"""
+        return self.referrals.all()
 
     def is_subscription_active(self):
         """Check if the user's subscription is still active"""

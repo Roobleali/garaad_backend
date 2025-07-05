@@ -42,11 +42,11 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # Must be at the top
     'django.middleware.security.SecurityMiddleware',
     # Whitenoise middleware for static files
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -92,6 +92,7 @@ else:
     CORS_ALLOWED_ORIGINS = [
         'https://garaad.org',
         'https://www.garaad.org',
+        'https://api.garaad.org',
         'https://garaad-backend-production.up.railway.app',
         'https://garaad-backend-development.up.railway.app'
     ]
@@ -100,6 +101,37 @@ else:
     env_origins = os.getenv('CORS_ALLOWED_ORIGINS')
     if env_origins:
         CORS_ALLOWED_ORIGINS.extend([origin.strip() for origin in env_origins.split(',')])
+
+# Additional CORS settings for better compatibility
+CORS_ALLOW_ALL_HEADERS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# CORS headers that should be allowed
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# For development, allow all origins (be careful in production)
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+
+# Additional settings for Authorization headers
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
 # Database configuration
 DATABASES = {

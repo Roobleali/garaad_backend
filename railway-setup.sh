@@ -10,6 +10,10 @@ done
 echo "Running database migrations..."
 python manage.py migrate
 
+# Fix league points calculation
+echo "Fixing league points calculation..."
+python manage.py fix_league_points
+
 # Create superuser if not exists
 echo "Creating superuser..."
 python manage.py shell -c "

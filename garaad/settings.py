@@ -94,13 +94,18 @@ else:
         'https://www.garaad.org',
         'https://api.garaad.org',
         'https://garaad-backend-production.up.railway.app',
-        'https://garaad-backend-development.up.railway.app'
+        'https://garaad-backend-development.up.railway.app',
+        'http://localhost:3000',  # For development testing
+        'http://127.0.0.1:3000'   # For development testing
     ]
 
     # Optionally, add origins from environment variable
     env_origins = os.getenv('CORS_ALLOWED_ORIGINS')
     if env_origins:
-        CORS_ALLOWED_ORIGINS.extend([origin.strip() for origin in env_origins.split(',')])
+        additional_origins = [origin.strip() for origin in env_origins.split(',')]
+        for origin in additional_origins:
+            if origin not in CORS_ALLOWED_ORIGINS:
+                CORS_ALLOWED_ORIGINS.append(origin)
 
 # Additional CORS settings for better compatibility
 CORS_ALLOW_ALL_HEADERS = True

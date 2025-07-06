@@ -420,6 +420,13 @@ def update_premium_status(request):
         subscription_start_date = request.data.get('subscription_start_date')
         subscription_end_date = request.data.get('subscription_end_date')
         
+        # Payment-related fields
+        payment_method = request.data.get('payment_method', 'admin')
+        amount = request.data.get('amount')
+        currency = request.data.get('currency', 'USD')
+        waafi_transaction_id = request.data.get('waafi_transaction_id')
+        waafi_reference_id = request.data.get('waafi_reference_id')
+        
         if is_premium is None:
             return Response({
                 'error': 'is_premium field is required'
@@ -429,6 +436,71 @@ def update_premium_status(request):
             return Response({
                 'error': 'subscription_type is required when setting premium status'
             }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Import Order models here to avoid circular imports
+        from payment.models import Order, OrderItem
+        
+        order = None
+        
+        # Create order record if activating premium
+        if is_premium:
+            # Define subscription prices and names
+            subscription_prices = {
+                'monthly': {'USD': 9.99, 'EUR': 8.99, 'SOS': 500},
+                'yearly': {'USD': 99.99, 'EUR': 89.99, 'SOS': 5000},
+                'lifetime': {'USD': 299.99, 'EUR': 269.99, 'SOS': 15000}
+            }
+            
+            subscription_names = {
+                'monthly': 'Ishtiraak Bishii',
+                'yearly': 'Ishtiraak Sannadkii',
+                'lifetime': 'Ishtiraak Daa\'im'
+            }
+            
+            # Use provided amount or default price
+            if not amount:
+                amount = subscription_prices.get(subscription_type, {}).get(currency, 0)
+            
+            # Create order
+            order = Order.objects.create(
+                user=user,
+                total_amount=amount,
+                currency=currency,
+                payment_method=payment_method,
+                status='completed',  # Mark as completed since we're activating premium
+                description=f'Garaad {subscription_type.title()} Subscription',
+                paid_at=timezone.now(),
+                waafi_transaction_id=waafi_transaction_id,
+                waafi_reference_id=waafi_reference_id,
+                metadata={
+                    'activated_via': 'admin_update',
+                    'processed_at': timezone.now().isoformat()
+                }
+            )
+            
+            # Set subscription dates
+            start_date = timezone.now() if not subscription_start_date else timezone.datetime.fromisoformat(subscription_start_date.replace('Z', '+00:00'))
+            end_date = None
+            
+            if subscription_type == 'monthly':
+                end_date = start_date + timedelta(days=30) if not subscription_end_date else timezone.datetime.fromisoformat(subscription_end_date.replace('Z', '+00:00'))
+            elif subscription_type == 'yearly':
+                end_date = start_date + timedelta(days=365) if not subscription_end_date else timezone.datetime.fromisoformat(subscription_end_date.replace('Z', '+00:00'))
+            # lifetime has no end date
+            
+            # Create order item
+            OrderItem.objects.create(
+                order=order,
+                item_type='subscription',
+                name=subscription_names[subscription_type],
+                description=f'Ishtiraak Garaad {subscription_type}',
+                unit_price=amount,
+                quantity=1,
+                total_price=amount,
+                subscription_type=subscription_type,
+                subscription_start_date=start_date,
+                subscription_end_date=end_date
+            )
             
         # Update subscription details
         user.is_premium = is_premium
@@ -463,17 +535,31 @@ def update_premium_status(request):
             data={
                 'premium_status': is_premium,
                 'subscription_type': subscription_type,
-                'subscription_end_date': user.subscription_end_date.isoformat() if user.subscription_end_date else None
+                'subscription_end_date': user.subscription_end_date.isoformat() if user.subscription_end_date else None,
+                'order_id': str(order.id) if order else None
             }
         )
         
-        return Response({
+        response_data = {
             'message': 'Premium status updated successfully',
             'is_premium': user.is_premium,
             'subscription_type': user.subscription_type,
             'subscription_start_date': user.subscription_start_date.isoformat() if user.subscription_start_date else None,
             'subscription_end_date': user.subscription_end_date.isoformat() if user.subscription_end_date else None
-        })
+        }
+        
+        # Add order information if created
+        if order:
+            response_data['order'] = {
+                'id': str(order.id),
+                'order_number': order.order_number,
+                'total_amount': str(order.total_amount),
+                'currency': order.currency,
+                'payment_method': order.payment_method,
+                'status': order.status
+            }
+        
+        return Response(response_data)
         
     except Exception as e:
         return Response({

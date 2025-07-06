@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'accounts',
     'courses',  # Learning management system
     'leagues',  # Add the leagues app
+    'payment',  # Payment and order history
 ]
 
 MIDDLEWARE = [
@@ -76,11 +77,12 @@ else:
     CSRF_COOKIE_SECURE = False
 
 # Allow all hosts in development, restrict in production
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0'] if DEBUG else [
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0', 'testserver'] if DEBUG else [
     'api.garaad.org',
     '127.0.0.1',
     'localhost',
-    '0.0.0.0'
+    '0.0.0.0',
+    'testserver'  # For testing
 ]
 
 # CORS settings

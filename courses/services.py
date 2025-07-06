@@ -60,6 +60,7 @@ class NotificationService:
     def check_and_send_real_time_reminders(user):
         """
         Checks for various real-time events and sends the highest priority notification.
+        Uses last_active field for more accurate activity tracking.
         """
         # --- 1. Check for Streak Break ---
         streak_broken, streak_count = NotificationService.is_streak_broken(user)
@@ -75,9 +76,13 @@ class NotificationService:
             NotificationService.send_inactivity_reminder(user)
             return
 
-        # --- 3. Check for Mid-Lesson Drop-off ---
-        # (Implementation for this check would go here)
-        
+        # --- 3. Check for Daily Reminder ---
+        # Check if user hasn't been active today
+        if not NotificationService.is_user_active_today(user):
+            print(f"Condition met: User {user.id} not active today.")
+            NotificationService.send_daily_reminder_notification(user)
+            return
+
         # --- 4. Send a general motivational reminder if no other conditions are met ---
         # (Implementation for this check would go here)
     
@@ -163,16 +168,38 @@ class NotificationService:
             return False
         
     @staticmethod
+    def is_user_active_today(user):
+        """
+        Check if user has been active today using last_active field
+        """
+        if not user.last_active:
+            return False
+        
+        today = timezone.now().date()
+        last_active_date = user.last_active.date()
+        
+        return last_active_date == today
+
+    @staticmethod
     def is_streak_broken(user):
         """
-        Checks if a user's streak is broken (last activity > 1 day ago).
+        Checks if a user's streak is broken using last_active field.
+        More accurate than using streak.last_activity_date alone.
         """
         try:
             streak = Streak.objects.get(user=user)
-            if streak.last_activity_date:
-                days_since_last_activity = (timezone.now().date() - streak.last_activity_date).days
-                if days_since_last_activity > 1 and streak.current_streak > 0:
-                    return True, streak.current_streak
+            
+            # Use last_active if available, otherwise fall back to streak.last_activity_date
+            if user.last_active:
+                last_activity_date = user.last_active.date()
+            elif streak.last_activity_date:
+                last_activity_date = streak.last_activity_date
+            else:
+                return False, 0
+            
+            days_since_last_activity = (timezone.now().date() - last_activity_date).days
+            if days_since_last_activity > 1 and streak.current_streak > 0:
+                return True, streak.current_streak
         except Streak.DoesNotExist:
             return False, 0
         return False, 0
@@ -180,15 +207,19 @@ class NotificationService:
     @staticmethod
     def get_inactivity_days(user):
         """
-        Calculates the number of days a user has been inactive.
+        Calculates the number of days a user has been inactive using last_active field.
         """
+        if user.last_active:
+            return (timezone.now().date() - user.last_active.date()).days
+        
+        # Fallback to streak.last_activity_date if last_active is not available
         try:
             streak = Streak.objects.get(user=user)
             if streak.last_activity_date:
                 return (timezone.now().date() - streak.last_activity_date).days
         except Streak.DoesNotExist:
-            return None # Can't determine inactivity if there's no streak record
-        return 0
+            return None  # Can't determine inactivity if there's no activity record
+        return None
 
     @staticmethod
     def send_inactivity_reminder(user):

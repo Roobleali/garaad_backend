@@ -559,3 +559,57 @@ def admin_user_activity(request):
             'error': 'Failed to get user activity',
             'detail': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_activity(request):
+    """
+    Manually update user activity for frontend integration.
+    This endpoint can be called periodically by the frontend to ensure
+    activity is tracked even when users are just browsing.
+    """
+    try:
+        from core.middleware import UserActivityMiddleware
+        
+        # Create middleware instance and update activity
+        middleware = UserActivityMiddleware(lambda req: None)
+        middleware._update_user_activity(request.user)
+        
+        # Get updated streak info
+        streak, created = Streak.objects.get_or_create(user=request.user)
+        
+        # Get user's activity status
+        today = timezone.now().date()
+        activity, created = DailyActivity.objects.get_or_create(
+            user=request.user,
+            date=today,
+            defaults={'status': 'partial', 'problems_solved': 0, 'lesson_ids': []}
+        )
+        
+        return Response({
+            'success': True,
+            'message': 'Activity updated successfully',
+            'user': {
+                'last_active': request.user.last_active.isoformat() if request.user.last_active else None,
+                'last_login': request.user.last_login.isoformat() if request.user.last_login else None,
+            },
+            'streak': {
+                'current_streak': streak.current_streak,
+                'max_streak': streak.max_streak,
+                'last_activity_date': streak.last_activity_date.isoformat() if streak.last_activity_date else None
+            },
+            'activity': {
+                'date': today.isoformat(),
+                'status': activity.status,
+                'problems_solved': activity.problems_solved,
+                'lesson_ids': activity.lesson_ids
+            },
+            'activity_date': today.isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating activity: {str(e)}")
+        return Response({
+            'error': 'Failed to update activity',
+            'detail': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

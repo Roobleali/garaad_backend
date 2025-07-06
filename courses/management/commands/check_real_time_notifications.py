@@ -62,6 +62,7 @@ class Command(BaseCommand):
     def check_user_notifications(self, user, force_send=False, dry_run=False):
         """
         Check and send real-time notifications for a specific user.
+        Uses last_active field for more accurate activity tracking.
         """
         try:
             # Check for streak break
@@ -81,16 +82,11 @@ class Command(BaseCommand):
                 return True
             
             # Check for daily reminder (if user hasn't been active today)
-            try:
-                from api.models import Streak
-                streak = Streak.objects.get(user=user)
-                if streak.last_activity_date != timezone.now().date():
-                    self.stdout.write(f"  ✓ Sending daily reminder to {user.username}")
-                    if not dry_run:
-                        NotificationService.send_daily_reminder_notification(user)
-                    return True
-            except Streak.DoesNotExist:
-                pass
+            if not NotificationService.is_user_active_today(user):
+                self.stdout.write(f"  ✓ Sending daily reminder to {user.username}")
+                if not dry_run:
+                    NotificationService.send_daily_reminder_notification(user)
+                return True
             
             # Run comprehensive check
             if not dry_run:

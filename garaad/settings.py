@@ -52,6 +52,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Custom activity tracking middleware
+    'core.middleware.UserActivityMiddleware',
+    'core.middleware.SessionActivityMiddleware',
+    'core.middleware.LearningActivityMiddleware',
 ]
 
 # Security settings - only apply in production
@@ -140,10 +144,10 @@ CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
 # Database configuration
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
+    'default': dj_database_url.parse(
+        'postgresql://postgres.icbgyzaihxqcfjzwllll:Garaad%233344@aws-0-us-east-1.pooler.supabase.com:5432/postgres',
         conn_max_age=600,
-        conn_health_checks=True,
+        ssl_require=True
     )
 }
 

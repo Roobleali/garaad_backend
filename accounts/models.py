@@ -17,6 +17,9 @@ class User(AbstractUser):
     age = models.PositiveIntegerField(null=True, blank=True)
     is_email_verified = models.BooleanField(default=False)
     
+    # New field for robust activity tracking
+    last_active = models.DateTimeField(null=True, blank=True)
+    
     # Referral System fields
     referral_code = models.CharField(max_length=8, unique=True, blank=True)
     referred_by = models.ForeignKey(

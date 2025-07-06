@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from email_verification_setup import send_verification_email
+from accounts.utils import send_verification_email
 
 User = get_user_model()
 

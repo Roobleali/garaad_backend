@@ -271,11 +271,18 @@ class GamificationViewSet(viewsets.ViewSet):
                 'problems_to_next': streak.problems_to_next_streak
             },
             'league': {
-                'current': LeagueSerializer(user_league.current_league).data,
+                'current': {
+                    'id': user_league.current_league.id,
+                    'name': user_league.current_league.somali_name,
+                    'somali_name': user_league.current_league.somali_name,
+                    'display_name': user_league.current_league.somali_name,
+                    'min_xp': user_league.current_league.min_xp
+                },
                 'next': {
                     'id': next_league.id,
-                    'name': next_league.name,
+                    'name': next_league.somali_name,
                     'somali_name': next_league.somali_name,
+                    'display_name': next_league.somali_name,
                     'min_xp': next_league.min_xp,
                     'points_needed': next_league.min_xp - streak.xp
                 } if next_league else None

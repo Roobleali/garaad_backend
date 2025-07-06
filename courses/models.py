@@ -1199,67 +1199,6 @@ class UserNotification(models.Model):
             message=f'Waad ku guulaysatay booska {league_position} tartanka {league_name}!',
         )
 
-class League(models.Model):
-    """
-    Represents a league level in the competitive system.
-    """
-    LEVELS = (
-        ('hydrogen', 'Hydrogen'),
-        ('lithium', 'Lithium'),
-        ('carbon', 'Carbon'),
-        ('neon', 'Neon'),
-        ('titanium', 'Titanium'),
-        ('xenon', 'Xenon'),
-        ('barium', 'Barium'),
-        ('neodymium', 'Neodymium'),
-        ('tungsten', 'Tungsten'),
-        ('einsteinium', 'Einsteinium'),
-    )
-
-    level = models.CharField(max_length=20, choices=LEVELS, unique=True)
-    promotion_threshold = models.PositiveIntegerField(default=15)
-    stay_threshold = models.PositiveIntegerField(default=10)
-    demotion_threshold = models.PositiveIntegerField(default=5)
-    min_xp = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['min_xp']
-
-    def __str__(self):
-        return self.get_level_display()
-
-    @classmethod
-    def get_league_for_xp(cls, xp):
-        """Get the appropriate league for a user's XP"""
-        return cls.objects.filter(min_xp__lte=xp).order_by('-min_xp').first()
-
-    @classmethod
-    def get_next_league(cls, current_league):
-        """Get the next league level"""
-        if not current_league:
-            return cls.objects.first()
-        
-        leagues = list(cls.objects.all().order_by('min_xp'))
-        current_index = leagues.index(current_league)
-        
-        if current_index < len(leagues) - 1:
-            return leagues[current_index + 1]
-        return None
-
-    @classmethod
-    def get_previous_league(cls, current_league):
-        """Get the previous league level"""
-        if not current_league:
-            return None
-        
-        leagues = list(cls.objects.all().order_by('min_xp'))
-        current_index = leagues.index(current_league)
-        
-        if current_index > 0:
-            return leagues[current_index - 1]
-        return None
-
 class UserProblem(models.Model):
     """
     Tracks a user's progress on individual problems.
@@ -1315,7 +1254,7 @@ class UserProblem(models.Model):
             streak.award_xp(self.xp_earned, 'problem')
             
             # Update league standings
-            from leagues.models import UserLeague
+            from leagues.models import UserLeague, League
             user_league, _ = UserLeague.objects.get_or_create(user=self.user, defaults={'current_league': League.objects.first()})
             user_league.update_weekly_points(self.xp_earned)
             

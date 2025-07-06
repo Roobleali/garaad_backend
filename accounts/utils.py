@@ -4,6 +4,8 @@ from .models import EmailVerification
 from decouple import config
 import logging
 import requests
+from django.template.loader import render_to_string
+from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +17,12 @@ TEST_MODE = config('RESEND_TEST_MODE', default='True') == 'True'
 
 def send_verification_email(user):
     """
-    Send a verification email to the user with a verification code
+    Send a verification email to the user with a verification code using the modern template
     """
-    # Generate verification code
-    code = EmailVerification.generate_code()
+    # Generate 5-digit verification code
+    import random
+    import string
+    code = ''.join(random.choices(string.digits, k=5))
     
     # Save verification code
     verification = EmailVerification.objects.create(
@@ -40,59 +44,60 @@ def send_verification_email(user):
             "Content-Type": "application/json"
         }
         
+        # Render the email template
+        context = {
+            'user_email': user.email,
+            'verification_code': code,
+            'resend_url': f"{settings.FRONTEND_URL}/resend-verification"
+        }
+        
+        html_content = render_to_string('emails/email_verification.html', context)
+        
+        # Create a plain text version
+        text_content = f"""
+        Ku soo dhowow Garaad!
+
+        Koodkaaga xaqiijinta waa: {code}
+
+        Koodkaan wuxuu dhacayaa 10 daqiiqo gudahood.
+
+        Haddii aadan codsanin xaqiijintan, fadlan iska dhaaf emailkaan.
+
+        Mahadsanid,
+        Kooxda Garaad
+        """
+        
         data = {
             "from": FROM_EMAIL,
             "to": to_email,
-            "subject": "Xaqiiji Emailkaaga - Garaad ✅",
-            "html": f"""
-            <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: linear-gradient(135deg, #f8fafc 0%, #e0e7ef 100%); border-radius: 16px; box-shadow: 0 4px 16px rgba(44, 62, 80, 0.08);\">
-                <div style=\"text-align: center; margin-bottom: 24px;\">
-                    <img src=\"https://www.garaad.org/favicon.ico">
-                    <h1 style=\"color: #3498DB; font-size: 2rem; margin: 0;\">Garaad 📚</h1>
-                </div>
-                <div style=\"text-align: center; margin-bottom: 20px;\">
-                    <span style=\"font-size: 2.5rem;\">✅📧</span>
-                </div>
-                <h2 style=\"color: #2C3E50; text-align: center; margin-bottom: 18px; font-size: 1.5rem;\">Ku soo dhowow Garaad!</h2>
-                <p style=\"color: #34495E; font-size: 1.1rem; line-height: 1.7; margin-bottom: 18px; text-align: center;\">
-                    Waad ku mahadsantahay inaad is diiwaangelisay. <br>Fadlan isticmaal koodka hoose si aad u xaqiijiso cinwaanka emailkaaga:
-                </p>
-                <div style=\"background: #eaf6fb; padding: 28px 0; border-radius: 10px; text-align: center; margin: 24px 0; border: 2px dashed #3498DB;\">
-                    <span style=\"font-size: 2.2rem; color: #3498DB; font-weight: bold; letter-spacing: 8px;\">{code}</span>
-                </div>
-                <div style=\"background: #fffbe6; padding: 14px; border-radius: 8px; margin: 18px 0; text-align: center;\">
-                    <span style=\"font-size: 1.1rem; color: #e67e22;\">⏰ <strong>Xasuuso:</strong> Koodhkani wuxuu dhacayaa 10 daqiiqo gudahood.</span>
-                </div>
-                <p style=\"color: #7F8C8D; font-size: 1rem; line-height: 1.5; margin: 22px 0; text-align: center;\">
-                    Haddii aadan codsanin xaqiijintan, fadlan iska dhaaf emailkaan.
-                </p>
-                <div style=\"border-top: 1px solid #ECF0F1; margin-top: 28px; padding-top: 18px; text-align: center;\">
-                    <span style=\"font-size: 1.1rem; color: #2C3E50;\">Mahadsanid, <span style=\"font-weight: bold;\">Kooxda Garaad</span> 🙏</span>
-                </div>
-            </div>
-            """
+            "subject": "Xaqiiji Emailkaaga - Garaad ⚠️",
+            "html": html_content,
+            "text": text_content
         }
         
-        logger.info(f"Sending email with data: {data}")
+        logger.info(f"Sending email with template to: {to_email}")
         
         response = requests.post(
             "https://api.resend.com/emails",
             headers=headers,
-            json=data
+            json=data,
+            timeout=30
         )
         
         logger.info(f"Resend API Response Status: {response.status_code}")
         logger.info(f"Resend API Response: {response.text}")
         
-        if response.status_code != 200:
-            raise Exception(f"Failed to send email: {response.text}")
+        if response.status_code == 200:
+            logger.info(f"Email sent successfully to {to_email}")
+            return True
+        else:
+            raise Exception(f"Failed to send email: Status {response.status_code}, Response: {response.text}")
             
-        return True
     except Exception as e:
         logger.error(f"Failed to send verification email: {str(e)}")
         # If email sending fails, delete the verification code
         verification.delete()
-        raise e 
+        raise e
 
 def send_resend_email(to_email, subject, html, text=None):
     """

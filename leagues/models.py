@@ -16,7 +16,7 @@ class League(models.Model):
         ordering = ['order']
         
     def __str__(self):
-        return f"{self.name} ({self.somali_name})"
+        return self.somali_name  # Display only Somali name
 
 class UserLeague(models.Model):
     """Model tracking user's league progress and XP."""

@@ -46,7 +46,9 @@ class LeagueViewSet(viewsets.ModelViewSet):
             data = {
                 'current_league': {
                     'id': user_league.current_league.id,
-                    'name': str(user_league.current_league),
+                    'name': user_league.current_league.somali_name,
+                    'somali_name': user_league.current_league.somali_name,
+                    'display_name': user_league.current_league.somali_name,
                     'min_xp': user_league.current_league.min_xp
                 },
                 'current_points': user_league.weekly_xp,
@@ -59,7 +61,9 @@ class LeagueViewSet(viewsets.ModelViewSet):
                 },
                 'next_league': {
                     'id': next_league.id,
-                    'name': str(next_league),
+                    'name': next_league.somali_name,
+                    'somali_name': next_league.somali_name,
+                    'display_name': next_league.somali_name,
                     'min_xp': next_league.min_xp,
                     'points_needed': next_league.min_xp - user_league.weekly_xp
                 } if next_league else None

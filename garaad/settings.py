@@ -230,6 +230,9 @@ AUTH_USER_MODEL = 'accounts.User'
 # Site URL for email templates
 SITE_URL = os.getenv('SITE_URL', 'https://garaad.org')
 
+# Frontend URL for email links
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://garaad.org' if not DEBUG else 'http://localhost:3000')
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

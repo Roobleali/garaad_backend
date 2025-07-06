@@ -2,9 +2,11 @@ from rest_framework import serializers
 from .models import League, UserLeague
 
 class LeagueSerializer(serializers.ModelSerializer):
+    display_name = serializers.CharField(source='somali_name', read_only=True)
+    
     class Meta:
         model = League
-        fields = ['id', 'name', 'somali_name', 'description', 'min_xp', 'order', 'icon']
+        fields = ['id', 'name', 'somali_name', 'display_name', 'description', 'min_xp', 'order', 'icon']
 
 class UserLeagueSerializer(serializers.ModelSerializer):
     current_league = LeagueSerializer(read_only=True)
@@ -19,8 +21,9 @@ class UserLeagueSerializer(serializers.ModelSerializer):
         if next_league:
             return {
                 'id': next_league.id,
-                'name': next_league.name,
+                'name': next_league.somali_name,
                 'somali_name': next_league.somali_name,
+                'display_name': next_league.somali_name,
                 'min_xp': next_league.min_xp,
                 'points_needed': next_league.min_xp - obj.total_xp
             }

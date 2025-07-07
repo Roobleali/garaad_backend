@@ -62,7 +62,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_premium', 
                   'has_completed_onboarding', 'profile', 'age', 'referral_code', 
-                  'referral_points', 'referral_count', 'referred_by_username']
+                  'referral_points', 'referral_count', 'referred_by_username', 'is_email_verified']
 
     def get_has_completed_onboarding(self, obj):
         try:

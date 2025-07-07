@@ -53,6 +53,7 @@ def custom_login(request):
                 'last_name': user.last_name,
                 'is_premium': user.is_premium,
                 'age': user.age,
+                'is_email_verified': user.is_email_verified,
                 'has_completed_onboarding': user.useronboarding.has_completed_onboarding if hasattr(user, 'useronboarding') else False
             }
         })

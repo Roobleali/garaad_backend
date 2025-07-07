@@ -19,10 +19,8 @@ def send_verification_email(user):
     """
     Send a verification email to the user with a verification code using the modern template
     """
-    # Generate 5-digit verification code
-    import random
-    import string
-    code = ''.join(random.choices(string.digits, k=5))
+    # Generate 6-digit verification code using the model method
+    code = EmailVerification.generate_code()
     
     # Save verification code
     verification = EmailVerification.objects.create(

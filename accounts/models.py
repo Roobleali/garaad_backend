@@ -281,14 +281,14 @@ class UserProfile(models.Model):
 
 class EmailVerification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    code = models.CharField(max_length=5)
+    code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     is_used = models.BooleanField(default=False)
 
     @classmethod
     def generate_code(cls):
-        """Generate a random 5-digit code"""
-        return ''.join(random.choices(string.digits, k=5))
+        """Generate a random 6-digit code"""
+        return ''.join(random.choices(string.digits, k=6))
 
     def is_expired(self):
         """Check if the verification code has expired (10 minutes)."""

@@ -1,0 +1,22 @@
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from . import views
+
+# Create router for ViewSets
+router = DefaultRouter()
+router.register(r'campuses', views.CampusViewSet, basename='campus')
+router.register(r'rooms', views.RoomViewSet, basename='room')
+router.register(r'posts', views.PostViewSet, basename='post')
+router.register(r'comments', views.CommentViewSet, basename='comment')
+router.register(r'profiles', views.UserCommunityProfileViewSet, basename='profile')
+router.register(r'notifications', views.CommunityNotificationViewSet, basename='notification')
+
+app_name = 'community'
+
+urlpatterns = [
+    # Include router URLs
+    path('api/', include(router.urls)),
+    
+    # Additional custom endpoints can be added here if needed
+    # path('api/custom-endpoint/', views.custom_view, name='custom_endpoint'),
+] 

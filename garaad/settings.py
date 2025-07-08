@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'accounts',
     'courses',  # Learning management system
     'leagues',  # Add the leagues app
+    'community',  # Community system with campuses, rooms, posts
     'payment',  # Payment and order history
 ]
 

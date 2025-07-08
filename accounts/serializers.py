@@ -57,12 +57,14 @@ class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(source='user_profile', required=False)
     referral_count = serializers.SerializerMethodField()
     referred_by_username = serializers.SerializerMethodField()
+    profile_picture = serializers.ImageField(required=False)
 
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_premium', 
                   'has_completed_onboarding', 'profile', 'age', 'referral_code', 
-                  'referral_points', 'referral_count', 'referred_by_username', 'is_email_verified']
+                  'referral_points', 'referral_count', 'referred_by_username', 'is_email_verified',
+                  'profile_picture', 'bio']
 
     def get_has_completed_onboarding(self, obj):
         try:
@@ -157,3 +159,24 @@ class UserOnboardingSerializer(serializers.ModelSerializer):
         model = UserOnboarding
         fields = ('goal', 'learning_approach', 'topic', 'math_level', 'minutes_per_day', 'preferred_study_time', 'has_completed_onboarding')
         read_only_fields = ('has_completed_onboarding',)
+
+class ProfilePictureSerializer(serializers.ModelSerializer):
+    """Dedicated serializer for profile picture uploads"""
+    profile_picture = serializers.ImageField()
+    
+    class Meta:
+        model = User
+        fields = ['profile_picture']
+    
+    def validate_profile_picture(self, value):
+        """Validate profile picture upload"""
+        # Check file size (max 5MB)
+        if value.size > 5 * 1024 * 1024:
+            raise serializers.ValidationError("Sawirka profile-ka ma noqon karo in uu ka weyn yahay 5MB.")
+        
+        # Check file format
+        valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
+        if not any(value.name.lower().endswith(ext) for ext in valid_extensions):
+            raise serializers.ValidationError("Nooca faylka aan la aqbalin. Isticmaal JPG, PNG, GIF, ama BMP.")
+        
+        return value

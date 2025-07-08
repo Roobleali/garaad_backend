@@ -4,6 +4,8 @@ from django.http import HttpResponse, JsonResponse
 from django.db import connections
 from django.db.utils import OperationalError
 from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.conf.urls.static import static
 import json
 
 User = get_user_model()
@@ -86,6 +88,8 @@ urlpatterns = [
     path('api/lms/', include('courses.urls')),
     # League and Gamification API
     path('api/league/', include('leagues.urls')),
+    # Community System API
+    path('api/community/', include('community.urls')),
     # Payment and Order History API
     path('api/payment/', include('payment.urls')),
 
@@ -95,3 +99,7 @@ urlpatterns = [
     path('reset-password/', reset_admin_password, name='reset_admin_password'),
     path('', health_check, name='health_check_root'),
 ]
+
+# Serve media files during development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

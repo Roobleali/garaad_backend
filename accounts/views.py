@@ -14,7 +14,8 @@ from .serializers import (
     UserOnboardingSerializer,
     UserProfileSerializer,
     ReferralSerializer,
-    ReferredUserSerializer
+    ReferredUserSerializer,
+    ProfilePictureSerializer
 )
 from django.db import transaction
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -349,6 +350,80 @@ def register_user(request):
 def get_user_profile(request):
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_user_profile(request):
+    """Update user profile data including profile picture"""
+    try:
+        user = request.user
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_profile_picture(request):
+    """Upload or update user profile picture"""
+    try:
+        if 'profile_picture' not in request.FILES:
+            return Response({
+                'error': 'Sawirka profile-ka ayaa loo baahan yahay'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = ProfilePictureSerializer(
+            request.user, 
+            data={'profile_picture': request.FILES['profile_picture']},
+            partial=True
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            
+            # Return updated user data
+            user_serializer = UserSerializer(request.user)
+            return Response({
+                'message': 'Sawirka profile-ka ayaa si guul leh loo cusbooneysiyey',
+                'user': user_serializer.data
+            })
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_profile_picture(request):
+    """Delete user profile picture"""
+    try:
+        user = request.user
+        if user.profile_picture:
+            # Delete the file from storage
+            user.profile_picture.delete()
+            user.profile_picture = None
+            user.save()
+            
+            return Response({
+                'message': 'Sawirka profile-ka ayaa la tirtiray'
+            })
+        else:
+            return Response({
+                'error': 'Ma jiro sawir profile ah'
+            }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])

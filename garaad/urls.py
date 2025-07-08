@@ -7,6 +7,11 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.conf.urls.static import static
 import json
+from media_views import (
+    serve_media_file, serve_profile_picture, 
+    serve_community_post_image, serve_course_image,
+    media_health_check
+)
 
 User = get_user_model()
 
@@ -92,6 +97,13 @@ urlpatterns = [
     path('api/community/', include('community.urls')),
     # Payment and Order History API
     path('api/payment/', include('payment.urls')),
+
+    # Media file serving endpoints
+    path('api/media/<path:file_path>', serve_media_file, name='serve_media'),
+    path('api/media/profile_pics/<str:filename>', serve_profile_picture, name='serve_profile_picture'),
+    path('api/media/community/posts/<str:filename>', serve_community_post_image, name='serve_community_post_image'),
+    path('api/media/courses/<str:filename>', serve_course_image, name='serve_course_image'),
+    path('api/media/health/', media_health_check, name='media_health_check'),
 
     # Add hello-world endpoint
     path('hello-world/', hello_world, name='hello_world'),

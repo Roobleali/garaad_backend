@@ -12,7 +12,7 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-dev-key')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-dev-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
@@ -63,7 +63,7 @@ MIDDLEWARE = [
 # Security settings - only apply in production
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT = False
+    SECURE_SSL_REDIRECT = True  # Force HTTPS in production
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
@@ -188,7 +188,7 @@ TEMPLATES = [
 ]
 
 # Update application paths
-# WSGI_APPLICATION = 'garaad.wsgi.application'
+WSGI_APPLICATION = 'garaad.wsgi.application'
 ASGI_APPLICATION = 'garaad.asgi.application'
 
 # Password validation

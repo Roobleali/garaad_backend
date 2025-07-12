@@ -14,9 +14,9 @@ router.register(r'notifications', views.CommunityNotificationViewSet, basename='
 app_name = 'community'
 
 urlpatterns = [
-    # Include router URLs
-    path('api/', include(router.urls)),
+    # Include router URLs directly (removed extra 'api/' prefix)
+    path('', include(router.urls)),
     
     # Additional custom endpoints can be added here if needed
-    # path('api/custom-endpoint/', views.custom_view, name='custom_endpoint'),
+    # path('custom-endpoint/', views.custom_view, name='custom_endpoint'),
 ] 

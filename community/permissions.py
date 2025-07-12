@@ -145,6 +145,46 @@ class CanCreateInCampus(permissions.BasePermission):
         return True
 
 
+class CanCreatePost(permissions.BasePermission):
+    """
+    Permission to allow any authenticated user to create posts
+    """
+    message = "Waa inaad ku saabsan tahay si aad u sameyso qoraal."  # You must be authenticated to create a post
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+            
+        # Any authenticated user can create posts
+        return True
+
+
+class CanCreateContent(permissions.BasePermission):
+    """
+    Permission to allow any authenticated user to create content (posts, comments, likes)
+    """
+    message = "Waa inaad ku saabsan tahay si aad u sameyso waxyaabo."  # You must be authenticated to create content
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+            
+        # Any authenticated user can create content
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        if not request.user.is_authenticated:
+            return False
+            
+        # Users can edit their own content
+        if hasattr(obj, 'user'):
+            return obj.user == request.user
+        elif hasattr(obj, 'created_by'):
+            return obj.created_by == request.user
+            
+        return False
+
+
 class CanModerateContent(permissions.BasePermission):
     """
     Permission for content moderation (approve/disapprove posts and comments)
@@ -339,7 +379,7 @@ class CommunityPermission(permissions.BasePermission):
         if action in ['list', 'retrieve']:
             return True
         elif action in ['create']:
-            return CanCreateInCampus().has_permission(request, view)
+            return CanCreatePost().has_permission(request, view)
         elif action in ['update', 'partial_update', 'destroy']:
             return True  # Will be checked at object level
         elif action in ['like', 'unlike']:

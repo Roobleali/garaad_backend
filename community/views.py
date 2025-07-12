@@ -21,7 +21,7 @@ from .serializers import (
 )
 from .permissions import (
     CommunityPermission, IsCampusMember, CanCreateInCampus,
-    IsCampusModeratorOrOwner, CanModerateContent
+    IsCampusModeratorOrOwner, CanModerateContent, CanCreateContent
 )
 
 
@@ -209,7 +209,7 @@ class PostViewSet(viewsets.ModelViewSet):
     ViewSet for Post model - user posts in rooms
     """
     queryset = Post.objects.filter(is_approved=True)
-    permission_classes = [IsAuthenticated, CommunityPermission]
+    permission_classes = [IsAuthenticated, CanCreateContent]
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -358,7 +358,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     ViewSet for Comment model - comments on posts
     """
     queryset = Comment.objects.filter(is_approved=True)
-    permission_classes = [IsAuthenticated, CommunityPermission]
+    permission_classes = [IsAuthenticated, CanCreateContent]
     
     def get_serializer_class(self):
         if self.action == 'create':

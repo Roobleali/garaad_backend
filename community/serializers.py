@@ -153,19 +153,12 @@ class PostCreateSerializer(serializers.ModelSerializer):
         }
     
     def validate(self, data):
-        # Ensure user is a member of the campus
+        # Any authenticated user can create posts
         request = self.context.get('request')
-        room = data.get('room')
-        
-        if room and request and request.user.is_authenticated:
-            if not CampusMembership.objects.filter(
-                user=request.user,
-                campus=room.campus,
-                is_active=True
-            ).exists():
-                raise serializers.ValidationError({
-                    'room_id': 'Waa inaad ka mid tahay campus-ka si aad qoraal u qorto.'  # You must be a member of the campus to post
-                })
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError({
+                'room_id': 'Waa inaad ku saabsan tahay si aad qoraal u qorto.'  # You must be authenticated to post
+            })
         
         return data
     
@@ -242,18 +235,10 @@ class CommentCreateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         request = self.context.get('request')
-        post = data.get('post')
-        
-        # Ensure user is a member of the campus
-        if post and request and request.user.is_authenticated:
-            if not CampusMembership.objects.filter(
-                user=request.user,
-                campus=post.room.campus,
-                is_active=True
-            ).exists():
-                raise serializers.ValidationError({
-                    'post_id': 'Waa inaad ka mid tahay campus-ka si aad faallo u qorto.'  # You must be a member of the campus to comment
-                })
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError({
+                'post_id': 'Waa inaad ku saabsan tahay si aad faallo u qorto.'  # You must be authenticated to comment
+            })
         
         return data
     
@@ -325,13 +310,6 @@ class LikeCreateSerializer(serializers.Serializer):
         if content_type == 'post':
             try:
                 post = Post.objects.get(id=content_id, is_approved=True)
-                # Check if user is member of campus
-                if not CampusMembership.objects.filter(
-                    user=request.user,
-                    campus=post.room.campus,
-                    is_active=True
-                ).exists():
-                    raise serializers.ValidationError('Waa inaad ka mid tahay campus-ka si aad qoraal u jeclaato.')
                 data['post'] = post
             except Post.DoesNotExist:
                 raise serializers.ValidationError('Qoraalka lama helin.')  # Post not found
@@ -339,13 +317,6 @@ class LikeCreateSerializer(serializers.Serializer):
         elif content_type == 'comment':
             try:
                 comment = Comment.objects.get(id=content_id, is_approved=True)
-                # Check if user is member of campus
-                if not CampusMembership.objects.filter(
-                    user=request.user,
-                    campus=comment.post.room.campus,
-                    is_active=True
-                ).exists():
-                    raise serializers.ValidationError('Waa inaad ka mid tahay campus-ka si aad faallo u jeclaato.')
                 data['comment'] = comment
             except Comment.DoesNotExist:
                 raise serializers.ValidationError('Faallada lama helin.')  # Comment not found

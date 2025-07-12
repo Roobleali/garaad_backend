@@ -23,6 +23,8 @@ class Campus(models.Model):
         ('technology', 'Tignoolajiyada'), # Technology in Somali
         ('business', 'Ganacsi'),  # Business in Somali
         ('islamic_studies', 'Casharo Diinta'), # Islamic Studies in Somali
+        ('ai', 'Hankhulka Macluumaadka'), # AI in Somali
+        ('fitness', 'Jirka iyo Caafimaadka'), # Fitness in Somali
     ]
     
     name = models.CharField(max_length=100, unique=True)

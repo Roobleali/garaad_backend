@@ -117,6 +117,24 @@ class Command(BaseCommand):
                     'subject_tag': 'islamic_studies',
                     'icon': '🕌',
                     'color_code': '#047857'
+                },
+                {
+                    'name': 'Artificial Intelligence Campus',
+                    'name_somali': 'Campus Hankhulka Macluumaadka',
+                    'description': 'Explore the future of AI, machine learning, and intelligent systems.',
+                    'description_somali': 'Baadh mustaqbalka AI, waxbarashada mashiniyada, iyo nidaamyada caqliga ah.',
+                    'subject_tag': 'ai',
+                    'icon': '🤖',
+                    'color_code': '#7C3AED'
+                },
+                {
+                    'name': 'Fitness & Health Campus',
+                    'name_somali': 'Campus Jirka iyo Caafimaadka',
+                    'description': 'Stay healthy and fit with exercise, nutrition, and wellness tips.',
+                    'description_somali': 'Ka jir caafimaadka iyo jirka adoo isticmaalaya jimicsiga, cuntada, iyo talooyin caafimaad.',
+                    'subject_tag': 'fitness',
+                    'icon': '💪',
+                    'color_code': '#F97316'
                 }
             ]
 

@@ -1236,7 +1236,12 @@ class UserProblem(models.Model):
             # Update lesson progress
             progress, _ = UserProgress.objects.get_or_create(
                 user=self.user,
-                lesson=self.problem.lesson
+                lesson=self.problem.lesson,
+                defaults={
+                    'status': 'in_progress',
+                    'problems_solved': 0,
+                    'total_xp_earned': 0
+                }
             )
             progress.problems_solved += 1
             progress.total_xp_earned += self.xp_earned

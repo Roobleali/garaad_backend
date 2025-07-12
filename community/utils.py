@@ -1,6 +1,9 @@
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from django.db import transaction
-from .models import UserCommunityProfile, CommunityNotification
+from .models import (
+    Post, Comment, UserCommunityProfile, CommunityNotification
+)
 
 User = get_user_model()
 

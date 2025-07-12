@@ -440,6 +440,8 @@ def user_profile(request):
             league = None
             badges = []
             notification_prefs = {}
+            community_profile = None
+            
             try:
                 streak = Streak.objects.get(user=request.user)
                 xp = streak.xp
@@ -462,6 +464,13 @@ def user_profile(request):
                 notification_prefs = getattr(request.user.student_profile, 'notification_preferences', {})
             except Exception:
                 pass
+            try:
+                # Get community profile information
+                from community.models import UserCommunityProfile
+                community_profile = UserCommunityProfile.objects.get(user=request.user)
+            except Exception:
+                pass
+                
             data = serializer.data
             data['xp'] = xp
             data['streak'] = {
@@ -472,6 +481,29 @@ def user_profile(request):
             data['league'] = league
             data['badges'] = badges
             data['notification_preferences'] = notification_prefs
+            
+            # Add community profile information
+            if community_profile:
+                data['community_profile'] = {
+                    'community_points': community_profile.community_points,
+                    'badge_level': community_profile.badge_level,
+                    'badge_level_display': community_profile.get_badge_level_display(),
+                    'total_posts': community_profile.total_posts,
+                    'total_comments': community_profile.total_comments,
+                    'total_likes_received': community_profile.total_likes_received,
+                    'total_likes_given': community_profile.total_likes_given
+                }
+            else:
+                data['community_profile'] = {
+                    'community_points': 0,
+                    'badge_level': 'dhalinyaro',
+                    'badge_level_display': 'Garaad Dhalinyaro',
+                    'total_posts': 0,
+                    'total_comments': 0,
+                    'total_likes_received': 0,
+                    'total_likes_given': 0
+                }
+                
             return Response(data)
         elif request.method == 'PUT':
             serializer = UserProfileSerializer(profile, data=request.data, partial=True)

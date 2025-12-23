@@ -80,14 +80,14 @@ class Command(BaseCommand):
                 {
                     'name': 'sheeko-guud',
                     'description': 'Doodyo guud oo ku saabsan mawduuca',
-                    'room_type': 'chat',
+                    'room_type': 'text',
                     'icon': 'hashtag',
                     'order': 10
                 },
                 {
                     'name': 'waxbarasho',
                     'description': 'Waxbarasho wadajir ah iyo caawimo',
-                    'room_type': 'study',
+                    'room_type': 'text',
                     'icon': 'graduation-cap',
                     'order': 20
                 },

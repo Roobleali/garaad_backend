@@ -70,11 +70,10 @@ class Room(models.Model):
     Rooms within campuses for more specific discussions (e.g., "Garaad HQ", "Study Group")
     """
     ROOM_TYPES = [
-        ('general', 'Guud'),        # General in Somali
-        ('study', 'Waxbarasho'),    # Study in Somali
-        ('chat', 'Sheeko'),         # Chat in Somali
-        ('voice', 'Cod'),           # Voice in Somali
-        ('announcement', 'Ogeysiis'),# Announcement in Somali
+        ('text', 'Qoraal'),
+        ('voice', 'Cod'),
+        ('announcement', 'Ogeysiis'),
+        ('private', 'Gaar ah'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

@@ -29,6 +29,7 @@ Recently updated to include Discord-like functionality and standardized naming.
 
 ### Rooms & Messaging
 - **GET** `/community/rooms/`: List all rooms (filtered by campus query param).
+- **Valid Room Types**: `text` (Qoraal), `voice` (Cod), `announcement` (Ogeysiis), `private` (Gaar ah).
 - **GET** `/community/messages/?room={room_uuid}`: Fetch messages for a specific room.
 - **POST** `/community/messages/`: Send a new message.
   - Payload: `{ "room": "uuid", "content": "Hello!", "reply_to": "uuid_optional" }`

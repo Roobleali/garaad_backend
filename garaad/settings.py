@@ -12,10 +12,10 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-dev-key-change-in-production')
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = False
 
 # Application definition
 INSTALLED_APPS = [
@@ -44,10 +44,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # Must be at the top
     'django.middleware.security.SecurityMiddleware',
-    # Whitenoise middleware for static files
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -77,13 +76,10 @@ else:
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
 
-# Allow all hosts in development, restrict in production
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0', 'testserver'] if DEBUG else [
-    'api.garaad.org',
-    '127.0.0.1',
-    'localhost',
-    '0.0.0.0',
-    'testserver'  # For testing
+# Allow specific hosts in production
+ALLOWED_HOSTS = [
+    "167.172.108.123",
+    "api.garaad.org"
 ]
 
 # CORS settings
@@ -146,13 +142,25 @@ if DEBUG:
 CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
 # Database configuration
-DATABASES = {
-    'default': dj_database_url.parse(
-        'postgresql://postgres.icbgyzaihxqcfjzwllll:Garaad%233344@aws-0-us-east-1.pooler.supabase.com:5432/postgres',
-        conn_max_age=600,
-        ssl_require=True
-    )
-}
+if DEBUG:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=f'sqlite:///{os.path.join(BASE_DIR, "db.sqlite3")}',
+            conn_max_age=600,
+            ssl_require=False
+        )
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME'),
+            'USER': os.getenv('DB_USER'),
+            'PASSWORD': os.getenv('DB_PASSWORD'),
+            'HOST': os.getenv('DB_HOST'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
+    }
 
 # JWT Settings
 REST_FRAMEWORK = {
@@ -214,9 +222,9 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Media files
 MEDIA_URL = '/media/'

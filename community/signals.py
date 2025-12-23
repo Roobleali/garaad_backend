@@ -236,8 +236,8 @@ def handle_campus_membership(sender, instance, created, **kwargs):
             sender=instance.user,  # Self-notification
             notification_type='new_campus_member',
             campus=instance.campus,
-            title=f'Ku soo dhaweeyay {instance.campus.name_somali}!',  # Welcome to campus
-            message=f'Waad ku guuleysatay inaad ku biirto {instance.campus.name_somali}. Ku soo biir wadahadalka oo la wadaag macluumaadka!'
+            title=f'Ku soo dhaweeyay {instance.campus.name}!',  # Welcome to campus
+            message=f'Waad ku guuleysatay inaad ku biirto {instance.campus.name}. Ku soo biir wadahadalka oo la wadaag macluumaadka!'
         )
         
         # Notify moderators of new member
@@ -253,7 +253,7 @@ def handle_campus_membership(sender, instance, created, **kwargs):
                 sender=instance.user,
                 notification_type='new_campus_member',
                 campus=instance.campus,
-                title=f'Xubin cusub ayaa ku biiray {instance.campus.name_somali}',  # New member joined
+                title=f'Xubin cusub ayaa ku biiray {instance.campus.name}',  # New member joined
                 message=f'{instance.user.username} ayaa ku biiray campus-ka. Ku soo dhaweeyay!'
             )
 

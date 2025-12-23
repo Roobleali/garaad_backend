@@ -9,7 +9,7 @@ from django.db import transaction
 
 from .models import (
     Campus, Room, CampusMembership, Post, Comment, Like,
-    UserCommunityProfile, CommunityNotification
+    UserCommunityProfile, CommunityNotification, Message, Presence
 )
 from .serializers import (
     CampusListSerializer, CampusDetailSerializer, RoomSerializer,
@@ -17,7 +17,7 @@ from .serializers import (
     PostDetailSerializer, CommentCreateSerializer, CommentSerializer,
     CommentWithRepliesSerializer, LikeSerializer, LikeCreateSerializer,
     UserCommunityProfileSerializer, CommunityNotificationSerializer,
-    JoinCampusSerializer
+    JoinCampusSerializer, MessageSerializer, PresenceSerializer
 )
 from .permissions import (
     CommunityPermission, IsCampusMember, CanCreateInCampus,
@@ -51,15 +51,13 @@ class CampusViewSet(viewsets.ModelViewSet):
         if search:
             queryset = queryset.filter(
                 Q(name__icontains=search) |
-                Q(name_somali__icontains=search) |
-                Q(description__icontains=search) |
-                Q(description_somali__icontains=search)
+                Q(description__icontains=search)
             )
         
         return queryset.annotate(
             actual_member_count=Count('memberships', filter=Q(memberships__is_active=True)),
             actual_post_count=Count('rooms__posts', filter=Q(rooms__posts__is_approved=True))
-        ).order_by('-actual_member_count', 'name_somali')
+        ).order_by('-actual_member_count', 'name')
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def join(self, request, slug=None):
@@ -99,12 +97,12 @@ class CampusViewSet(viewsets.ModelViewSet):
                 sender=request.user,
                 notification_type='new_campus_member',
                 campus=campus,
-                title=f'Xubin cusub ayaa ku biiray {campus.name_somali}',  # New member joined
-                message=f'{request.user.username} ayaa ku biiray campus-ka {campus.name_somali}.'
+                title=f'Xubin cusub ayaa ku biiray {campus.name}',  # New member joined
+                message=f'{request.user.username} ayaa ku biiray campus-ka {campus.name}.'
             )
         
         return Response({
-            'message': f'Si guul leh ayaad ugu biirtay {campus.name_somali}!'  # Successfully joined
+            'message': f'Si guul leh ayaad ugu biirtay {campus.name}!'  # Successfully joined
         }, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsCampusMember])
@@ -126,7 +124,7 @@ class CampusViewSet(viewsets.ModelViewSet):
             campus.save(update_fields=['member_count'])
             
             return Response({
-                'message': f'Si guul leh ayaad uga baxday {campus.name_somali}.'  # Successfully left
+                'message': f'Si guul leh ayaad uga baxday {campus.name}.'  # Successfully left
             })
         
         except CampusMembership.DoesNotExist:
@@ -141,7 +139,7 @@ class CampusViewSet(viewsets.ModelViewSet):
         rooms = Room.objects.filter(
             campus=campus,
             is_active=True
-        ).order_by('name_somali')
+        ).order_by('order', 'name')
         
         serializer = RoomSerializer(rooms, many=True, context={'request': request})
         return Response(serializer.data)
@@ -180,7 +178,7 @@ class RoomViewSet(viewsets.ModelViewSet):
         if room_type:
             queryset = queryset.filter(room_type=room_type)
         
-        return queryset.select_related('campus', 'created_by').order_by('campus__name', 'name_somali')
+        return queryset.select_related('campus', 'created_by').order_by('campus__name', 'order', 'name')
 
     @action(detail=True, methods=['get'])
     def posts(self, request, pk=None):
@@ -533,4 +531,47 @@ class CommunityNotificationViewSet(viewsets.ReadOnlyModelViewSet):
         
         return Response({
             'message': f'{updated} ogeysiis oo dhan ayaa loo calaamadeeyay inay akhristaan.'  # All notifications marked as read
-        }) 
+        })
+
+
+class MessageViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for chat messages in a room
+    """
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated, IsCampusMember]
+
+    def get_queryset(self):
+        room_id = self.request.query_params.get('room')
+        if not room_id:
+            return Message.objects.none()
+        return Message.objects.filter(room_id=room_id).select_related('sender', 'sender__presence')
+
+    def perform_create(self, serializer):
+        serializer.save(sender=self.request.user)
+
+
+class PresenceViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for user presence status
+    """
+    serializer_class = PresenceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Presence.objects.filter(user=self.request.user)
+
+    @action(detail=False, methods=['post'])
+    def set_status(self, request):
+        status_val = request.data.get('status')
+        custom_val = request.data.get('custom_status', '')
+        
+        if status_val not in dict(Presence.STATUS_CHOICES):
+            return Response({'error': 'Xaalad aan sax ahayn.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        presence, created = Presence.objects.get_or_create(user=request.user)
+        presence.status = status_val
+        presence.custom_status = custom_val
+        presence.save()
+        
+        return Response(PresenceSerializer(presence).data)

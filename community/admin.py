@@ -11,19 +11,19 @@ from .models import (
 
 @admin.register(Campus)
 class CampusAdmin(admin.ModelAdmin):
-    list_display = ('name_somali', 'name', 'subject_tag', 'member_count', 
+    list_display = ('name', 'subject_tag', 'member_count', 
                    'post_count', 'is_active', 'created_at')
     list_filter = ('subject_tag', 'is_active', 'requires_approval', 'created_at')
-    search_fields = ('name', 'name_somali', 'description', 'description_somali')
+    search_fields = ('name', 'description')
     prepopulated_fields = {'slug': ('name',)}
     readonly_fields = ('member_count', 'post_count', 'created_at', 'updated_at')
     
     fieldsets = (
         ('Macluumaadka Asaasiga ah', {  # Basic Information
-            'fields': ('name', 'name_somali', 'subject_tag', 'icon', 'color_code')
+            'fields': ('name', 'subject_tag', 'icon', 'color_code')
         }),
         ('Sharaxaad', {  # Description
-            'fields': ('description', 'description_somali')
+            'fields': ('description',)
         }),
         ('Dejinta', {  # Settings
             'fields': ('slug', 'is_active', 'requires_approval', 'created_by')
@@ -47,18 +47,18 @@ class CampusAdmin(admin.ModelAdmin):
 
 @admin.register(Room) 
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ('name_somali', 'campus', 'room_type', 'member_count', 
+    list_display = ('name', 'campus', 'room_type', 'member_count', 
                    'post_count', 'is_active', 'is_private')
     list_filter = ('room_type', 'is_active', 'is_private', 'campus__subject_tag')
-    search_fields = ('name', 'name_somali', 'description', 'campus__name')
+    search_fields = ('name', 'description', 'campus__name')
     readonly_fields = ('member_count', 'post_count', 'created_at', 'updated_at')
     
     fieldsets = (
         ('Macluumaadka Asaasiga ah', {
-            'fields': ('name', 'name_somali', 'campus', 'room_type')
+            'fields': ('name', 'campus', 'room_type')
         }),
         ('Sharaxaad', {
-            'fields': ('description', 'description_somali')
+            'fields': ('description',)
         }),
         ('Dejinta', {
             'fields': ('is_active', 'is_private', 'max_members', 'created_by')

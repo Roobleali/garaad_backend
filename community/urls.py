@@ -10,6 +10,8 @@ router.register(r'posts', views.PostViewSet, basename='post')
 router.register(r'comments', views.CommentViewSet, basename='comment')
 router.register(r'profiles', views.UserCommunityProfileViewSet, basename='profile')
 router.register(r'notifications', views.CommunityNotificationViewSet, basename='notification')
+router.register(r'messages', views.MessageViewSet, basename='message')
+router.register(r'presence', views.PresenceViewSet, basename='presence')
 
 app_name = 'community'
 

@@ -28,9 +28,7 @@ class Campus(models.Model):
     ]
     
     name = models.CharField(max_length=100, unique=True)
-    name_somali = models.CharField(max_length=100, help_text="Magaca Somali")
     description = models.TextField()
-    description_somali = models.TextField(help_text="Sharaxaad Somali")
     subject_tag = models.CharField(max_length=50, choices=SUBJECT_CHOICES, unique=True)
     icon = models.CharField(max_length=50, default='📚', help_text="Emoji or icon class")
     slug = models.SlugField(max_length=100, unique=True, blank=True)
@@ -55,7 +53,7 @@ class Campus(models.Model):
         verbose_name_plural = 'Campuses'
 
     def __str__(self):
-        return f"{self.name_somali} ({self.name})"
+        return self.name
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -74,39 +72,44 @@ class Room(models.Model):
     ROOM_TYPES = [
         ('general', 'Guud'),        # General in Somali
         ('study', 'Waxbarasho'),    # Study in Somali
-        ('discussion', 'Dood'),     # Discussion in Somali
-        ('help', 'Caawimo'),        # Help in Somali
-        ('announcements', 'Ogeysiis'), # Announcements in Somali
-        ('social', 'Bulshada'),     # Social in Somali
+        ('chat', 'Sheeko'),         # Chat in Somali
+        ('voice', 'Cod'),           # Voice in Somali
+        ('announcement', 'Ogeysiis'),# Announcement in Somali
     ]
     
-    name = models.CharField(max_length=100)
-    name_somali = models.CharField(max_length=100, help_text="Magaca Somali")
-    description = models.TextField(blank=True)
-    description_somali = models.TextField(blank=True, help_text="Sharaxaad Somali")
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     campus = models.ForeignKey(Campus, on_delete=models.CASCADE, related_name='rooms')
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=120, blank=True)
+    description = models.TextField(blank=True)
     room_type = models.CharField(max_length=20, choices=ROOM_TYPES, default='general')
-    
-    # Room settings
-    is_active = models.BooleanField(default=True)
     is_private = models.BooleanField(default=False)
-    max_members = models.PositiveIntegerField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
     
-    # Room statistics
+    # Statistics
     member_count = models.PositiveIntegerField(default=0)
     post_count = models.PositiveIntegerField(default=0)
     
-    # Metadata
+    icon = models.CharField(max_length=50, default='hashtag') # For UI icons
+    
+    order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
-        ordering = ['campus__name', 'name']
+        ordering = ['campus__name', 'order', 'name']
         unique_together = ['campus', 'name']
+        verbose_name = 'Room'
+        verbose_name_plural = 'Rooms'
 
     def __str__(self):
-        return f"{self.campus.name_somali} - {self.name_somali}"
+        return f"{self.campus.name} - {self.name}"
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
 
 class CampusMembership(models.Model):
@@ -130,7 +133,7 @@ class CampusMembership(models.Model):
         ordering = ['-joined_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.campus.name_somali}"
+        return f"{self.user.username} - {self.campus.name}"
 
 
 class Post(models.Model):
@@ -415,4 +418,55 @@ class CommunityNotification(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.get_notification_type_display()} - {self.recipient.username}" 
+        return f"{self.get_notification_type_display()} - {self.recipient.username}"
+
+
+class Message(models.Model):
+    """
+    Discord-style real-time messages within a room
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='community_messages')
+    content = models.TextField()
+    
+    # Support for simple attachments (URLs)
+    attachment_url = models.URLField(max_length=500, null=True, blank=True)
+    attachment_type = models.CharField(max_length=20, null=True, blank=True) # image, video, file
+    
+    # Reply functionality
+    reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
+    
+    # Metadata
+    is_edited = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['room', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.sender.username}: {self.content[:30]}"
+
+
+class Presence(models.Model):
+    """
+    Track user real-time status
+    """
+    STATUS_CHOICES = [
+        ('online', 'Online'),
+        ('idle', 'Fadhi'),      # Idle/Sitting in Somali
+        ('dnd', 'Ha Iwaxyeelin'), # Don't disturb in Somali
+        ('offline', 'Offline'),
+    ]
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='presence')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='offline')
+    custom_status = models.CharField(max_length=100, blank=True)
+    last_seen = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.status}"

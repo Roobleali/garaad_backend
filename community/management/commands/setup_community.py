@@ -26,115 +26,35 @@ class Command(BaseCommand):
         self.stdout.write('🚀 Setting up community system...')
         
         with transaction.atomic():
-            # Create campuses with Somali names
+            # Create campuses
             campuses_data = [
                 {
-                    'name': 'Physics Campus',
-                    'name_somali': 'Campus Fiisigis',
-                    'description': 'Explore the fundamental laws of nature and the universe.',
-                    'description_somali': 'Baadh sharciyada asaasiga ah ee dabeecadda iyo koonka.',
+                    'name': 'Fiisigis (Physics)',
+                    'description': 'Baro sharciyada dabeecadda iyo koonka.',
                     'subject_tag': 'physics',
                     'icon': '⚛️',
                     'color_code': '#3B82F6'
                 },
                 {
-                    'name': 'Mathematics Campus',
-                    'name_somali': 'Campus Xisaab',
-                    'description': 'Master the language of numbers and logical reasoning.',
-                    'description_somali': 'Ka talisid luuqadda lambarrada iyo fekerka mantiqiga ah.',
+                    'name': 'Xisaab (Math)',
+                    'description': 'Baro luuqadda lambarrada iyo fekerka mantiqiga ah.',
                     'subject_tag': 'math',
                     'icon': '📐',
                     'color_code': '#10B981'
                 },
                 {
-                    'name': 'Cryptocurrency Campus',
-                    'name_somali': 'Campus Qarsoodiga',
-                    'description': 'Learn about blockchain technology and digital currencies.',
-                    'description_somali': 'Wax ka baro tignoolajiyada blockchain iyo lacagaha dijitaalka ah.',
+                    'name': 'Qarsoodiga (Crypto)',
+                    'description': 'Wax ka baro blockchain iyo lacagaha dijitaalka ah.',
                     'subject_tag': 'crypto',
                     'icon': '₿',
                     'color_code': '#F59E0B'
                 },
                 {
-                    'name': 'Biology Campus',
-                    'name_somali': 'Campus Bayooloji',
-                    'description': 'Discover the wonders of life and living organisms.',
-                    'description_somali': 'Ogaada yaabka nolosha iyo noolasha.',
+                    'name': 'Bayooloji (Biology)',
+                    'description': 'Baro nolosha iyo noolaha.',
                     'subject_tag': 'biology',
                     'icon': '🧬',
                     'color_code': '#8B5CF6'
-                },
-                {
-                    'name': 'Chemistry Campus',
-                    'name_somali': 'Campus Kimistar',
-                    'description': 'Explore the composition and properties of matter.',
-                    'description_somali': 'Baadh halbeegga iyo sifooyinka maadada.',
-                    'subject_tag': 'chemistry',
-                    'icon': '🧪',
-                    'color_code': '#EF4444'
-                },
-                {
-                    'name': 'History Campus',
-                    'name_somali': 'Campus Taariikh',
-                    'description': 'Journey through time and learn from the past.',
-                    'description_somali': 'Safar dhex mara waqtiga oo wax ka baro wixii hore.',
-                    'subject_tag': 'history',
-                    'icon': '📜',
-                    'color_code': '#92400E'
-                },
-                {
-                    'name': 'Literature Campus',
-                    'name_somali': 'Campus Suugaan',
-                    'description': 'Explore the beauty of language and storytelling.',
-                    'description_somali': 'Baadh quruxda luuqadda iyo sheekooyin-sheegista.',
-                    'subject_tag': 'literature',
-                    'icon': '📚',
-                    'color_code': '#DC2626'
-                },
-                {
-                    'name': 'Technology Campus',
-                    'name_somali': 'Campus Tignoolajiyada',
-                    'description': 'Stay ahead with the latest in technology and innovation.',
-                    'description_somali': 'Ka hor joog tignoolajiyada cusub iyo hal-abuurka.',
-                    'subject_tag': 'technology',
-                    'icon': '💻',
-                    'color_code': '#1F2937'
-                },
-                {
-                    'name': 'Business Campus',
-                    'name_somali': 'Campus Ganacsi',
-                    'description': 'Learn entrepreneurship and business strategies.',
-                    'description_somali': 'Baro ganacsatada iyo xeeladaha ganacsiga.',
-                    'subject_tag': 'business',
-                    'icon': '💼',
-                    'color_code': '#059669'
-                },
-                {
-                    'name': 'Islamic Studies Campus',
-                    'name_somali': 'Campus Casharo Diinta',
-                    'description': 'Deepen your understanding of Islamic teachings.',
-                    'description_somali': 'Korkari fahamkaaga casharka Islaamka.',
-                    'subject_tag': 'islamic_studies',
-                    'icon': '🕌',
-                    'color_code': '#047857'
-                },
-                {
-                    'name': 'Artificial Intelligence Campus',
-                    'name_somali': 'Campus Hankhulka Macluumaadka',
-                    'description': 'Explore the future of AI, machine learning, and intelligent systems.',
-                    'description_somali': 'Baadh mustaqbalka AI, waxbarashada mashiniyada, iyo nidaamyada caqliga ah.',
-                    'subject_tag': 'ai',
-                    'icon': '🤖',
-                    'color_code': '#7C3AED'
-                },
-                {
-                    'name': 'Fitness & Health Campus',
-                    'name_somali': 'Campus Jirka iyo Caafimaadka',
-                    'description': 'Stay healthy and fit with exercise, nutrition, and wellness tips.',
-                    'description_somali': 'Ka jir caafimaadka iyo jirka adoo isticmaalaya jimicsiga, cuntada, iyo talooyin caafimaad.',
-                    'subject_tag': 'fitness',
-                    'icon': '💪',
-                    'color_code': '#F97316'
                 }
             ]
 
@@ -148,49 +68,35 @@ class Command(BaseCommand):
                 
                 if created:
                     self.stdout.write(
-                        self.style.SUCCESS(f'✅ Created campus: {campus.name_somali}')
+                        self.style.SUCCESS(f'✅ Created campus: {campus.name}')
                     )
                 else:
                     self.stdout.write(
-                        self.style.WARNING(f'ℹ️  Campus already exists: {campus.name_somali}')
+                        self.style.WARNING(f'ℹ️  Campus already exists: {campus.name}')
                     )
 
             # Create default rooms for each campus
             room_types_data = [
                 {
-                    'name': 'General Discussion',
-                    'name_somali': 'Doodka Guud',
-                    'description': 'General discussions about the subject',
-                    'description_somali': 'Doodyo guud oo ku saabsan mawduuca',
-                    'room_type': 'general'
+                    'name': 'sheeko-guud',
+                    'description': 'Doodyo guud oo ku saabsan mawduuca',
+                    'room_type': 'chat',
+                    'icon': 'hashtag',
+                    'order': 10
                 },
                 {
-                    'name': 'Study Group',
-                    'name_somali': 'Kooxda Waxbarashada',
-                    'description': 'Collaborative study sessions and homework help',
-                    'description_somali': 'Waxbarasho wadajir ah iyo caawinta hawlaha guriga',
-                    'room_type': 'study'
+                    'name': 'waxbarasho',
+                    'description': 'Waxbarasho wadajir ah iyo caawimo',
+                    'room_type': 'study',
+                    'icon': 'graduation-cap',
+                    'order': 20
                 },
                 {
-                    'name': 'Q&A Help',
-                    'name_somali': 'Su\'aalaha iyo Jawaabaha',
-                    'description': 'Ask questions and get help from the community',
-                    'description_somali': 'Weydiis su\'aalo oo ka hel caawimo bulshada',
-                    'room_type': 'help'
-                },
-                {
-                    'name': 'Announcements',
-                    'name_somali': 'Ogeysiisyada',
-                    'description': 'Important announcements and updates',
-                    'description_somali': 'Ogeysiisyo muhiim ah iyo cusbooneysiinta',
-                    'room_type': 'announcements'
-                },
-                {
-                    'name': 'Social Chat',
-                    'name_somali': 'Sheeko Bulshada',
-                    'description': 'Casual conversations and community building',
-                    'description_somali': 'Sheeko fudud iyo dhismaha bulshada',
-                    'room_type': 'social'
+                    'name': 'ogeysiisyada',
+                    'description': 'Ogeysiisyo muhiim ah',
+                    'room_type': 'announcement',
+                    'icon': 'megaphone',
+                    'order': 0
                 }
             ]
 

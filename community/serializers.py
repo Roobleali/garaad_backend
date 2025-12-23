@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.db.models import Q
 from .models import (
     Campus, Room, CampusMembership, Post, Comment, Like,
-    UserCommunityProfile, CommunityNotification
+    UserCommunityProfile, CommunityNotification, Message, Presence
 )
 
 User = get_user_model()
@@ -26,7 +26,7 @@ class CampusListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Campus
         fields = [
-            'id', 'name', 'name_somali', 'description', 'description_somali',
+            'id', 'name', 'description',
             'subject_tag', 'subject_display_somali', 'icon', 'slug', 'color_code',
             'member_count', 'post_count', 'is_active', 'user_is_member'
         ]
@@ -52,7 +52,7 @@ class CampusDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Campus
         fields = [
-            'id', 'name', 'name_somali', 'description', 'description_somali',
+            'id', 'name', 'description',
             'subject_tag', 'subject_display_somali', 'icon', 'slug', 'color_code',
             'member_count', 'post_count', 'is_active', 'requires_approval',
             'created_at', 'created_by', 'user_membership', 'recent_posts'
@@ -89,7 +89,7 @@ class CampusDetailSerializer(serializers.ModelSerializer):
             'id': str(post.id),
             'title': post.title,
             'user': post.user.username,
-            'room': post.room.name_somali,
+            'room': post.room.name,
             'created_at': post.created_at,
             'likes_count': post.likes_count,
             'comments_count': post.comments_count
@@ -110,10 +110,9 @@ class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = [
-            'id', 'name', 'name_somali', 'description', 'description_somali',
-            'campus', 'campus_id', 'room_type', 'room_type_display',
-            'is_active', 'is_private', 'max_members', 'member_count', 'post_count',
-            'created_at', 'created_by'
+            'id', 'name', 'slug', 'description', 'campus', 'campus_id', 
+            'room_type', 'room_type_display', 'is_private', 'icon',
+            'order', 'created_at', 'created_by'
         ]
     
     def create(self, validated_data):
@@ -368,7 +367,7 @@ class CommunityNotificationSerializer(serializers.ModelSerializer):
     sender = UserBasicSerializer(read_only=True)
     notification_type_display = serializers.CharField(source='get_notification_type_display', read_only=True)
     post_title = serializers.CharField(source='post.title', read_only=True)
-    campus_name = serializers.CharField(source='campus.name_somali', read_only=True)
+    campus_name = serializers.CharField(source='campus.name', read_only=True)
     
     class Meta:
         model = CommunityNotification
@@ -417,3 +416,34 @@ class JoinCampusSerializer(serializers.Serializer):
         campus.save(update_fields=['member_count'])
         
         return membership 
+
+
+class PresenceSerializer(serializers.ModelSerializer):
+    """User presence serializer"""
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        model = Presence
+        fields = ['status', 'status_display', 'custom_status', 'last_seen']
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    """Discord-style message serializer"""
+    sender = UserBasicSerializer(read_only=True)
+    sender_presence = serializers.SerializerMethodField()
+    replies_count = serializers.IntegerField(source='replies.count', read_only=True)
+    
+    class Meta:
+        model = Message
+        fields = [
+            'id', 'room', 'sender', 'sender_presence', 'content', 
+            'attachment_url', 'attachment_type', 'reply_to', 
+            'replies_count', 'is_edited', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['sender', 'is_edited', 'created_at']
+
+    def get_sender_presence(self, obj):
+        try:
+            return PresenceSerializer(obj.sender.presence).data
+        except:
+            return {'status': 'offline'}

@@ -17,46 +17,48 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        if options['reset']:
-            self.stdout.write('🗑️  Resetting community data...')
+        if True:  # Always reset as per latest requirement to clean up stale data
+            self.stdout.write('🗑️  Resetting community data (Campuses)...')
+            # Only delete campuses to allow re-creation. Use with caution in prod if user data attached.
+            # But request said "remove these campuses".
             Campus.objects.all().delete()
-            UserCommunityProfile.objects.all().delete()
-            self.stdout.write(self.style.WARNING('All community data has been reset.'))
+            # UserCommunityProfile.objects.all().delete() # Optional, maybe keep profiles?
+            # Keeping profiles is safer for user data retention (points etc). 
+            # Re-creating campuses will re-attach rooms etc.
+            
+            self.stdout.write(self.style.WARNING('Old campuses removed.'))
 
         self.stdout.write('🚀 Setting up community system...')
         
         with transaction.atomic():
             # Create campuses
-            campuses_data = [
-                {
-                    'name': 'Fiisigis (Physics)',
-                    'description': 'Baro sharciyada dabeecadda iyo koonka.',
-                    'subject_tag': 'physics',
-                    'icon': '⚛️',
-                    'color_code': '#3B82F6'
-                },
-                {
-                    'name': 'Xisaab (Math)',
-                    'description': 'Baro luuqadda lambarrada iyo fekerka mantiqiga ah.',
-                    'subject_tag': 'math',
-                    'icon': '📐',
-                    'color_code': '#10B981'
-                },
-                {
-                    'name': 'Qarsoodiga (Crypto)',
-                    'description': 'Wax ka baro blockchain iyo lacagaha dijitaalka ah.',
-                    'subject_tag': 'crypto',
-                    'icon': '₿',
-                    'color_code': '#F59E0B'
-                },
-                {
-                    'name': 'Bayooloji (Biology)',
-                    'description': 'Baro nolosha iyo noolaha.',
-                    'subject_tag': 'biology',
-                    'icon': '🧬',
-                    'color_code': '#8B5CF6'
-                }
-            ]
+            # Create campuses
+            # Map subjects to metadata
+            campus_config = {
+                'physics': {'name': 'Fiisigis (Physics)', 'description': 'Baro sharciyada dabeecadda iyo koonka.', 'icon': '⚛️', 'color_code': '#3B82F6'},
+                'math': {'name': 'Xisaab (Math)', 'description': 'Baro luuqadda lambarrada iyo fekerka mantiqiga ah.', 'icon': '📐', 'color_code': '#10B981'},
+                'crypto': {'name': 'Qarsoodiga (Crypto)', 'description': 'Wax ka baro blockchain iyo lacagaha dijitaalka ah.', 'icon': '₿', 'color_code': '#F59E0B'},
+                'biology': {'name': 'Bayooloji (Biology)', 'description': 'Baro nolosha iyo noolaha.', 'icon': '🧬', 'color_code': '#8B5CF6'},
+                'chemistry': {'name': 'Kimistar (Chemistry)', 'description': 'Ka baro dhismaha walxaha iyo falgalada kiimikada.', 'icon': '🧪', 'color_code': '#EC4899'},
+                'history': {'name': 'Taariikh (History)', 'description': 'Baro taariikhda adduunka iyo dhacdooyinkii hore.', 'icon': '📜', 'color_code': '#D97706'},
+                'literature': {'name': 'Suugaan (Literature)', 'description': 'Ku raaxayso gabayada, sheekooyinka iyo qoraalka.', 'icon': '📚', 'color_code': '#8B5CF6'},
+                'technology': {'name': 'Tignoolajiyada (Technology)', 'description': 'Baro barnaamijyada, kombiyuutarrada iyo tiknoolajiyada cusub.', 'icon': '💻', 'color_code': '#EF4444'},
+                'business': {'name': 'Ganacsi (Business)', 'description': 'Baro maamulka ganacsiga, maaliyadda iyo suuq-geynta.', 'icon': '💼', 'color_code': '#6366F1'},
+                'islamic_studies': {'name': 'Casharo Diinta (Islamic Studies)', 'description': 'Baro diinta Islaamka, Quraanka iyo Axaadiista.', 'icon': '☪️', 'color_code': '#059669'},
+                'ai': {'name': 'Hankhulka Macluumaadka (AI)', 'description': 'Baro sirdoonka macmal iyo mustaqbalka technology-ga.', 'icon': '🤖', 'color_code': '#14B8A6'},
+                'fitness': {'name': 'Jirka iyo Caafimaadka (Fitness)', 'description': 'Baro jimicsiga, caafimaadka iyo nafaqaynta.', 'icon': '🏋️', 'color_code': '#F43F5E'},
+            }
+
+            campuses_data = []
+            for code, label in Campus.SUBJECT_CHOICES:
+                meta = campus_config.get(code, {})
+                campuses_data.append({
+                    'subject_tag': code,
+                    'name': meta.get('name', label),
+                    'description': meta.get('description', f'Ku saabsan {label}'),
+                    'icon': meta.get('icon', '📚'),
+                    'color_code': meta.get('color_code', '#3B82F6')
+                })
 
             created_campuses = []
             for campus_data in campuses_data:

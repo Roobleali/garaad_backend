@@ -35,30 +35,23 @@ class Command(BaseCommand):
             # Create campuses
             # Map subjects to metadata
             campus_config = {
-                'physics': {'name': 'Fiisigis (Physics)', 'description': 'Baro sharciyada dabeecadda iyo koonka.', 'icon': '⚛️', 'color_code': '#3B82F6'},
-                'math': {'name': 'Xisaab (Math)', 'description': 'Baro luuqadda lambarrada iyo fekerka mantiqiga ah.', 'icon': '📐', 'color_code': '#10B981'},
-                'crypto': {'name': 'Qarsoodiga (Crypto)', 'description': 'Wax ka baro blockchain iyo lacagaha dijitaalka ah.', 'icon': '₿', 'color_code': '#F59E0B'},
-                'biology': {'name': 'Bayooloji (Biology)', 'description': 'Baro nolosha iyo noolaha.', 'icon': '🧬', 'color_code': '#8B5CF6'},
-                'chemistry': {'name': 'Kimistar (Chemistry)', 'description': 'Ka baro dhismaha walxaha iyo falgalada kiimikada.', 'icon': '🧪', 'color_code': '#EC4899'},
-                'history': {'name': 'Taariikh (History)', 'description': 'Baro taariikhda adduunka iyo dhacdooyinkii hore.', 'icon': '📜', 'color_code': '#D97706'},
-                'literature': {'name': 'Suugaan (Literature)', 'description': 'Ku raaxayso gabayada, sheekooyinka iyo qoraalka.', 'icon': '📚', 'color_code': '#8B5CF6'},
-                'technology': {'name': 'Tignoolajiyada (Technology)', 'description': 'Baro barnaamijyada, kombiyuutarrada iyo tiknoolajiyada cusub.', 'icon': '💻', 'color_code': '#EF4444'},
-                'business': {'name': 'Ganacsi (Business)', 'description': 'Baro maamulka ganacsiga, maaliyadda iyo suuq-geynta.', 'icon': '💼', 'color_code': '#6366F1'},
-                'islamic_studies': {'name': 'Casharo Diinta (Islamic Studies)', 'description': 'Baro diinta Islaamka, Quraanka iyo Axaadiista.', 'icon': '☪️', 'color_code': '#059669'},
-                'ai': {'name': 'Hankhulka Macluumaadka (AI)', 'description': 'Baro sirdoonka macmal iyo mustaqbalka technology-ga.', 'icon': '🤖', 'color_code': '#14B8A6'},
-                'fitness': {'name': 'Jirka iyo Caafimaadka (Fitness)', 'description': 'Baro jimicsiga, caafimaadka iyo nafaqaynta.', 'icon': '🏋️', 'color_code': '#F43F5E'},
+                'saas': {'name': 'SaaS', 'description': 'Software as a Service discussions.', 'icon': '💻', 'color_code': '#3B82F6'},
+                'ai': {'name': 'AI', 'description': 'Artificial Intelligence and Machine Learning.', 'icon': '🤖', 'color_code': '#10B981'},
+                'physics': {'name': 'Physics', 'description': 'Laws of nature and the universe.', 'icon': '⚛️', 'color_code': '#F59E0B'},
+                'math': {'name': 'Math', 'description': 'The language of numbers and logic.', 'icon': '📐', 'color_code': '#8B5CF6'},
             }
 
             campuses_data = []
             for code, label in Campus.SUBJECT_CHOICES:
                 meta = campus_config.get(code, {})
-                campuses_data.append({
-                    'subject_tag': code,
-                    'name': meta.get('name', label),
-                    'description': meta.get('description', f'Ku saabsan {label}'),
-                    'icon': meta.get('icon', '📚'),
-                    'color_code': meta.get('color_code', '#3B82F6')
-                })
+                if meta: # Only add if in config
+                    campuses_data.append({
+                        'subject_tag': code,
+                        'name': meta.get('name', label),
+                        'description': meta.get('description', f'About {label}'),
+                        'icon': meta.get('icon', '📚'),
+                        'color_code': meta.get('color_code', '#3B82F6')
+                    })
 
             created_campuses = []
             for campus_data in campuses_data:

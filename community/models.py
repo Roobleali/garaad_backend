@@ -13,18 +13,10 @@ class Campus(models.Model):
     Subject-based campuses where users are grouped (e.g., Physics, Math, Crypto)
     """
     SUBJECT_CHOICES = [
-        ('physics', 'Fiisigis'),  # Physics in Somali
-        ('math', 'Xisaab'),      # Math in Somali  
-        ('crypto', 'Qarsoodiga'), # Crypto in Somali
-        ('biology', 'Bayooloji'), # Biology in Somali
-        ('chemistry', 'Kimistar'), # Chemistry in Somali
-        ('history', 'Taariikh'),  # History in Somali
-        ('literature', 'Suugaan'), # Literature in Somali
-        ('technology', 'Tignoolajiyada'), # Technology in Somali
-        ('business', 'Ganacsi'),  # Business in Somali
-        ('islamic_studies', 'Casharo Diinta'), # Islamic Studies in Somali
-        ('ai', 'Hankhulka Macluumaadka'), # AI in Somali
-        ('fitness', 'Jirka iyo Caafimaadka'), # Fitness in Somali
+        ('saas', 'SaaS'),           # SaaS
+        ('ai', 'AI'),               # AI
+        ('physics', 'Physics'),     # Physics
+        ('math', 'Math'),           # Math
     ]
     
     name = models.CharField(max_length=100, unique=True)

@@ -65,26 +65,7 @@ class Campus(models.Model):
         return dict(self.SUBJECT_CHOICES).get(self.subject_tag, self.subject_tag)
 
 
-class Category(models.Model):
-    """
-    Categories to group rooms within a campus (e.g., "General", "Learning", "Resources")
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    campus = models.ForeignKey(Campus, on_delete=models.CASCADE, related_name='categories')
-    name = models.CharField(max_length=100)
-    description = models.TextField(blank=True)
-    icon = models.CharField(max_length=50, default='folder')
-    order = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        ordering = ['campus', 'order', 'name']
-        unique_together = ['campus', 'name']
-        verbose_name = 'Category'
-        verbose_name_plural = 'Categories'
-
-    def __str__(self):
-        return f"{self.campus.name} - {self.name}"
 
 
 class Room(models.Model):
@@ -100,12 +81,20 @@ class Room(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     campus = models.ForeignKey(Campus, on_delete=models.CASCADE, related_name='rooms')
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='rooms')
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120, blank=True)
     description = models.TextField(blank=True)
     room_type = models.CharField(max_length=20, choices=ROOM_TYPES, default='general')
     is_private = models.BooleanField(default=False)
+    
+    # Retention / Gamification
+    min_badge_level = models.CharField(
+        max_length=20, 
+        choices=UserCommunityProfile.BADGE_LEVELS,
+        default='dhalinyaro',
+        help_text="Minimum badge level required to access this room"
+    )
+    
     is_active = models.BooleanField(default=True)
     
     # Statistics

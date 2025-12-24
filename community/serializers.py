@@ -43,11 +43,7 @@ class CampusListSerializer(serializers.ModelSerializer):
         return False
 
 
-class CategorySerializer(serializers.ModelSerializer):
-    """Category serializer for grouping rooms"""
-    class Meta:
-        model = Category
-        fields = ['id', 'name', 'description', 'icon', 'order']
+
 
 
 class CampusDetailSerializer(serializers.ModelSerializer):
@@ -119,9 +115,30 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = [
             'id', 'name', 'slug', 'description', 'campus', 'campus_id', 
-            'category', 'room_type', 'room_type_display', 'is_private', 'icon',
-            'order', 'created_at', 'created_by'
+            'room_type', 'room_type_display', 'is_private', 'icon',
+            'order', 'created_at', 'created_by', 
+            'min_badge_level', 'is_locked'
         ]
+        
+    is_locked = serializers.SerializerMethodField()
+
+    def get_is_locked(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+            
+        if not obj.min_badge_level or obj.min_badge_level == 'dhalinyaro':
+            return False
+            
+        # Check logic (duplicate of permissions but needed for UI state)
+        try:
+            profile = request.user.community_profile
+            LEVEL_ORDER = ['dhalinyaro', 'dhexe', 'sare', 'weyne', 'hogaamiye']
+            user_idx = LEVEL_ORDER.index(profile.badge_level)
+            req_idx = LEVEL_ORDER.index(obj.min_badge_level)
+            return user_idx < req_idx
+        except:
+            return False
     
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user

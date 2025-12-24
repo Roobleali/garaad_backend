@@ -7,10 +7,9 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db import transaction
 
-from .models import (
     Campus, Room, CampusMembership, Post, Comment, Like,
     UserCommunityProfile, CommunityNotification, Message, Presence,
-    Category, Reaction
+    Reaction
 )
 from .serializers import (
     CampusListSerializer, CampusDetailSerializer, RoomSerializer,
@@ -20,9 +19,9 @@ from .serializers import (
     UserCommunityProfileSerializer, CommunityNotificationSerializer,
     JoinCampusSerializer, MessageSerializer, PresenceSerializer
 )
-from .permissions import (
     CommunityPermission, IsCampusMember, CanCreateInCampus,
-    IsCampusModeratorOrOwner, CanModerateContent, CanCreateContent
+    IsCampusModeratorOrOwner, CanModerateContent, CanCreateContent,
+    HasRoomLevelAccess
 )
 
 
@@ -144,16 +143,7 @@ class CampusViewSet(viewsets.ModelViewSet):
         
         serializer = RoomSerializer(rooms, many=True, context={'request': request})
         
-        # Optionally group by category if requested
-        group_by_category = request.query_params.get('group_by_category')
-        if group_by_category:
-            from collections import defaultdict
-            grouped_rooms = defaultdict(list)
-            for room in serializer.data:
-                cat_id = str(room.get('category')) if room.get('category') else 'Uncategorized'
-                grouped_rooms[cat_id].append(room)
-            return Response(grouped_rooms)
-            
+        serializer = RoomSerializer(rooms, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, IsCampusMember])
@@ -175,7 +165,7 @@ class RoomViewSet(viewsets.ModelViewSet):
     """
     queryset = Room.objects.filter(is_active=True)
     serializer_class = RoomSerializer
-    permission_classes = [IsAuthenticated, IsCampusMember]
+    permission_classes = [IsAuthenticated, IsCampusMember, HasRoomLevelAccess]
     
     def get_queryset(self):
         queryset = Room.objects.filter(is_active=True)
@@ -219,7 +209,7 @@ class PostViewSet(viewsets.ModelViewSet):
     ViewSet for Post model - user posts in rooms
     """
     queryset = Post.objects.filter(is_approved=True)
-    permission_classes = [IsAuthenticated, CanCreateContent]
+    permission_classes = [IsAuthenticated, CanCreateContent, HasRoomLevelAccess]
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -557,7 +547,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     ViewSet for chat messages in a room
     """
     serializer_class = MessageSerializer
-    permission_classes = [IsAuthenticated, IsCampusMember]
+    permission_classes = [IsAuthenticated, IsCampusMember, HasRoomLevelAccess]
 
     def get_queryset(self):
         room_id = self.request.query_params.get('room')

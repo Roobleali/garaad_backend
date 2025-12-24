@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework import status
 import os
@@ -17,12 +18,12 @@ def serve_media_file(request, file_path):
     """
     Serve media files with authentication
     URL pattern: /api/media/<path:file_path>
-    
-    Security features:
-    - Authentication required
-    - Path validation to prevent directory traversal
-    - Content-Type detection
-    - Cache headers for performance
+    """
+    return _serve_file_internal(file_path)
+
+def _serve_file_internal(file_path):
+    """
+    Internal helper to serve files
     """
     try:
         # Construct the full file path
@@ -95,7 +96,6 @@ def serve_media_file(request, file_path):
         response['Access-Control-Allow-Methods'] = 'GET'
         response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
         
-        logger.info(f"Serving file: {file_path} ({content_type}, {file_size} bytes)")
         return response
         
     except PermissionError:
@@ -113,14 +113,14 @@ def serve_media_file(request, file_path):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([permissions.AllowAny])  # Allow public access to profile pictures
 def serve_profile_picture(request, filename):
     """
     Specific endpoint for profile pictures
     URL pattern: /api/media/profile_pics/<filename>
     """
     file_path = f"profile_pics/{filename}"
-    return serve_media_file(request, file_path)
+    return _serve_file_internal(file_path)
 
 
 @api_view(['GET'])
@@ -131,7 +131,7 @@ def serve_community_post_image(request, filename):
     URL pattern: /api/media/community/posts/<filename>
     """
     file_path = f"community/posts/{filename}"
-    return serve_media_file(request, file_path)
+    return _serve_file_internal(file_path)
 
 
 @api_view(['GET'])
@@ -142,7 +142,7 @@ def serve_course_image(request, filename):
     URL pattern: /api/media/courses/<filename>
     """
     file_path = f"courses/{filename}"
-    return serve_media_file(request, file_path)
+    return _serve_file_internal(file_path)
 
 
 # Health check endpoint for media serving

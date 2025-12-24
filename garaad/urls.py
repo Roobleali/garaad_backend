@@ -84,6 +84,10 @@ urlpatterns = [
     path('api/media/courses/<str:filename>', serve_course_image, name='serve_course_image'),
     path('api/media/health/', media_health_check, name='media_health_check'),
 
+    # Fix for frontend requesting /media/ directly
+    path('media/profile_pics/<str:filename>', serve_profile_picture, name='serve_profile_picture_direct'),
+    path('media/<path:file_path>', serve_media_file, name='serve_media_direct'),
+
     # Add hello-world endpoint
     path('hello-world/', hello_world, name='hello_world'),
     path('health/', health_check, name='health_check'),

@@ -19,6 +19,8 @@ DEBUG = False
 
 # Application definition
 INSTALLED_APPS = [
+    # Daphne must be listed before django.contrib.staticfiles
+    'daphne',
     # Default Django apps
     'django.contrib.admin',
     'django.contrib.auth',
@@ -41,6 +43,7 @@ INSTALLED_APPS = [
     'leagues',  # Add the leagues app
     'community',  # Community system with campuses, rooms, posts
     'payment',  # Payment and order history
+    'channels',  # Django Channels
 ]
 
 MIDDLEWARE = [
@@ -198,6 +201,13 @@ TEMPLATES = [
 # Update application paths
 WSGI_APPLICATION = 'garaad.wsgi.application'
 ASGI_APPLICATION = 'garaad.asgi.application'
+
+# Channels Configuration
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

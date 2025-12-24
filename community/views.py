@@ -604,3 +604,40 @@ class PresenceViewSet(viewsets.ModelViewSet):
         presence.save()
         
         return Response(PresenceSerializer(presence).data)
+
+
+class TrendingViewSet(viewsets.ViewSet):
+    """
+    ViewSet for trending topics and tags
+    """
+    permission_classes = [permissions.AllowAny]  # Allow public access to trending tags
+
+    @action(detail=False, methods=['get'])
+    def tags(self, request):
+        """
+        Get trending tags based on period
+        """
+        period = request.query_params.get('period', 'week')
+        
+        # Group campuses by subject_tag and sum their post_count
+        # For simplicity, we just use global post_count for now.
+        
+        from django.db.models import Sum
+        
+        subjects = Campus.objects.filter(is_active=True).values('subject_tag').annotate(
+            total_posts=Sum('post_count')
+        ).order_by('-total_posts')
+        
+        # Map back to display names
+        subject_dict = dict(Campus.SUBJECT_CHOICES)
+        
+        tags = []
+        for item in subjects:
+            tag_code = item['subject_tag']
+            tags.append({
+                'id': tag_code,
+                'name': subject_dict.get(tag_code, tag_code),
+                'count': item['total_posts']
+            })
+            
+        return Response(tags)

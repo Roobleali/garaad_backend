@@ -12,6 +12,7 @@ router.register(r'profiles', views.UserCommunityProfileViewSet, basename='profil
 router.register(r'notifications', views.CommunityNotificationViewSet, basename='notification')
 router.register(r'messages', views.MessageViewSet, basename='message')
 router.register(r'presence', views.PresenceViewSet, basename='presence')
+router.register(r'trending', views.TrendingViewSet, basename='trending')
 
 app_name = 'community'
 

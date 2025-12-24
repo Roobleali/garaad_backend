@@ -124,13 +124,15 @@ class CommunityGamification:
         Create notification for significant point awards
         """
         reasons_somali = {
-            'post_create': 'qoraal cusub',
-            'comment_create': 'faallo cusub',
-            'first_post': 'qoraalka koowaad',
-            'first_comment': 'faallada koowaad',
-            'helpful_comment': 'faallo faa\'iido leh',
-            'daily_activity': 'hawlaha maalinta',
-            'weekly_streak': 'iska xiga usbuuc',
+            'post_create': 'boodh soo dhigis',
+            'comment_create': 'faallo qoris',
+            'first_post': 'boodhkii ugu horreeyay',
+            'first_comment': 'faalladii ugu horraysay',
+            'helpful_comment': 'faallo waxtar leh',
+            'daily_activity': 'hawlmaalmeedka',
+            'weekly_streak': 'joogtaynta usbuuca',
+            'receive_reaction': 'dareen-celin helid',
+            'give_reaction': 'dareen-celin bixin',
         }
         
         reason_text = reasons_somali.get(reason, reason)

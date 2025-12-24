@@ -1,12 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from django.utils import timezone
-from django.db.models import Q
-from .models import (
-    Campus, Room, CampusMembership, Post, Comment, Like,
-    UserCommunityProfile, CommunityNotification, Message, Presence,
-    Category, Reaction
-)
+from .models import Post, PostImage, Reply, Reaction
+from courses.models import Category
 
 User = get_user_model()
 
@@ -19,475 +14,127 @@ class UserBasicSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'profile_picture', 'first_name', 'last_name']
 
 
-class CampusListSerializer(serializers.ModelSerializer):
-    """Serializer for campus list view"""
-    subject_display_somali = serializers.CharField(source='get_subject_display_somali', read_only=True)
-    user_is_member = serializers.SerializerMethodField()
+class ReplySerializer(serializers.ModelSerializer):
+    """Reply serializer - shallow, no nesting"""
+    author = UserBasicSerializer(read_only=True)
     
     class Meta:
-        model = Campus
+        model = Reply
         fields = [
-            'id', 'name', 'description',
-            'subject_tag', 'subject_display_somali', 'icon', 'slug', 'color_code',
-            'member_count', 'post_count', 'is_active', 'user_is_member'
+            'id',
+            'author',
+            'content',
+            'created_at',
+            'updated_at',
+            'is_edited'
         ]
+        read_only_fields = ['created_at', 'updated_at', 'is_edited']
+
+
+class PostImageSerializer(serializers.ModelSerializer):
+    """Post image serializer"""
     
-    def get_user_is_member(self, obj):
+    class Meta:
+        model = PostImage
+        fields = ['id', 'image', 'uploaded_at']
+        read_only_fields = ['uploaded_at']
+
+
+class PostSerializer(serializers.ModelSerializer):
+    """Post serializer with replies and reaction counts"""
+    author = UserBasicSerializer(read_only=True)
+    replies = ReplySerializer(many=True, read_only=True)
+    images = PostImageSerializer(many=True, read_only=True)
+    reactions_count = serializers.SerializerMethodField()
+    user_reactions = serializers.SerializerMethodField()
+    replies_count = serializers.IntegerField(source='replies.count', read_only=True)
+    
+    class Meta:
+        model = Post
+        fields = [
+            'id',
+            'category',
+            'author',
+            'content',
+            'created_at',
+            'updated_at',
+            'is_edited',
+            'images',
+            'replies',
+            'replies_count',
+            'reactions_count',
+            'user_reactions'
+        ]
+        read_only_fields = ['created_at', 'updated_at', 'is_edited', 'author']
+    
+    def get_reactions_count(self, obj):
+        """Get count of each reaction type"""
+        from django.db.models import Count
+        reactions = obj.reactions.values('type').annotate(count=Count('type'))
+        return {r['type']: r['count'] for r in reactions}
+    
+    def get_user_reactions(self, obj):
+        """Get current user's reactions to this post"""
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            return CampusMembership.objects.filter(
-                user=request.user, 
-                campus=obj, 
-                is_active=True
-            ).exists()
-        return False
-
-
-
-
-
-class CampusDetailSerializer(serializers.ModelSerializer):
-    """Detailed campus serializer with additional info"""
-    subject_display_somali = serializers.CharField(source='get_subject_display_somali', read_only=True)
-    created_by = UserBasicSerializer(read_only=True)
-    user_membership = serializers.SerializerMethodField()
-    recent_posts = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Campus
-        fields = [
-            'id', 'name', 'description',
-            'subject_tag', 'subject_display_somali', 'icon', 'slug', 'color_code',
-            'member_count', 'post_count', 'is_active', 'requires_approval',
-            'created_at', 'created_by', 'user_membership', 'recent_posts'
-        ]
-    
-    def get_user_membership(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            try:
-                membership = CampusMembership.objects.get(
-                    user=request.user, 
-                    campus=obj, 
-                    is_active=True
-                )
-                return {
-                    'is_member': True,
-                    'is_moderator': membership.is_moderator,
-                    'joined_at': membership.joined_at,
-                    'posts_count': membership.posts_count,
-                    'reputation_score': membership.reputation_score
-                }
-            except CampusMembership.DoesNotExist:
-                return {'is_member': False}
-        return {'is_member': False}
-    
-    def get_recent_posts(self, obj):
-        # Get recent posts from this campus
-        recent_posts = Post.objects.filter(
-            room__campus=obj,
-            is_approved=True
-        ).select_related('user', 'room').order_by('-created_at')[:5]
-        
-        return [{
-            'id': str(post.id),
-            'title': post.title,
-            'user': post.user.username,
-            'room': post.room.name,
-            'created_at': post.created_at,
-            'likes_count': post.likes_count,
-            'comments_count': post.comments_count
-        } for post in recent_posts]
-
-
-class RoomSerializer(serializers.ModelSerializer):
-    """Room serializer"""
-    campus = CampusListSerializer(read_only=True)
-    campus_id = serializers.PrimaryKeyRelatedField(
-        queryset=Campus.objects.filter(is_active=True),
-        source='campus',
-        write_only=True
-    )
-    created_by = UserBasicSerializer(read_only=True)
-    room_type_display = serializers.CharField(source='get_room_type_display', read_only=True)
-    
-    class Meta:
-        model = Room
-        fields = [
-            'id', 'name', 'slug', 'description', 'campus', 'campus_id', 
-            'room_type', 'room_type_display', 'is_private', 'icon',
-            'order', 'created_at', 'created_by', 
-            'min_badge_level', 'is_locked'
-        ]
-        
-    is_locked = serializers.SerializerMethodField()
-
-    def get_is_locked(self, obj):
-        request = self.context.get('request')
-        if not request or not request.user.is_authenticated:
-            return False
-            
-        if not obj.min_badge_level or obj.min_badge_level == 'dhalinyaro':
-            return False
-            
-        # Check logic (duplicate of permissions but needed for UI state)
-        try:
-            profile = request.user.community_profile
-            LEVEL_ORDER = ['dhalinyaro', 'dhexe', 'sare', 'weyne', 'hogaamiye']
-            user_idx = LEVEL_ORDER.index(profile.badge_level)
-            req_idx = LEVEL_ORDER.index(obj.min_badge_level)
-            return user_idx < req_idx
-        except:
-            return False
-    
-    def create(self, validated_data):
-        validated_data['created_by'] = self.context['request'].user
-        return super().create(validated_data)
-
-
-class CampusMembershipSerializer(serializers.ModelSerializer):
-    """Campus membership serializer"""
-    user = UserBasicSerializer(read_only=True)
-    campus = CampusListSerializer(read_only=True)
-    
-    class Meta:
-        model = CampusMembership
-        fields = [
-            'id', 'user', 'campus', 'joined_at', 'is_moderator', 'is_active',
-            'posts_count', 'comments_count', 'likes_received', 'reputation_score'
-        ]
+            return list(obj.reactions.filter(user=request.user).values_list('type', flat=True))
+        return []
 
 
 class PostCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating posts"""
-    room_id = serializers.PrimaryKeyRelatedField(
-        queryset=Room.objects.filter(is_active=True),
-        source='room',
-        write_only=True
-    )
     
     class Meta:
         model = Post
-        fields = [
-            'title', 'content', 'language', 'post_type', 'room_id', 'image', 'video_url'
-        ]
-        extra_kwargs = {
-            'title': {'error_messages': {'min_length': 'Cinwaanku waa inuu yahay ugu yaraan 5 xaraf.'}},  # Title must be at least 5 characters
-            'content': {'error_messages': {'min_length': 'Qoraalku waa inuu yahay ugu yaraan 10 xaraf.'}},  # Content must be at least 10 characters
-        }
+        fields = ['category', 'content']
     
-    def validate(self, data):
-        # Any authenticated user can create posts
-        request = self.context.get('request')
-        if not request or not request.user.is_authenticated:
-            raise serializers.ValidationError({
-                'room_id': 'Waa inaad ku saabsan tahay si aad qoraal u qorto.'  # You must be authenticated to post
-            })
-        
-        return data
-    
-    def create(self, validated_data):
-        validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
-
-
-class PostListSerializer(serializers.ModelSerializer):
-    """Serializer for post list view"""
-    user = UserBasicSerializer(read_only=True)
-    room = RoomSerializer(read_only=True)
-    post_type_display = serializers.CharField(source='get_post_type_display', read_only=True)
-    language_display = serializers.CharField(source='get_language_display', read_only=True)
-    user_has_liked = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Post
-        fields = [
-            'id', 'title', 'content', 'user', 'room', 'language', 'language_display',
-            'post_type', 'post_type_display', 'image', 'video_url',
-            'is_pinned', 'is_featured', 'likes_count', 'comments_count', 'views_count',
-            'created_at', 'updated_at', 'user_has_liked'
-        ]
-    
-    def get_user_has_liked(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return Like.objects.filter(
-                user=request.user,
-                post=obj
-            ).exists()
-        return False
-
-
-class PostDetailSerializer(PostListSerializer):
-    """Detailed post serializer with comments"""
-    comments = serializers.SerializerMethodField()
-    
-    class Meta(PostListSerializer.Meta):
-        fields = PostListSerializer.Meta.fields + ['comments']
-    
-    def get_comments(self, obj):
-        # Get top-level comments (not replies)
-        comments = Comment.objects.filter(
-            post=obj,
-            parent_comment__isnull=True,
-            is_approved=True
-        ).select_related('user').order_by('created_at')
-        
-        return CommentWithRepliesSerializer(comments, many=True, context=self.context).data
-
-
-class CommentCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating comments"""
-    post_id = serializers.PrimaryKeyRelatedField(
-        queryset=Post.objects.filter(is_approved=True),
-        source='post',
-        write_only=True
-    )
-    parent_comment_id = serializers.PrimaryKeyRelatedField(
-        queryset=Comment.objects.filter(is_approved=True),
-        source='parent_comment',
-        write_only=True,
-        required=False
-    )
-    
-    class Meta:
-        model = Comment
-        fields = ['content', 'language', 'post_id', 'parent_comment_id']
-        extra_kwargs = {
-            'content': {'error_messages': {'min_length': 'Faallaadu waa inay tahay ugu yaraan 2 xaraf.'}},  # Comment must be at least 2 characters
-        }
-    
-    def validate(self, data):
-        request = self.context.get('request')
-        if not request or not request.user.is_authenticated:
-            raise serializers.ValidationError({
-                'post_id': 'Waa inaad ku saabsan tahay si aad faallo u qorto.'  # You must be authenticated to comment
-            })
-        
-        return data
-    
-    def create(self, validated_data):
-        validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
-
-
-class CommentSerializer(serializers.ModelSerializer):
-    """Comment serializer"""
-    user = UserBasicSerializer(read_only=True)
-    language_display = serializers.CharField(source='get_language_display', read_only=True)
-    user_has_liked = serializers.SerializerMethodField()
-    replies_count = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Comment
-        fields = [
-            'id', 'content', 'user', 'language', 'language_display',
-            'likes_count', 'created_at', 'updated_at', 'is_edited',
-            'user_has_liked', 'replies_count', 'reactions'
-        ]
-    
-    reactions = serializers.SerializerMethodField()
-
-    def get_reactions(self, obj):
-        from django.db.models import Count
-        reactions = obj.reactions.values('emoji').annotate(count=Count('user'))
-        return list(reactions)
-    
-    def get_user_has_liked(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return Like.objects.filter(
-                user=request.user,
-                comment=obj
-            ).exists()
-        return False
-    
-    def get_replies_count(self, obj):
-        return obj.replies.filter(is_approved=True).count()
-
-
-class CommentWithRepliesSerializer(CommentSerializer):
-    """Comment serializer with replies"""
-    replies = serializers.SerializerMethodField()
-    
-    class Meta(CommentSerializer.Meta):
-        fields = CommentSerializer.Meta.fields + ['replies']
-    
-    def get_replies(self, obj):
-        replies = obj.replies.filter(is_approved=True).select_related('user').order_by('created_at')
-        return CommentSerializer(replies, many=True, context=self.context).data
-
-
-class LikeSerializer(serializers.ModelSerializer):
-    """Like serializer"""
-    user = UserBasicSerializer(read_only=True)
-    
-    class Meta:
-        model = Like
-        fields = ['id', 'user', 'content_type', 'created_at']
-
-
-class LikeCreateSerializer(serializers.Serializer):
-    """Serializer for creating likes"""
-    content_type = serializers.ChoiceField(choices=['post', 'comment'])
-    content_id = serializers.UUIDField()
-    
-    def validate(self, data):
-        content_type = data['content_type']
-        content_id = data['content_id']
-        request = self.context['request']
-        
-        # Validate content exists and user can like it
-        if content_type == 'post':
-            try:
-                post = Post.objects.get(id=content_id, is_approved=True)
-                data['post'] = post
-            except Post.DoesNotExist:
-                raise serializers.ValidationError('Qoraalka lama helin.')  # Post not found
-        
-        elif content_type == 'comment':
-            try:
-                comment = Comment.objects.get(id=content_id, is_approved=True)
-                data['comment'] = comment
-            except Comment.DoesNotExist:
-                raise serializers.ValidationError('Faallada lama helin.')  # Comment not found
-        
-        return data
-    
-    def create(self, validated_data):
-        user = self.context['request'].user
-        content_type = validated_data['content_type']
-        
-        like_data = {'user': user, 'content_type': content_type}
-        
-        if content_type == 'post':
-            like_data['post'] = validated_data['post']
-        elif content_type == 'comment':
-            like_data['comment'] = validated_data['comment']
-        
-        # Create or get existing like
-        like, created = Like.objects.get_or_create(**like_data)
-        
-        if not created:
-            # Unlike if already liked
-            like.delete()
-            return None
-        
-        return like
-
-
-class UserCommunityProfileSerializer(serializers.ModelSerializer):
-    """User community profile serializer"""
-    user = UserBasicSerializer(read_only=True)
-    badge_level_display = serializers.CharField(source='get_badge_level_display', read_only=True)
-    level = serializers.IntegerField(read_only=True)
-    xp_to_next_level = serializers.IntegerField(read_only=True)
-    level_progress_percentage = serializers.IntegerField(read_only=True)
-    
-    class Meta:
-        model = UserCommunityProfile
-        fields = [
-            'user', 'community_points', 'badge_level', 'badge_level_display',
-            'level', 'xp_to_next_level', 'level_progress_percentage',
-            'total_posts', 'total_comments', 'total_likes_received', 'total_likes_given',
-            'preferred_language', 'email_notifications', 'mention_notifications'
-        ]
-        read_only_fields = [
-            'community_points', 'badge_level', 'total_posts', 'total_comments',
-            'total_likes_received', 'total_likes_given'
-        ]
-
-
-class CommunityNotificationSerializer(serializers.ModelSerializer):
-    """Community notification serializer"""
-    sender = UserBasicSerializer(read_only=True)
-    notification_type_display = serializers.CharField(source='get_notification_type_display', read_only=True)
-    post_title = serializers.CharField(source='post.title', read_only=True)
-    campus_name = serializers.CharField(source='campus.name', read_only=True)
-    
-    class Meta:
-        model = CommunityNotification
-        fields = [
-            'id', 'sender', 'notification_type', 'notification_type_display',
-            'title', 'message', 'is_read', 'created_at',
-            'post_title', 'campus_name'
-        ]
-
-
-class JoinCampusSerializer(serializers.Serializer):
-    """Serializer for joining a campus"""
-    campus_id = serializers.PrimaryKeyRelatedField(
-        queryset=Campus.objects.filter(is_active=True)
-    )
-    
-    def validate_campus_id(self, value):
-        request = self.context['request']
-        
-        # Check if user is already a member
-        if CampusMembership.objects.filter(
-            user=request.user,
-            campus=value,
-            is_active=True
-        ).exists():
-            raise serializers.ValidationError('Waad ka mid tahay campus-kan horay.')  # You are already a member of this campus
-        
+    def validate_category(self, value):
+        """Ensure category has community enabled"""
+        if not value.is_community_enabled:
+            raise serializers.ValidationError(
+                "This category does not have community features enabled."
+            )
         return value
     
     def create(self, validated_data):
-        campus = validated_data['campus_id']
+        """Set author from request user"""
+        validated_data['author'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class ReplyCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating replies"""
+    
+    class Meta:
+        model = Reply
+        fields = ['content']
+    
+    def create(self, validated_data):
+        """Set author and post from context"""
+        validated_data['author'] = self.context['request'].user
+        validated_data['post'] = self.context['post']
+        return super().create(validated_data)
+
+
+class ReactionSerializer(serializers.Serializer):
+    """Serializer for toggling reactions"""
+    type = serializers.ChoiceField(choices=Reaction.REACTION_CHOICES)
+    
+    def create(self, validated_data):
+        """Toggle reaction (create or delete)"""
         user = self.context['request'].user
+        post = self.context['post']
+        reaction_type = validated_data['type']
         
-        membership, created = CampusMembership.objects.get_or_create(
+        reaction, created = Reaction.objects.get_or_create(
+            post=post,
             user=user,
-            campus=campus,
-            defaults={'is_active': True}
+            type=reaction_type
         )
         
         if not created:
-            membership.is_active = True
-            membership.save()
+            # Remove reaction if it already exists
+            reaction.delete()
+            return {'action': 'removed', 'type': reaction_type}
         
-        # Update campus member count
-        campus.member_count = campus.memberships.filter(is_active=True).count()
-        campus.save(update_fields=['member_count'])
-        
-        return membership 
-
-
-class PresenceSerializer(serializers.ModelSerializer):
-    """User presence serializer"""
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
-    
-    class Meta:
-        model = Presence
-        fields = ['status', 'status_display', 'custom_status', 'last_seen']
-
-
-class MessageSerializer(serializers.ModelSerializer):
-    """Discord-style message serializer"""
-    sender = UserBasicSerializer(read_only=True)
-    sender_presence = serializers.SerializerMethodField()
-    replies_count = serializers.IntegerField(source='replies.count', read_only=True)
-    
-    class Meta:
-        model = Message
-        fields = [
-            'id', 'room', 'sender', 'sender_presence', 'content', 
-            'attachment_url', 'attachment_type', 'reply_to', 
-            'replies_count', 'is_edited', 'created_at', 'updated_at',
-            'reactions'
-        ]
-        read_only_fields = ['sender', 'is_edited', 'created_at']
-
-    reactions = serializers.SerializerMethodField()
-
-    def get_reactions(self, obj):
-        from django.db.models import Count
-        reactions = obj.reactions.values('emoji').annotate(count=Count('user'))
-        return list(reactions)
-
-    def get_sender_presence(self, obj):
-        try:
-            return PresenceSerializer(obj.sender.presence).data
-        except:
-            return {'status': 'offline'}
+        return {'action': 'added', 'type': reaction_type}

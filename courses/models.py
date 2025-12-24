@@ -15,6 +15,10 @@ class Category(models.Model):
     image = models.CharField(max_length=255)
     in_progress = models.BooleanField(default=False)
     course_ids = models.JSONField(default=list, null=True, blank=True)
+    
+    # Community features (additive only)
+    is_community_enabled = models.BooleanField(default=False, help_text="Enable community posts for this category")
+    community_description = models.TextField(blank=True, help_text="Description for community section")
 
     def __str__(self):
         return self.title

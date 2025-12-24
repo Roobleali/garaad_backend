@@ -315,13 +315,22 @@ class CourseListSerializer(serializers.ModelSerializer):
 
 class CategorySerializer(serializers.ModelSerializer):
     courses = CourseSerializer(many=True, read_only=True)
+    posts_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
         fields = [
             'id', 'title', 'description', 'image',
-            'in_progress', 'course_ids', 'courses'
+            'in_progress', 'course_ids', 'courses',
+            'is_community_enabled', 'community_description',
+            'posts_count'
         ]
+    
+    def get_posts_count(self, obj):
+        """Get count of community posts if community is enabled"""
+        if obj.is_community_enabled:
+            return obj.community_posts.count()
+        return 0
 
 
 # New serializers for progress and rewards

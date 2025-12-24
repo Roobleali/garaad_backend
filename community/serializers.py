@@ -4,7 +4,8 @@ from django.utils import timezone
 from django.db.models import Q
 from .models import (
     Campus, Room, CampusMembership, Post, Comment, Like,
-    UserCommunityProfile, CommunityNotification, Message, Presence
+    UserCommunityProfile, CommunityNotification, Message, Presence,
+    Category, Reaction
 )
 
 User = get_user_model()
@@ -40,6 +41,13 @@ class CampusListSerializer(serializers.ModelSerializer):
                 is_active=True
             ).exists()
         return False
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    """Category serializer for grouping rooms"""
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'description', 'icon', 'order']
 
 
 class CampusDetailSerializer(serializers.ModelSerializer):
@@ -111,7 +119,7 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = [
             'id', 'name', 'slug', 'description', 'campus', 'campus_id', 
-            'room_type', 'room_type_display', 'is_private', 'icon',
+            'category', 'room_type', 'room_type_display', 'is_private', 'icon',
             'order', 'created_at', 'created_by'
         ]
     
@@ -258,8 +266,15 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'content', 'user', 'language', 'language_display',
             'likes_count', 'created_at', 'updated_at', 'is_edited',
-            'user_has_liked', 'replies_count'
+            'user_has_liked', 'replies_count', 'reactions'
         ]
+    
+    reactions = serializers.SerializerMethodField()
+
+    def get_reactions(self, obj):
+        from django.db.models import Count
+        reactions = obj.reactions.values('emoji').annotate(count=Count('user'))
+        return list(reactions)
     
     def get_user_has_liked(self, obj):
         request = self.context.get('request')
@@ -348,11 +363,15 @@ class UserCommunityProfileSerializer(serializers.ModelSerializer):
     """User community profile serializer"""
     user = UserBasicSerializer(read_only=True)
     badge_level_display = serializers.CharField(source='get_badge_level_display', read_only=True)
+    level = serializers.IntegerField(read_only=True)
+    xp_to_next_level = serializers.IntegerField(read_only=True)
+    level_progress_percentage = serializers.IntegerField(read_only=True)
     
     class Meta:
         model = UserCommunityProfile
         fields = [
             'user', 'community_points', 'badge_level', 'badge_level_display',
+            'level', 'xp_to_next_level', 'level_progress_percentage',
             'total_posts', 'total_comments', 'total_likes_received', 'total_likes_given',
             'preferred_language', 'email_notifications', 'mention_notifications'
         ]
@@ -438,9 +457,17 @@ class MessageSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'room', 'sender', 'sender_presence', 'content', 
             'attachment_url', 'attachment_type', 'reply_to', 
-            'replies_count', 'is_edited', 'created_at', 'updated_at'
+            'replies_count', 'is_edited', 'created_at', 'updated_at',
+            'reactions'
         ]
         read_only_fields = ['sender', 'is_edited', 'created_at']
+
+    reactions = serializers.SerializerMethodField()
+
+    def get_reactions(self, obj):
+        from django.db.models import Count
+        reactions = obj.reactions.values('emoji').annotate(count=Count('user'))
+        return list(reactions)
 
     def get_sender_presence(self, obj):
         try:

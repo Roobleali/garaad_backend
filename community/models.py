@@ -65,6 +65,28 @@ class Campus(models.Model):
         return dict(self.SUBJECT_CHOICES).get(self.subject_tag, self.subject_tag)
 
 
+class Category(models.Model):
+    """
+    Categories to group rooms within a campus (e.g., "General", "Learning", "Resources")
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    campus = models.ForeignKey(Campus, on_delete=models.CASCADE, related_name='categories')
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    icon = models.CharField(max_length=50, default='folder')
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['campus', 'order', 'name']
+        unique_together = ['campus', 'name']
+        verbose_name = 'Category'
+        verbose_name_plural = 'Categories'
+
+    def __str__(self):
+        return f"{self.campus.name} - {self.name}"
+
+
 class Room(models.Model):
     """
     Rooms within campuses for more specific discussions (e.g., "Garaad HQ", "Study Group")
@@ -78,6 +100,7 @@ class Room(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     campus = models.ForeignKey(Campus, on_delete=models.CASCADE, related_name='rooms')
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='rooms')
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120, blank=True)
     description = models.TextField(blank=True)
@@ -376,6 +399,72 @@ class UserCommunityProfile(models.Model):
             self.badge_level = 'dhexe'
         else:
             self.badge_level = 'dhalinyaro'
+
+    @property
+    def level(self):
+        """Calculate level based on XP"""
+        import math
+        # Level = floor(sqrt(XP / 100)) + 1
+        # Example: 100 XP = Lvl 2, 400 XP = Lvl 3, 900 XP = Lvl 4
+        return math.floor(math.sqrt(self.community_points / 100)) + 1
+
+    @property
+    def xp_to_next_level(self):
+        """XP needed for the next level"""
+        current_lvl = self.level
+        next_lvl_xp = (current_lvl ** 2) * 100
+        return next_lvl_xp - self.community_points
+
+    @property
+    def level_progress_percentage(self):
+        """Percentage progress to next level"""
+        current_lvl = self.level
+        current_lvl_min_xp = ((current_lvl - 1) ** 2) * 100
+        next_lvl_xp = (current_lvl ** 2) * 100
+        
+        total_xp_needed_for_lvl = next_lvl_xp - current_lvl_min_xp
+        xp_gained_in_current_lvl = self.community_points - current_lvl_min_xp
+        
+        if total_xp_needed_for_lvl == 0:
+            return 0
+        return min(100, math.floor((xp_gained_in_current_lvl / total_xp_needed_for_lvl) * 100))
+
+
+class Reaction(models.Model):
+    """
+    Emoji reactions for messages and comments
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='community_reactions')
+    emoji = models.CharField(max_length=50) # The reaction emoji or shortcode
+    
+    # Target (can be a Message or a Comment)
+    message = models.ForeignKey('Message', on_delete=models.CASCADE, null=True, blank=True, related_name='reactions')
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, null=True, blank=True, related_name='reactions')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            # Ensure user can only react with the same emoji once per message/comment
+            models.UniqueConstraint(
+                fields=['user', 'message', 'emoji'],
+                condition=models.Q(message__isnull=False),
+                name='unique_message_reaction'
+            ),
+            models.UniqueConstraint(
+                fields=['user', 'comment', 'emoji'],
+                condition=models.Q(comment__isnull=False),
+                name='unique_comment_reaction'
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['emoji']),
+        ]
+
+    def __str__(self):
+        target = f"message {self.message_id}" if self.message else f"comment {self.comment_id}"
+        return f"{self.user.username} reacted {self.emoji} to {target}"
 
 
 class CommunityNotification(models.Model):

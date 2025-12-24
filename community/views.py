@@ -9,7 +9,8 @@ from django.db import transaction
 
 from .models import (
     Campus, Room, CampusMembership, Post, Comment, Like,
-    UserCommunityProfile, CommunityNotification, Message, Presence
+    UserCommunityProfile, CommunityNotification, Message, Presence,
+    Category, Reaction
 )
 from .serializers import (
     CampusListSerializer, CampusDetailSerializer, RoomSerializer,
@@ -142,6 +143,17 @@ class CampusViewSet(viewsets.ModelViewSet):
         ).order_by('order', 'name')
         
         serializer = RoomSerializer(rooms, many=True, context={'request': request})
+        
+        # Optionally group by category if requested
+        group_by_category = request.query_params.get('group_by_category')
+        if group_by_category:
+            from collections import defaultdict
+            grouped_rooms = defaultdict(list)
+            for room in serializer.data:
+                cat_id = str(room.get('category')) if room.get('category') else 'Uncategorized'
+                grouped_rooms[cat_id].append(room)
+            return Response(grouped_rooms)
+            
         return Response(serializer.data)
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, IsCampusMember])
@@ -497,7 +509,13 @@ class UserCommunityProfileViewSet(viewsets.ReadOnlyModelViewSet):
         # Top 50 users by community points
         profiles = queryset.order_by('-community_points')[:50]
         serializer = self.get_serializer(profiles, many=True)
-        return Response(serializer.data)
+        
+        # Add rank information
+        data = serializer.data
+        for i, item in enumerate(data):
+            item['rank'] = i + 1
+            
+        return Response(data)
 
 
 class CommunityNotificationViewSet(viewsets.ReadOnlyModelViewSet):
@@ -549,6 +567,27 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
+
+    @action(detail=True, methods=['post'], url_path='react')
+    def react(self, request, pk=None):
+        """Add or remove an emoji reaction to a message"""
+        message = self.get_object()
+        emoji = request.data.get('emoji')
+        
+        if not emoji:
+            return Response({'error': 'Emoji is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        reaction, created = Reaction.objects.get_or_create(
+            user=request.user,
+            emoji=emoji,
+            message=message
+        )
+        
+        if not created:
+            reaction.delete()
+            return Response({'message': 'Reaction removed', 'active': False})
+            
+        return Response({'message': 'Reaction added', 'active': True})
 
 
 class PresenceViewSet(viewsets.ModelViewSet):

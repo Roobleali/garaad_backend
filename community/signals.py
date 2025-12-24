@@ -265,14 +265,10 @@ def handle_profile_update(sender, instance, created, **kwargs):
     """
     if not created:
         # Check if badge level should be updated based on points
-        new_badge = CommunityGamification.calculate_badge_level(instance.community_points)
-        if new_badge != instance.badge_level:
-            old_badge = instance.badge_level
-            instance.badge_level = new_badge
-            instance.save(update_fields=['badge_level'])
-            
-            # Create badge level up notification
-            CommunityGamification.create_badge_notification(instance.user, new_badge, old_badge)
+        instance.update_badge_level()
+        
+        # Create level/badge notification if needed (simplified for now)
+        # We can add more complex level-up logic later
 
 
 # Auto-create community profile for new users

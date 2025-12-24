@@ -23,6 +23,8 @@ class CommunityGamification:
         'daily_activity': 5,    # Daily activity bonus
         'weekly_streak': 25,    # Weekly streak bonus
         'helpful_comment': 15,  # Bonus for helpful comments (liked 5+ times)
+        'receive_reaction': 5,  # +5 for receiving an emoji reaction
+        'give_reaction': 1,     # +1 for giving an emoji reaction
     }
     
     # Badge thresholds (in Somali)

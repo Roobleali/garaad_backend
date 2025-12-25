@@ -34,15 +34,17 @@ def verify():
         print(f"📡 Testing {method} {url}...", end=" ", flush=True)
         try:
             if method == 'GET':
-                response = client.get(url)
+                response = client.get(url, follow=True)
             else:
                 # Basic empty payload for activity update
-                response = client.post(url, data={}, content_type='application/json')
+                response = client.post(url, data={}, content_type='application/json', follow=True)
             
-            if response.status_code in [200, 201, 400]: # 400 is fine for empty POST, 500 is the enemy
-                print(f"✅ PASSED (Status: {response.status_code})")
+            # Check the final response in case of redirects
+            final_status = response.status_code
+            if final_status in [200, 201, 400]: # 400 is fine for empty POST, 500 is the enemy
+                print(f"✅ PASSED (Status: {final_status})")
             else:
-                print(f"❌ FAILED (Status: {response.status_code})")
+                print(f"❌ FAILED (Status: {final_status})")
                 if response.status_code == 500:
                     all_passed = False
                     # Print a snippet of the error if it's a 500

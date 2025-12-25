@@ -2,7 +2,7 @@ from rest_framework import serializers
 from accounts.models import User, UserOnboarding
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.db import transaction
+from django.db import models, transaction
 import logging
 from .models import Streak, DailyActivity, Notification, GamificationProgress, MomentumState, EnergyWallet, ActivityLog
 from django.utils import timezone

@@ -49,7 +49,7 @@ def repair():
                     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
                     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
                     is_edited BOOLEAN NOT NULL DEFAULT FALSE,
-                    author_id INTEGER NOT NULL REFERENCES auth_user(id),
+                    author_id INTEGER NOT NULL REFERENCES accounts_user(id),
                     post_id INTEGER NOT NULL REFERENCES community_post(id)
                 )
             """,
@@ -59,7 +59,7 @@ def repair():
                     type VARCHAR(20) NOT NULL,
                     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
                     post_id INTEGER NOT NULL REFERENCES community_post(id),
-                    user_id INTEGER NOT NULL REFERENCES auth_user(id),
+                    user_id INTEGER NOT NULL REFERENCES accounts_user(id),
                     UNIQUE (post_id, user_id, type)
                 )
             """,

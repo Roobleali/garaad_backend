@@ -14,6 +14,7 @@ urlpatterns = [
     path('verify-email/', views.verify_email, name='verify_email'),
     path('resend-verification/', views.resend_verification_email, name='resend_verification_email'),
     path('referrals/', views.referrals_view, name='referrals'),
+    path('referral-list/', views.referrals_view, name='referral_list_alias'),
     path('referral-stats/', views.referral_stats_view, name='referral_stats'),
     path('generate-referral-code/', views.generate_referral_code_view, name='generate_referral_code'),
 ]

@@ -5,18 +5,15 @@ class CommunityConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.user = self.scope.get('user')
         
+        # Extract room name from URL (e.g. category_123 or global)
+        self.room_name = self.scope['url_route']['kwargs'].get('room_name', 'global')
+        self.room_group_name = f"community_{self.room_name}"
+        
         # Verify if user is authenticated
         if self.user is None or not self.user.is_authenticated:
-             # Option 1: Reject connection
-             # await self.close()
-             # return
-             
-             # Option 2: Accept but log (current behavior asked by user previously?)
-             print("Warning: Anonymous user connected")
+            print(f"Warning: Anonymous user connecting to {self.room_group_name}")
         else:
-            print(f"User connected: {self.user.email}")
-
-        self.room_group_name = "community_global"
+            print(f"User {self.user.email} connecting to {self.room_group_name}")
 
         # Join room group
         await self.channel_layer.group_add(

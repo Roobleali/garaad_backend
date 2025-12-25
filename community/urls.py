@@ -1,4 +1,4 @@
-from django.urls import path, include
+from django.urls import path, include, re_path
 from rest_framework.routers import DefaultRouter
 from . import views
 
@@ -14,8 +14,8 @@ urlpatterns = [
     
     # Category-specific posts endpoint
     # GET/POST /api/community/categories/{category_id}/posts/
-    path(
-        'categories/<str:category_id>/posts/',
+    re_path(
+        r'^categories/(?P<category_id>[^/]+)/posts/?$',
         views.PostViewSet.as_view({'get': 'list', 'post': 'create'}),
         name='category-posts'
     ),

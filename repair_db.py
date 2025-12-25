@@ -10,19 +10,33 @@ def repair():
         print("🔍 checking community_post table...")
         
         # 1. Fix community_post columns
-        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='community_post'")
-        columns = [row[0] for row in cursor.fetchall()]
+        cursor.execute("SELECT column_name, data_type FROM information_schema.columns WHERE table_name='community_post'")
+        col_info = {row[0]: row[1] for row in cursor.fetchall()}
         
-        if 'user_id' in columns and 'author_id' not in columns:
+        # Handle user_id -> author_id rename
+        if 'user_id' in col_info and 'author_id' not in col_info:
             print("🔧 Renaming user_id to author_id...")
             cursor.execute("ALTER TABLE community_post RENAME COLUMN user_id TO author_id")
+            col_info['author_id'] = col_info.pop('user_id')
         
-        if 'category_id' not in columns:
-            print("🔧 Adding category_id to community_post...")
-            # We assume category 1 exists or just use NULL for now if allowed, 
-            # but usually it's easier to just add it.
-            cursor.execute("ALTER TABLE community_post ADD COLUMN category_id INTEGER")
-            cursor.execute("UPDATE community_post SET category_id = 1 WHERE category_id IS NULL")
+        # Handle category_id correctly
+        if 'category_id' in col_info:
+            curr_type = col_info['category_id'].lower()
+            if 'int' in curr_type:
+                print(f"🔧 Correcting category_id type (from {curr_type} to VARCHAR)...")
+                cursor.execute("ALTER TABLE community_post DROP COLUMN IF EXISTS category_id CASCADE")
+                del col_info['category_id']
+        
+        if 'category_id' not in col_info:
+            print("🔧 Adding category_id (VARCHAR) to community_post...")
+            cursor.execute("ALTER TABLE community_post ADD COLUMN category_id VARCHAR(50)")
+            # Set a valid default category ID (usually the slug or id of a top category)
+            # We'll try to find any existing category ID
+            cursor.execute("SELECT id FROM courses_category LIMIT 1")
+            row = cursor.fetchone()
+            default_cat = row[0] if row else 'stem' # Fallback
+            
+            cursor.execute(f"UPDATE community_post SET category_id = '{default_cat}' WHERE category_id IS NULL")
             cursor.execute("ALTER TABLE community_post ALTER COLUMN category_id SET NOT NULL")
             cursor.execute("ALTER TABLE community_post ADD CONSTRAINT community_post_category_fk FOREIGN KEY (category_id) REFERENCES courses_category(id)")
 

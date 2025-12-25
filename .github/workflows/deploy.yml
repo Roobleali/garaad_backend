@@ -23,5 +23,5 @@ jobs:
             pip install -r requirements.txt
             python manage.py migrate
             python manage.py collectstatic --noinput
-            systemctl restart gunicorn
+            systemctl restart daphne
             systemctl reload nginx

@@ -13,6 +13,16 @@ from .serializers import (
     ReactionSerializer
 )
 from .permissions import IsAuthorOrStaffOrReadOnly
+from courses.views import CategoryViewSet as BaseCategoryViewSet
+from courses.serializers import CategorySerializer
+
+
+class CommunityCategoryViewSet(BaseCategoryViewSet):
+    """
+    API endpoint for community-enabled categories.
+    """
+    queryset = Category.objects.filter(is_community_enabled=True)
+    serializer_class = CategorySerializer
 
 
 class PostViewSet(viewsets.ModelViewSet):

@@ -5,6 +5,7 @@ from . import views
 router = DefaultRouter()
 router.register(r'posts', views.PostViewSet, basename='post')
 router.register(r'replies', views.ReplyViewSet, basename='reply')
+router.register(r'categories', views.CommunityCategoryViewSet, basename='category')
 
 app_name = 'community'
 

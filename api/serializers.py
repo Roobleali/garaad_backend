@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db import transaction
 import logging
-from .models import Streak, DailyActivity, Notification
+from .models import Streak, DailyActivity, Notification, GamificationProgress, MomentumState, EnergyWallet, ActivityLog
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -201,30 +201,78 @@ class DailyActivitySerializer(serializers.ModelSerializer):
     def get_isToday(self, obj):
         return obj.date == timezone.now().date()
 
+class GamificationProgressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GamificationProgress
+        fields = ['xp_total', 'level', 'identity', 'league', 'weekly_velocity']
+
+class MomentumStateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MomentumState
+        fields = ['streak_count', 'state', 'last_active_at']
+
+class EnergyWalletSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EnergyWallet
+        fields = ['energy_balance', 'lifetime_earned']
+
+class ActivityLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ActivityLog
+        fields = ['action_type', 'xp_delta', 'energy_delta', 'created_at']
 
 class StreakSerializer(serializers.ModelSerializer):
     energy = serializers.SerializerMethodField()
     dailyActivity = DailyActivitySerializer(source='user.daily_activities', many=True)
     username = serializers.CharField(source='user.username', read_only=True)
     userId = serializers.CharField(source='user.id', read_only=True)
-    xp = serializers.IntegerField(read_only=True)
-    daily_xp = serializers.IntegerField(read_only=True)
+    
+    # Bridge to new models
+    xp = serializers.SerializerMethodField()
+    daily_xp = serializers.SerializerMethodField()
+    current_streak = serializers.SerializerMethodField()
+    state = serializers.SerializerMethodField()
 
     class Meta:
-        model = Streak
-        fields = ['userId', 'username', 'current_streak', 'max_streak', 'lessons_completed',
-                 'problems_to_next_streak', 'energy', 'dailyActivity', 'xp', 'daily_xp']
+        model = MomentumState
+        fields = ['userId', 'username', 'current_streak', 'state', 'energy', 'dailyActivity', 'xp', 'daily_xp']
 
     def get_energy(self, obj):
+        wallet, _ = EnergyWallet.objects.get_or_create(user=obj.user)
         return {
-            'current': obj.current_energy,
-            'max': obj.max_energy,
-            'next_update': obj.last_energy_update + timezone.timedelta(hours=4)
+            'current': wallet.energy_balance,
+            'max': 5, # Standardized
+            'next_update': obj.last_active_at + timezone.timedelta(hours=4)
         }
+
+    def get_xp(self, obj):
+        progress, _ = GamificationProgress.objects.get_or_create(user=obj.user)
+        return progress.xp_total
+
+    def get_daily_xp(self, obj):
+        # Calculate from ActivityLog for today
+        today = timezone.now().date()
+        return ActivityLog.objects.filter(
+            user=obj.user, 
+            created_at__date=today
+        ).aggregate(models.Sum('xp_delta'))['xp_delta__sum'] or 0
+
+    def get_current_streak(self, obj):
+        return obj.streak_count
+
+    def get_state(self, obj):
+        return obj.state
 
 
 class StreakUpdateSerializer(serializers.Serializer):
-    problems_solved = serializers.IntegerField(min_value=0)
+    action_type = serializers.ChoiceField(choices=[
+        ('problem_attempt', 'Problem Attempt'),
+        ('solve', 'Solve'),
+        ('return', 'Return After Absence'),
+        ('help', 'Help Others'),
+    ], default='solve')
+    energy_spent = serializers.IntegerField(default=0)
+    problems_solved = serializers.IntegerField(min_value=0, required=False, default=0)
     lesson_ids = serializers.ListField(child=serializers.CharField(), required=False, default=list)
 
 

@@ -14,8 +14,8 @@ from .serializers import (
     StreakUpdateSerializer,
     NotificationSerializer
 )
-from django.utils import timezone
-from .models import Streak, DailyActivity, Notification
+from .models import Streak, DailyActivity, Notification, MomentumState, GamificationProgress, EnergyWallet, ActivityLog
+from .gamification_engine import GamificationEngine
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from django.db.models import F
@@ -150,90 +150,38 @@ class SigninView(APIView):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def streak_view(request):
+    """
+    Deprecated in v2. Use /api/activity/update/ and /api/gamification/status/.
+    Bridged for backward compatibility.
+    """
+    momentum, _ = MomentumState.objects.get_or_create(user=request.user)
+    
     if request.method == 'GET':
-        streak, created = Streak.objects.get_or_create(user=request.user)
-        
-        # Update energy before returning response
-        streak.update_energy()
-        
-        # Get the last 7 days of activity
-        today = timezone.now().date()
-        dates = [today - timezone.timedelta(days=i) for i in range(6, -1, -1)]
-        
-        # Get or create daily activities for the last 7 days
-        for date in dates:
-            DailyActivity.objects.get_or_create(
-                user=request.user,
-                date=date,
-                defaults={'status': 'none', 'problems_solved': 0, 'lesson_ids': []}
-            )
-        
-        serializer = StreakSerializer(streak)
+        serializer = StreakSerializer(momentum)
         return Response(serializer.data)
 
     elif request.method == 'POST':
+        # Bridge to central engine
         serializer = StreakUpdateSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                problems_solved = serializer.validated_data['problems_solved']
-                lesson_ids = serializer.validated_data['lesson_ids']
+                problems_solved = serializer.validated_data.get('problems_solved', 0)
+                lesson_ids = serializer.validated_data.get('lesson_ids', [])
                 
-                streak, created = Streak.objects.get_or_create(user=request.user)
-                
-                try:
-                    streak.update_streak(problems_solved, lesson_ids)
-                except ValueError as e:
-                    return Response({
-                        'error': str(e),
-                        'energy': {
-                            'current': streak.current_energy,
-                            'max': streak.max_energy,
-                            'next_update': streak.last_energy_update + timezone.timedelta(hours=4)
-                        }
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                
-                # Update or create today's activity
-                today = timezone.now().date()
-                activity, _ = DailyActivity.objects.get_or_create(
+                engine_result = GamificationEngine.update_activity(
                     user=request.user,
-                    date=today,
-                    defaults={'status': 'none', 'problems_solved': 0, 'lesson_ids': []}
+                    action_type='solve',
+                    problems_solved=problems_solved
                 )
                 
-                # Update activity status based on problems solved
-                activity.problems_solved = problems_solved
-                activity.lesson_ids = lesson_ids
-                if problems_solved >= 3:
-                    activity.status = 'complete'
-                elif problems_solved > 0:
-                    activity.status = 'partial'
-                activity.save()
-                
-                response_data = {
-                    'message': 'Streak updated',
-                    'currentStreak': streak.current_streak,
-                    'energy': {
-                        'current': streak.current_energy,
-                        'max': streak.max_energy,
-                        'next_update': streak.last_energy_update + timezone.timedelta(hours=4)
-                    },
-                    'dailyActivity': [{
-                        'date': today.isoformat(),
-                        'day': today.strftime('%a'),
-                        'status': activity.status,
-                        'problemsSolved': activity.problems_solved,
-                        'lessonIds': activity.lesson_ids,
-                        'isToday': True
-                    }]
-                }
-                return Response(response_data)
-            except Exception as e:
-                logger.error(f"Error updating streak: {str(e)}")
-                logger.error(traceback.format_exc())
                 return Response({
-                    'error': 'An error occurred while updating streak',
-                    'detail': str(e)
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    'message': 'Streak updated',
+                    'current_streak': engine_result['streak_count'],
+                    'gamification': engine_result
+                })
+            except Exception as e:
+                logger.error(f"Error in streak_view bridge: {str(e)}")
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -243,115 +191,162 @@ class GamificationViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def status(self, request):
-        """Get user's complete gamification status"""
-        streak, _ = Streak.objects.get_or_create(user=request.user)
-        user_league, _ = UserLeague.objects.get_or_create(user=request.user, defaults={'current_league': League.objects.first()})
+        """
+        Get user's complete gamification status (Backend v2).
+        🛡️ Phase 11: Authoritative Contract & Visibility Rules.
+        """
+        progress, _ = GamificationProgress.objects.get_or_create(user=request.user)
+        momentum, _ = MomentumState.objects.get_or_create(user=request.user)
+        wallet, _ = EnergyWallet.objects.get_or_create(user=request.user)
+        user_league, _ = UserLeague.objects.get_or_create(
+            user=request.user, 
+            defaults={'current_league': League.objects.order_by('min_xp').first()}
+        )
         
-        # Get next league
-        next_league = League.objects.filter(
-            min_xp__gt=user_league.current_league.min_xp
-        ).order_by('min_xp').first()
+        identity = progress.identity
         
-        # Get weekly rank
-        weekly_rank = Streak.objects.filter(
-            weekly_xp__gt=streak.weekly_xp
-        ).count() + 1
+        # --- Next Smallest Action Logic ---
+        next_action = {
+            'title': 'Sii wad barashada',
+            'action_type': 'solve',
+            'priority': 'normal',
+            'link': '/courses'
+        }
         
-        return Response({
-            'xp': {
-                'total': streak.xp,
-                'daily': streak.daily_xp,
-                'weekly': streak.weekly_xp,
-                'monthly': streak.monthly_xp
-            },
-            'streak': {
-                'current': streak.current_streak,
-                'max': streak.max_streak,
-                'energy': streak.current_energy,
-                'problems_to_next': streak.problems_to_next_streak
-            },
-            'league': {
-                'current': {
-                    'id': user_league.current_league.id,
-                    'name': user_league.current_league.somali_name,
-                    'somali_name': user_league.current_league.somali_name,
-                    'display_name': user_league.current_league.somali_name,
-                    'min_xp': user_league.current_league.min_xp
-                },
-                'next': {
-                    'id': next_league.id,
-                    'name': next_league.somali_name,
-                    'somali_name': next_league.somali_name,
-                    'display_name': next_league.somali_name,
-                    'min_xp': next_league.min_xp,
-                    'points_needed': next_league.min_xp - streak.xp
-                } if next_league else None
-            },
-            'rank': {
-                'weekly': weekly_rank
+        if momentum.state == 'unstable':
+            next_action = {
+                'title': 'Badbaadi xariggaaga!',
+                'message': 'Xariggaagu wuxuu halis ugu jiraa inuu jabo. Xali hal dhibaato hadda.',
+                'action_type': 'solve',
+                'priority': 'high',
+                'link': '/courses'
             }
-        })
+        elif momentum.state == 'dormant':
+             next_action = {
+                'title': 'Soo celi xariggaaga',
+                'message': 'Xariggaagu waa seexday. Bilow hadda si aad u soo celiso.',
+                'action_type': 'solve',
+                'priority': 'critical',
+                'link': '/courses'
+            }
+        elif wallet.energy_balance == 0:
+            next_action = {
+                'title': 'Nasasho qaado ama caawi dadka',
+                'message': 'Ma haysatid tamar. Caawi kuwa kale si aad tamar u hesho.',
+                'action_type': 'help',
+                'priority': 'medium',
+                'link': '/community'
+            }
+
+        # --- Identity-based Visibility Rules ---
+        data = {
+            'identity': identity,
+            'next_action': next_action,
+            'streak': {
+                'count': momentum.streak_count,
+            }
+        }
+
+        # Explorer sees Momentum and Today's Goal
+        if identity in ['explorer', 'builder', 'solver', 'mentor']:
+            data['streak']['state'] = momentum.state
+            data['streak']['last_active'] = momentum.last_active_at
+        
+        # Builder sees XP and Level
+        if identity in ['builder', 'solver', 'mentor']:
+            data['xp'] = {
+                'total': progress.xp_total,
+                'level': progress.level,
+            }
+        
+        # Solver sees Velocity and League Rank
+        if identity in ['solver', 'mentor']:
+            data['xp']['weekly_velocity'] = progress.weekly_velocity
+            data['league'] = {
+                'current': {
+                    'name': user_league.current_league.somali_name,
+                    'min_xp': user_league.current_league.min_xp
+                }
+            }
+            # Calculate weekly rank
+            data['rank'] = {
+                'weekly': GamificationProgress.objects.filter(
+                    weekly_velocity__gt=progress.weekly_velocity
+                ).count() + 1
+            }
+
+        # Mentor sees full details and energy
+        if identity == 'mentor':
+            data['energy'] = {
+                'balance': wallet.energy_balance
+            }
+            next_league = League.objects.filter(
+                min_xp__gt=user_league.current_league.min_xp
+            ).order_by('min_xp').first()
+            if next_league:
+                data['league']['next'] = {
+                    'name': next_league.somali_name,
+                    'points_needed': next_league.min_xp - progress.xp_total
+                }
+
+        return Response(data)
 
     @action(detail=False, methods=['get'])
     def leaderboard(self, request):
-        """Get leaderboard with filtering options"""
-        time_period = request.query_params.get('time_period', 'weekly')
-        league_id = request.query_params.get('league')
-        
-        queryset = Streak.objects.all()
-        if league_id:
-            queryset = queryset.filter(user__userleague__current_league_id=league_id)
-        
-        if time_period == 'weekly':
-            queryset = queryset.order_by('-weekly_xp')
-        elif time_period == 'monthly':
-            queryset = queryset.order_by('-monthly_xp')
-        else:  # all_time
-            queryset = queryset.order_by('-xp')
+        """Get leaderboard based on total XP"""
+        queryset = GamificationProgress.objects.all().select_related('user', 'user__userleague__current_league').order_by('-xp_total')
         
         # Get top 100 users
-        top_users = queryset[:100]
+        top_entries = queryset[:100]
         
         # Get user's own standing
-        user_streak = Streak.objects.get(user=request.user)
-        user_rank = queryset.filter(
-            xp__gt=user_streak.xp
-        ).count() + 1
+        user_progress, _ = GamificationProgress.objects.get_or_create(user=request.user)
+        user_rank = queryset.filter(xp_total__gt=user_progress.xp_total).count() + 1
         
         return Response({
-            'time_period': time_period,
-            'league': league_id,
             'standings': [{
                 'rank': idx + 1,
                 'user': {
-                    'id': streak.user.id,
-                    'name': streak.user.username,
+                    'id': entry.user.id,
+                    'name': entry.user.username,
                 },
-                'points': streak.xp,
-                'streak': streak.current_streak,
-                'league': LeagueSerializer(streak.user.userleague.current_league).data
-            } for idx, streak in enumerate(top_users)],
+                'points': entry.xp_total,
+                'level': entry.level,
+                'identity': entry.identity
+            } for idx, entry in enumerate(top_entries)],
             'my_standing': {
                 'rank': user_rank,
-                'points': user_streak.xp,
-                'streak': user_streak.current_streak,
-                'league': LeagueSerializer(request.user.userleague.current_league).data
+                'points': user_progress.xp_total,
+                'level': user_progress.level
             }
         })
 
     @action(detail=False, methods=['post'])
     def use_energy(self, request):
-        """Use energy to maintain streak"""
-        streak = Streak.objects.get(user=request.user)
-        if streak.use_energy():
+        """Spend energy to absorb friction"""
+        wallet, _ = EnergyWallet.objects.get_or_create(user=request.user)
+        cost = int(request.data.get('cost', 1))
+        
+        if wallet.energy_balance >= cost:
+            wallet.energy_balance -= cost
+            wallet.save()
+            
+            # Log the spend
+            ActivityLog.objects.create(
+                user=request.user,
+                action_type='energy_spend',
+                energy_delta=-cost,
+                xp_delta=0
+            )
+            
             return Response({
                 'success': True,
-                'remaining_energy': streak.current_energy,
-                'message': 'Waad ku mahadsantahay ilaalinta xariggaaga'
+                'remaining_energy': wallet.energy_balance,
+                'message': 'Energy used successfully'
             })
         return Response({
             'success': False,
-            'message': 'Ma haysato tamar'
+            'message': 'Not enough energy'
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -571,52 +566,73 @@ def admin_user_activity(request):
 @permission_classes([IsAuthenticated])
 def update_activity(request):
     """
-    Manually update user activity for frontend integration.
-    This endpoint can be called periodically by the frontend to ensure
-    activity is tracked even when users are just browsing.
+    Heartbeat of the system (Backend v2).
+    🛡️ Checkpoint: Pass request_id for Idempotency.
     """
     try:
-        from core.middleware import UserActivityMiddleware
+        serializer = StreakUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        action_type = serializer.validated_data.get('action_type', 'solve')
+        energy_spent = serializer.validated_data.get('energy_spent', 0)
+        problems_solved = serializer.validated_data.get('problems_solved', 0)
+        lesson_ids = serializer.validated_data.get('lesson_ids', [])
         
-        # Create middleware instance and update activity
-        middleware = UserActivityMiddleware(lambda req: None)
-        middleware._update_user_activity(request.user)
-        
-        # Get updated streak info
-        streak, created = Streak.objects.get_or_create(user=request.user)
-        
-        # Get user's activity status
-        today = timezone.now().date()
-        activity, created = DailyActivity.objects.get_or_create(
+        # 🛡️ Extract request_id for idempotency
+        request_id = request.data.get('request_id')
+
+        # 1. Trigger the Rule Engine
+        engine_result = GamificationEngine.update_activity(
             user=request.user,
-            date=today,
-            defaults={'status': 'partial', 'problems_solved': 0, 'lesson_ids': []}
+            action_type=action_type,
+            problems_solved=problems_solved,
+            energy_spent=energy_spent,
+            request_id=request_id
         )
         
+        # 🛡️ Handle idempotent response
+        if 'error' in engine_result and engine_result.get('idempotent'):
+             return Response({
+                'success': True,
+                'message': 'Duplicate request handled (Idempotent)',
+                'warning': 'This action was already processed.'
+            }, status=status.HTTP_200_OK)
+
+        # 2. Update Legacy Tables for compatibility
+        today = timezone.now().date()
+        legacy_streak, _ = Streak.objects.get_or_create(user=request.user)
+        legacy_streak.xp = engine_result['new_total_xp']
+        legacy_streak.current_streak = int(engine_result['streak_count'])
+        legacy_streak.save()
+
+        # Update DailyActivity
+        activity, _ = DailyActivity.objects.get_or_create(
+            user=request.user,
+            date=today,
+            defaults={'status': 'none', 'problems_solved': 0, 'lesson_ids': []}
+        )
+        if action_type == 'solve' or problems_solved > 0:
+            activity.problems_solved += problems_solved
+            activity.lesson_ids = list(set(activity.lesson_ids + lesson_ids))
+            if activity.problems_solved >= 3:
+                activity.status = 'complete'
+            else:
+                activity.status = 'partial'
+            activity.save()
+
         return Response({
             'success': True,
-            'message': 'Activity updated successfully',
-            'user': {
-                'last_active': request.user.last_active.isoformat() if request.user.last_active else None,
-                'last_login': request.user.last_login.isoformat() if request.user.last_login else None,
-            },
-            'streak': {
-                'current_streak': streak.current_streak,
-                'max_streak': streak.max_streak,
-                'last_activity_date': streak.last_activity_date.isoformat() if streak.last_activity_date else None
-            },
+            'message': 'Engagement record updated',
+            'gamification': engine_result,
             'activity': {
-                'date': today.isoformat(),
-                'status': activity.status,
-                'problems_solved': activity.problems_solved,
-                'lesson_ids': activity.lesson_ids
-            },
-            'activity_date': today.isoformat()
+                'today': today.isoformat(),
+                'status': activity.status
+            }
         })
-        
     except Exception as e:
-        logger.error(f"Error updating activity: {str(e)}")
+        logger.error(f"Error in update_activity: {str(e)}")
         return Response({
-            'error': 'Failed to update activity',
+            'error': 'Failed to update engagement activity',
             'detail': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

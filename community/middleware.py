@@ -23,9 +23,15 @@ class JwtAuthMiddleware(BaseMiddleware):
         query_params = parse_qs(query_string)
         token = query_params.get('token', [None])[0]
         
-        if token:
-            scope['user'] = await get_user(token)
-        else:
+        try:
+            if token:
+                scope['user'] = await get_user(token)
+                print(f"WebSocket Auth Success: {scope['user']}")
+            else:
+                print("WebSocket Auth: No token provided")
+                scope['user'] = AnonymousUser()
+        except Exception as e:
+            print(f"WebSocket Auth Error: {str(e)}")
             scope['user'] = AnonymousUser()
             
         return await super().__call__(scope, receive, send)

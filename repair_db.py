@@ -30,19 +30,29 @@ def repair():
         if 'category_id' not in col_info:
             print("🔧 Adding category_id (VARCHAR) to community_post...")
             cursor.execute("ALTER TABLE community_post ADD COLUMN category_id VARCHAR(50)")
-            # Set a valid default category ID (usually the slug or id of a top category)
-            # We'll try to find any existing category ID
             cursor.execute("SELECT id FROM courses_category LIMIT 1")
             row = cursor.fetchone()
-            default_cat = row[0] if row else 'stem' # Fallback
+            default_cat = row[0] if row else 'stem'
             
             cursor.execute(f"UPDATE community_post SET category_id = '{default_cat}' WHERE category_id IS NULL")
             cursor.execute("ALTER TABLE community_post ALTER COLUMN category_id SET NOT NULL")
             cursor.execute("ALTER TABLE community_post ADD CONSTRAINT community_post_category_fk FOREIGN KEY (category_id) REFERENCES courses_category(id)")
 
+        # 1b. Detect Post ID type (Integer vs UUID)
+        cursor.execute("SELECT data_type FROM information_schema.columns WHERE table_name='community_post' AND column_name='id'")
+        post_id_type = cursor.fetchone()[0].upper()
+        print(f"📌 Detected Post ID type: {post_id_type}")
+        
+        # Use matching type for FKs
+        fk_type = post_id_type
+        if 'UUID' in fk_type:
+            fk_type = 'UUID'
+        elif 'INT' in fk_type:
+            fk_type = 'INTEGER'
+
         # 2. Create missing tables
         tables_to_create = {
-            'community_reply': """
+            'community_reply': f"""
                 CREATE TABLE IF NOT EXISTS community_reply (
                     id SERIAL PRIMARY KEY,
                     content TEXT NOT NULL,
@@ -50,32 +60,32 @@ def repair():
                     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
                     is_edited BOOLEAN NOT NULL DEFAULT FALSE,
                     author_id INTEGER NOT NULL REFERENCES accounts_user(id),
-                    post_id INTEGER NOT NULL REFERENCES community_post(id)
+                    post_id {fk_type} NOT NULL REFERENCES community_post(id)
                 )
             """,
-            'community_reaction': """
+            'community_reaction': f"""
                 CREATE TABLE IF NOT EXISTS community_reaction (
                     id SERIAL PRIMARY KEY,
                     type VARCHAR(20) NOT NULL,
                     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-                    post_id INTEGER NOT NULL REFERENCES community_post(id),
+                    post_id {fk_type} NOT NULL REFERENCES community_post(id),
                     user_id INTEGER NOT NULL REFERENCES accounts_user(id),
                     UNIQUE (post_id, user_id, type)
                 )
             """,
-            'community_postimage': """
+            'community_postimage': f"""
                 CREATE TABLE IF NOT EXISTS community_postimage (
                     id SERIAL PRIMARY KEY,
                     image VARCHAR(100) NOT NULL,
                     uploaded_at TIMESTAMP WITH TIME ZONE NOT NULL,
-                    post_id INTEGER NOT NULL REFERENCES community_post(id)
+                    post_id {fk_type} NOT NULL REFERENCES community_post(id)
                 )
             """
         }
         
         for table, sql in tables_to_create.items():
             print(f"🔍 Checking {table}...")
-            cursor.execute(f"SELECT EXIStS (SELECT FROM information_schema.tables WHERE table_name = '{table}')")
+            cursor.execute(f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{table}')")
             if not cursor.fetchone()[0]:
                 print(f"🔧 Creating {table}...")
                 cursor.execute(sql)
@@ -95,4 +105,6 @@ if __name__ == "__main__":
     try:
         repair()
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"❌ Error: {e}")

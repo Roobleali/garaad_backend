@@ -1,11 +1,12 @@
 import os
 import django
-from django.test import Client
+from django.test import Client, override_settings
 from django.contrib.auth import get_user_model
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'garaad.settings')
 django.setup()
 
+@override_settings(ALLOWED_HOSTS=['*'])
 def verify():
     User = get_user_model()
     client = Client()

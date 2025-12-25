@@ -2,13 +2,12 @@ import os
 import django
 from django.test import Client, override_settings
 from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken
-
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'garaad.settings')
 django.setup()
 
 @override_settings(ALLOWED_HOSTS=['*'], SECURE_SSL_REDIRECT=False)
 def verify():
+    from rest_framework_simplejwt.tokens import RefreshToken
     User = get_user_model()
     client = Client()
     

@@ -6,17 +6,19 @@ from django.contrib.auth import get_user_model
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'garaad.settings')
 django.setup()
 
-@override_settings(ALLOWED_HOSTS=['*'])
+@override_settings(ALLOWED_HOSTS=['*'], SECURE_SSL_REDIRECT=False)
 def verify():
     User = get_user_model()
     client = Client()
     
     # Create or get a test user
-    test_user, created = User.objects.get_or_create(username='test_checker', email='checker@example.com')
+    username = 'test_checker_v3'
+    test_user, created = User.objects.get_or_create(username=username, defaults={'email': 'checker_v3@example.com'})
     if created:
         test_user.set_password('checkpass123')
         test_user.save()
     
+    # Simple manual login to ensure session is set
     client.force_login(test_user)
     
     endpoints = [
@@ -27,7 +29,7 @@ def verify():
         ('/api/gamification/status/', 'GET'),
     ]
     
-    print("\n🚀 Starting API Endpoint Verification...\n")
+    print("\n🚀 Starting API Endpoint Verification (v3 - UUID & Auth Fix)...\n")
     
     all_passed = True
     for url, method in endpoints:
@@ -36,22 +38,25 @@ def verify():
             if method == 'GET':
                 response = client.get(url, follow=True)
             else:
-                # Basic empty payload for activity update
                 response = client.post(url, data={}, content_type='application/json', follow=True)
             
-            # Check the final response in case of redirects
             final_status = response.status_code
-            if final_status in [200, 201, 400]: # 400 is fine for empty POST, 500 is the enemy
+            # 200/201 are success. 
+            # 400 is acceptable for empty POST on some endpoints.
+            # 401 means our force_login failed to persist.
+            # 500 is a crash.
+            if final_status in [200, 201]:
                 print(f"✅ PASSED (Status: {final_status})")
+            elif final_status == 400:
+                print(f"⚠️ WARN (Status: {final_status} - Payload empty but endpoint alive)")
             else:
                 print(f"❌ FAILED (Status: {final_status})")
-                if response.status_code == 500:
-                    all_passed = False
-                    # Print a snippet of the error if it's a 500
+                all_passed = False
+                if final_status == 500:
                     try:
-                        print(f"   Error Detail: {response.json().get('detail', 'No detail provided')}")
-                    except:
-                        pass
+                        # Try to print more info if possible
+                        print(f"   Error: {response.content[:200]}")
+                    except: pass
         except Exception as e:
             print(f"💥 CRASHED: {e}")
             all_passed = False

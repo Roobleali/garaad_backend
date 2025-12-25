@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.conf import settings
@@ -10,6 +11,7 @@ class Post(models.Model):
     Community post within a category.
     Simple, clean, no over-engineering.
     """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     category = models.ForeignKey(
         'courses.Category',
         related_name="community_posts",
@@ -40,6 +42,7 @@ class PostImage(models.Model):
     """
     Optional image attachments for posts.
     """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     post = models.ForeignKey(
         Post,
         related_name="images",
@@ -57,6 +60,7 @@ class Reply(models.Model):
     One-level replies to posts.
     No nested threading - keeps it simple.
     """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     post = models.ForeignKey(
         Post,
         related_name="replies",
@@ -88,6 +92,7 @@ class Reaction(models.Model):
     Controlled reactions to posts.
     No karma, no noise - just clean engagement.
     """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     REACTION_CHOICES = [
         ("like", "Like"),
         ("fire", "Fire"),

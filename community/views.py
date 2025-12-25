@@ -29,16 +29,16 @@ class PostViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def me(self, request):
         """Get the current user's community profile"""
-        # Note: In the new simplified models, we don't have a dedicated UserCommunityProfile.
-        # We can return user stats from Post/Reply counts.
         user = request.user
+        if not user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+            
         data = {
             'id': user.id,
             'username': user.username,
             'email': user.email,
             'post_count': Post.objects.filter(author=user).count(),
             'reply_count': Reply.objects.filter(author=user).count(),
-            # Add other stats as needed
         }
         return Response(data)
     

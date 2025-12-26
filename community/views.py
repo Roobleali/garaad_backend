@@ -3,7 +3,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
 from courses.models import Category
+
+User = get_user_model()
 from .models import Post, Reply, Reaction
 from .serializers import (
     PostSerializer,

@@ -274,6 +274,7 @@ class StreakUpdateSerializer(serializers.Serializer):
     energy_spent = serializers.IntegerField(default=0)
     problems_solved = serializers.IntegerField(min_value=0, required=False, default=0)
     lesson_ids = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    request_id = serializers.UUIDField(required=False, allow_null=True)
 
 
 class NotificationSerializer(serializers.ModelSerializer):

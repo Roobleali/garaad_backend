@@ -5,6 +5,10 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from courses.models import Category
+import logging
+import traceback
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 from .models import Post, Reply, Reaction
@@ -162,6 +166,8 @@ class PostViewSet(viewsets.ModelViewSet):
             return Response(result, status=status.HTTP_200_OK)
         except Exception as e:
             # Fallback for DB schema mismatch or other issues
+            logger.error(f"Reaction error: {str(e)}")
+            logger.error(traceback.format_exc())
             return Response(
                 {"error": str(e), "detail": "Database error. Please ensure migrations are up to date."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

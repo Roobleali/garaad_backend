@@ -11,11 +11,11 @@ router.register(r'profiles', views.UserProfileViewSet, basename='profile')
 app_name = 'community'
 
 urlpatterns = [
+    # Profile endpoint for frontend (Must be above router)
+    path('profiles/me/', views.PostViewSet.as_view({'get': 'me'}), name='profile-me'),
+    
     # Main router URLs
     path('', include(router.urls)),
-    
-    # Profile endpoint for frontend
-    path('profiles/me/', views.PostViewSet.as_view({'get': 'me'}), name='profile-me'),
     
     # Category-specific posts endpoint
     # GET/POST /api/community/categories/{category_id}/posts/

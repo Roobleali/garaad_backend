@@ -581,7 +581,9 @@ def update_activity(request):
         lesson_ids = serializer.validated_data.get('lesson_ids', [])
         
         # 🛡️ Extract request_id for idempotency
-        request_id = request.data.get('request_id')
+        request_id = serializer.validated_data.get('request_id')
+        if not request_id:
+            request_id = None
 
         # 1. Trigger the Rule Engine
         engine_result = GamificationEngine.update_activity(

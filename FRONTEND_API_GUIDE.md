@@ -79,6 +79,10 @@ Returns a flat list of posts for a specific category.
 `GET /api/community/profiles/me/`
 Returns user stats and basic info.
 
+### 7. View Other User Profile
+`GET /api/community/profiles/{userId}/`
+Returns a specific user's stats (posts, replies) and basic info.
+
 ---
 
 ## 🔌 WebSockets

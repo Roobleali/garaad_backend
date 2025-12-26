@@ -10,7 +10,8 @@ from .serializers import (
     PostCreateSerializer,
     ReplySerializer,
     ReplyCreateSerializer,
-    ReactionSerializer
+    ReactionSerializer,
+    UserBasicSerializer
 )
 from .permissions import IsAuthorOrStaffOrReadOnly
 from courses.views import CategoryViewSet as BaseCategoryViewSet
@@ -23,6 +24,32 @@ class CommunityCategoryViewSet(BaseCategoryViewSet):
     """
     queryset = Category.objects.filter(is_community_enabled=True)
     serializer_class = CategorySerializer
+
+
+class UserProfileViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint for viewing user community profiles.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserBasicSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def retrieve(self, request, pk=None):
+        """Get a specific user's community stats"""
+        user = get_object_or_404(User, id=pk)
+        
+        # Get counts for social proof
+        post_count = Post.objects.filter(author=user).count()
+        reply_count = Reply.objects.filter(author=user).count()
+
+        # Build response data
+        data = UserBasicSerializer(user).data
+        data.update({
+            'post_count': post_count,
+            'reply_count': reply_count,
+            'bio': getattr(user, 'bio', ''),
+        })
+        return Response(data)
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -73,6 +100,12 @@ class PostViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return PostCreateSerializer
         return PostSerializer
+
+    def get_serializer_context(self):
+        """Pass request to serializer context for user_reactions field"""
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
     
     def create(self, request, *args, **kwargs):
         """Create a new post"""
@@ -118,10 +151,18 @@ class PostViewSet(viewsets.ModelViewSet):
             data=request.data,
             context={'request': request, 'post': post}
         )
-        serializer.is_valid(raise_exception=True)
-        result = serializer.save()
-        
-        return Response(result, status=status.HTTP_200_OK)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            result = serializer.save()
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            # Fallback for DB schema mismatch or other issues
+            return Response(
+                {"error": str(e), "detail": "Database error. Please ensure migrations are up to date."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def reply(self, request, pk=None):
